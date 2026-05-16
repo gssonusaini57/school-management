@@ -1,0 +1,38 @@
+---
+permalink: /index.html
+eleventyExcludeFromCollections: true
+---
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Khalsa International Senior Secondary School</title>
+  <link rel="icon" type="image/png" href="{{ site.basePath }}/brand/crest-mark.png">
+  <meta name="description" content="Khalsa International Sr. Sec. School, Jalalabad, Patiala — PSEB Aff. 4906. Education rooted in heritage. Built for tomorrow.">
+  <meta http-equiv="refresh" content="0; url={{ site.basePath }}/en/">
+  <link rel="alternate" hreflang="en" href="{{ site.baseUrl }}{{ site.basePath }}/en/">
+  <link rel="alternate" hreflang="pa" href="{{ site.baseUrl }}{{ site.basePath }}/pa/">
+  <script>
+    // Send Punjabi-locale browsers to /pa/ on first hit; everyone else to /en/.
+    (function () {
+      var base = "{{ site.basePath }}";
+      try {
+        var stored = localStorage.getItem("kis.locale");
+        if (stored === "en" || stored === "pa") {
+          window.location.replace(base + "/" + stored + "/");
+          return;
+        }
+        var pref = (navigator.languages || [navigator.language || "en"])[0] || "en";
+        var target = pref.toLowerCase().indexOf("pa") === 0 ? "pa" : "en";
+        window.location.replace(base + "/" + target + "/");
+      } catch (e) {
+        window.location.replace(base + "/en/");
+      }
+    })();
+  </script>
+</head>
+<body style="font-family:system-ui,sans-serif;color:#1a1a1a;background:#fff;text-align:center;padding:40px;">
+  <p>Redirecting… <a href="{{ site.basePath }}/en/">English</a> · <a href="{{ site.basePath }}/pa/" lang="pa">ਪੰਜਾਬੀ</a></p>
+</body>
+</html>

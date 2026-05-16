@@ -1,0 +1,48 @@
+{
+  "receiptNo": "KIS/26-27/Q1/00482",
+  "date": "2026-04-10",
+  "student": {
+    "name": {
+      "en": "Harleen Kaur",
+      "pa": "ਹਰਲੀਨ ਕੌਰ"
+    },
+    "class": "VIII",
+    "section": "B",
+    "rollNo": "14",
+    "fatherName": {
+      "en": "Sh. Jasbir Singh",
+      "pa": "ਸ੍ਰੀ ਜਸਬੀਰ ਸਿੰਘ"
+    }
+  },
+  "items": [
+    {
+      "particulars": {
+        "en": "Tuition fee — Q1",
+        "pa": "ਟਿਊਸ਼ਨ ਫ਼ੀਸ — Q1"
+      },
+      "amount": 12000
+    },
+    {
+      "particulars": {
+        "en": "Transport fee — Q1",
+        "pa": "ਆਵਾਜਾਈ ਫ਼ੀਸ — Q1"
+      },
+      "amount": 4500
+    },
+    {
+      "particulars": {
+        "en": "Activity fee — Annual",
+        "pa": "ਗਤੀਵਿਧੀ ਫ਼ੀਸ — ਸਾਲਾਨਾ"
+      },
+      "amount": 1500
+    }
+  ],
+  "total": 18000,
+  "amountInWords": "Rupees Eighteen Thousand only",
+  "modeOfPayment": "UPI",
+  "txnRef": "UPI/612548891234",
+  "signatory": {
+    "name": "Ms. Simran Kaur",
+    "role": "Accounts Officer"
+  }
+}

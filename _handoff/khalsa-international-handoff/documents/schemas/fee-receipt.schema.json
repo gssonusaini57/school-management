@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "fee-receipt",
+  "title": "Fee Receipt",
+  "type": "object",
+  "required": [
+    "receiptNo",
+    "date",
+    "student",
+    "items",
+    "total",
+    "modeOfPayment"
+  ],
+  "properties": {
+    "receiptNo": {
+      "type": "string"
+    },
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "student": {
+      "type": "object",
+      "required": [
+        "name",
+        "class",
+        "section",
+        "rollNo",
+        "fatherName"
+      ],
+      "properties": {
+        "name": {
+          "type": "object",
+          "required": [
+            "en",
+            "pa"
+          ],
+          "properties": {
+            "en": {
+              "type": "string"
+            },
+            "pa": {
+              "type": "string"
+            }
+          }
+        },
+        "class": {
+          "type": "string"
+        },
+        "section": {
+          "type": "string"
+        },
+        "rollNo": {
+          "type": "string"
+        },
+        "fatherName": {
+          "type": "object",
+          "required": [
+            "en",
+            "pa"
+          ],
+          "properties": {
+            "en": {
+              "type": "string"
+            },
+            "pa": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "items": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "particulars",
+          "amount"
+        ],
+        "properties": {
+          "particulars": {
+            "type": "object",
+            "required": [
+              "en",
+              "pa"
+            ],
+            "properties": {
+              "en": {
+                "type": "string"
+              },
+              "pa": {
+                "type": "string"
+              }
+            }
+          },
+          "amount": {
+            "type": "number",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "total": {
+      "type": "number",
+      "minimum": 0
+    },
+    "amountInWords": {
+      "type": "string"
+    },
+    "modeOfPayment": {
+      "enum": [
+        "Cash",
+        "UPI",
+        "Bank Transfer",
+        "Cheque",
+        "Card"
+      ]
+    },
+    "txnRef": {
+      "type": "string"
+    },
+    "signatory": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

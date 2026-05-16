@@ -1,0 +1,176 @@
+{% set eyebrowKey = "web.admissions.heroEyebrow" %}
+{% set titleKey = "web.admissions.heroTitle" %}
+{% set bodyKey = "web.admissions.heroBody" %}
+{% include "pages/page-hero.njk" %}
+
+{# ── 4-step process ────────────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-20">
+  <h2 class="font-display text-heading-lg text-deep-indigo mb-10">{{ "web.admissions.processTitle" | t(lang) }}</h2>
+  <ol class="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
+    {% set steps = [
+      { titleKey: "web.admissions.processStep1", bodyKey: "web.admissions.processStep1Body" },
+      { titleKey: "web.admissions.processStep2", bodyKey: "web.admissions.processStep2Body" },
+      { titleKey: "web.admissions.processStep3", bodyKey: "web.admissions.processStep3Body" },
+      { titleKey: "web.admissions.processStep4", bodyKey: "web.admissions.processStep4Body" }
+    ] %}
+    {% for s in steps %}
+    <li class="card relative">
+      <div class="absolute -top-3 -left-3 w-8 h-8 rounded-full bg-khalsa-blue text-white flex items-center justify-center font-bold text-body-sm">{{ loop.index }}</div>
+      <h3 class="font-display text-heading-sm text-deep-indigo mt-2 mb-2">{{ s.titleKey | t(lang) }}</h3>
+      <p class="text-body-sm text-neutral-700">{{ s.bodyKey | t(lang) }}</p>
+    </li>
+    {% endfor %}
+  </ol>
+
+  <div class="mt-8">
+    <a href="/forms/admission-form-2026.pdf" class="btn btn-secondary" download>
+      ↓ {{ "common.downloadForm" | t(lang) }}
+    </a>
+  </div>
+</section>
+
+{# ── Eligibility table ─────────────────────────────────────────────── #}
+<section class="bg-neutral-50">
+  <div class="container px-4 py-16 lg:py-20">
+    <h2 class="font-display text-heading-lg text-deep-indigo mb-8">{{ "web.admissions.eligibilityTitle" | t(lang) }}</h2>
+    <div class="overflow-x-auto card !p-0">
+      <table class="w-full text-body-sm border-collapse">
+        <thead class="bg-vasant-cream text-deep-indigo">
+          <tr>
+            <th class="text-left px-4 py-3 font-semibold">{% if lang == 'en' %}Class{% else %}ਜਮਾਤ{% endif %}</th>
+            <th class="text-left px-4 py-3 font-semibold">{% if lang == 'en' %}Age (as on 31 Mar 2026){% else %}ਉਮਰ (31 ਮਾਰਚ 2026 ਤੱਕ){% endif %}</th>
+            <th class="text-left px-4 py-3 font-semibold">{% if lang == 'en' %}Prior schooling{% else %}ਪਿਛਲੀ ਪੜ੍ਹਾਈ{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set rows = [
+            ["Nursery",  "3+ to 4 years",  "—"],
+            ["LKG",      "4+ to 5 years",  "Nursery preferred"],
+            ["UKG",      "5+ to 6 years",  "LKG preferred"],
+            ["Class I",  "6+ to 7 years",  "UKG / equivalent"],
+            ["Class II — V",  "7–11 years", "Previous class TC required"],
+            ["Class VI — X",  "11–16 years","Previous class TC + last result"],
+            ["Class XI — XII","16–18 years","Class X result; stream-specific cutoff"]
+          ] %}
+          {% for r in rows %}
+          <tr class="border-b border-neutral-200">
+            <td class="px-4 py-3 font-semibold text-deep-indigo">{{ r[0] }}</td>
+            <td class="px-4 py-3">{{ r[1] }}</td>
+            <td class="px-4 py-3 text-neutral-700">{{ r[2] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+{# ── Fees table ────────────────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-20">
+  <h2 class="font-display text-heading-lg text-deep-indigo mb-2">{{ "web.admissions.feesTitle" | t(lang) }}</h2>
+  <p class="text-body-sm text-neutral-500 mb-6">{{ "web.admissions.feesNote" | t(lang) }}</p>
+  <div class="overflow-x-auto card !p-0">
+    <table class="w-full text-body-sm border-collapse">
+      <thead class="bg-vasant-cream text-deep-indigo">
+        <tr>
+          <th class="text-left px-4 py-3 font-semibold">{% if lang == 'en' %}Class{% else %}ਜਮਾਤ{% endif %}</th>
+          <th class="text-right px-4 py-3 font-semibold">{% if lang == 'en' %}Quarterly{% else %}ਤਿਮਾਹੀ{% endif %}</th>
+          <th class="text-right px-4 py-3 font-semibold">{% if lang == 'en' %}Annual{% else %}ਸਾਲਾਨਾ{% endif %}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set fees = [
+          ["Nursery — UKG",   "8,000",   "32,000"],
+          ["Class I — V",     "10,500",  "42,000"],
+          ["Class VI — VIII", "13,000",  "52,000"],
+          ["Class IX — X",    "16,000",  "64,000"],
+          ["Class XI — XII",  "19,500",  "78,000"]
+        ] %}
+        {% for f in fees %}
+        <tr class="border-b border-neutral-200">
+          <td class="px-4 py-3 font-semibold text-deep-indigo">{{ f[0] }}</td>
+          <td class="px-4 py-3 text-right tabular-nums">₹ {{ f[1] }}</td>
+          <td class="px-4 py-3 text-right tabular-nums font-semibold text-deep-indigo">₹ {{ f[2] }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+{# ── Documents ─────────────────────────────────────────────────────── #}
+<section class="bg-neutral-50">
+  <div class="container px-4 py-16 lg:py-20 max-w-3xl">
+    <h2 class="font-display text-heading-lg text-deep-indigo mb-6">{{ "web.admissions.documentsTitle" | t(lang) }}</h2>
+    <ul class="space-y-3">
+      {% set docs = [
+        { en: "Birth certificate (original + photocopy)", pa: "ਜਨਮ ਸਰਟੀਫਿਕੇਟ (ਮੂਲ + ਫੋਟੋਕਾਪੀ)" },
+        { en: "Aadhaar of the child + a parent",          pa: "ਬੱਚੇ ਅਤੇ ਮਾਪਿਆਂ ਦਾ ਆਧਾਰ" },
+        { en: "Transfer certificate from previous school (Class I+)", pa: "ਪਿਛਲੇ ਸਕੂਲ ਤੋਂ ਟ੍ਰਾਂਸਫਰ ਸਰਟੀਫਿਕੇਟ (ਜਮਾਤ ਪਹਿਲੀ ਤੋਂ)" },
+        { en: "Last academic year report card",           pa: "ਪਿਛਲੇ ਸਾਲ ਦਾ ਨਤੀਜਾ ਕਾਰਡ" },
+        { en: "4 passport-size photographs",              pa: "4 ਪਾਸਪੋਰਟ-ਸਾਈਜ਼ ਫੋਟੋਆਂ" }
+      ] %}
+      {% for d in docs %}
+      <li class="flex gap-3">
+        <span class="text-khalsa-blue font-bold mt-0.5">✓</span>
+        <span class="text-body">{% if lang == 'en' %}{{ d.en }}{% else %}{{ d.pa }}{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+
+{# ── Apply form ───────────────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-20 max-w-2xl">
+  <h2 class="font-display text-heading-lg text-deep-indigo mb-3">{{ "web.admissions.applyTitle" | t(lang) }}</h2>
+  <p class="text-body text-neutral-700 mb-8">{{ "web.admissions.applyBody" | t(lang) }}</p>
+  <form action="/api/admissions/enquiry" method="POST" class="card space-y-4">
+    <div>
+      <label for="a-childName" class="block text-body-sm font-semibold mb-1.5">{% if lang == 'en' %}Child's name{% else %}ਬੱਚੇ ਦਾ ਨਾਮ{% endif %} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+      <input id="a-childName" name="childName" type="text" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+    </div>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label for="a-parentName" class="block text-body-sm font-semibold mb-1.5">{% if lang == 'en' %}Parent's name{% else %}ਮਾਪੇ ਦਾ ਨਾਮ{% endif %} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+        <input id="a-parentName" name="parentName" type="text" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      </div>
+      <div>
+        <label for="a-class" class="block text-body-sm font-semibold mb-1.5">{% if lang == 'en' %}Class applying for{% else %}ਜਿਸ ਜਮਾਤ ਲਈ{% endif %} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+        <select id="a-class" name="class" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          <option value="">—</option>
+          {% for c in ["Nursery","LKG","UKG","I","II","III","IV","V","VI","VII","VIII","IX","X","XI","XII"] %}
+          <option value="{{ c }}">{{ c }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="grid sm:grid-cols-2 gap-4">
+      <div>
+        <label for="a-phone" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldPhone" | t(lang) }} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+        <input id="a-phone" name="phone" type="tel" pattern="[0-9]{10}" inputmode="numeric" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      </div>
+      <div>
+        <label for="a-email" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldEmail" | t(lang) }}</label>
+        <input id="a-email" name="email" type="email" class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      </div>
+    </div>
+    <div>
+      <label for="a-message" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldMessage" | t(lang) }}</label>
+      <textarea id="a-message" name="message" rows="4" class="w-full px-3 py-2 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+    </div>
+    <label class="flex items-start gap-2 text-body-sm">
+      <input type="checkbox" name="consent" required class="mt-1 h-4 w-4 rounded border-input text-khalsa-blue focus-visible:ring-2 focus-visible:ring-ring">
+      <span>{% if lang == 'en' %}I consent to the school contacting me by phone or email about this enquiry.{% else %}ਮੈਂ ਸਹਿਮਤ ਹਾਂ ਕਿ ਸਕੂਲ ਇਸ ਪੁੱਛ-ਗਿੱਛ ਬਾਰੇ ਮੈਨੂੰ ਫ਼ੋਨ ਜਾਂ ਈਮੇਲ ਉੱਤੇ ਸੰਪਰਕ ਕਰੇ।{% endif %}</span>
+    </label>
+    <button type="submit" class="btn btn-primary w-full">{{ "common.submit" | t(lang) }}</button>
+  </form>
+</section>
+
+{# ── Walk-in ───────────────────────────────────────────────────────── #}
+<section class="band-cream">
+  <div class="container px-4 py-12 max-w-3xl text-center">
+    <h2 class="font-display text-heading-md text-deep-indigo mb-3">{{ "web.admissions.walkInTitle" | t(lang) }}</h2>
+    <p class="text-body text-neutral-700 mb-2">{{ "web.admissions.walkInBody" | t(lang) }}</p>
+    <p class="text-body-sm text-neutral-600">{{ "common.address" | t(lang) }}</p>
+  </div>
+</section>

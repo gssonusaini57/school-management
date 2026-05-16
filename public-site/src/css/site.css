@@ -1,0 +1,80 @@
+@import "../../../packages/design-system/tokens.css";
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    background: var(--surface-page);
+    -webkit-font-smoothing: antialiased;
+  }
+  :lang(pa), [lang="pa"] {
+    font-family: var(--font-gurmukhi);
+    line-height: 1.5;
+  }
+}
+
+@layer components {
+  /* Reusable surface bands */
+  .band-cream { background: var(--color-vasant-cream); }
+  .band-indigo {
+    background: var(--color-deep-indigo);
+    color: #fff;
+  }
+  .band-indigo h1, .band-indigo h2, .band-indigo h3 { color: #fff; }
+  .band-indigo p { color: rgba(255,255,255,0.85); }
+
+  /* Buttons (mirrors the React Button atom: primary / secondary / ghost) */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold transition-colors;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2;
+    @apply disabled:pointer-events-none disabled:opacity-50;
+    height: 40px;
+    padding: 0 16px;
+    font-size: 15px;
+    letter-spacing: 0.01em;
+  }
+  .btn-lg { height: 48px; padding: 0 24px; font-size: 17px; }
+  .btn-primary {
+    background: var(--color-khalsa-blue);
+    color: #fff;
+  }
+  .btn-primary:hover { background: var(--color-deep-indigo); }
+  .btn-secondary {
+    background: #fff;
+    color: var(--text-primary);
+    border: 1px solid var(--border-strong);
+  }
+  .btn-secondary:hover { background: var(--surface-raised); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-primary);
+  }
+  .btn-ghost:hover { background: var(--surface-raised); }
+
+  /* Card surface */
+  .card {
+    @apply rounded-lg p-6;
+    background: var(--surface-page);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-1);
+  }
+  .card-soft {
+    @apply rounded-lg p-6;
+    background: var(--surface-brand-soft);
+  }
+
+  /* Crest caps lockup (e.g. SENIOR · SECONDARY · SCHOOL) */
+  .crest-caps {
+    font-family: var(--font-crest-caps);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.32em;
+    font-size: 12px;
+    line-height: 1.2;
+  }
+}

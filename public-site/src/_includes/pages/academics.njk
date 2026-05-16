@@ -1,0 +1,107 @@
+{% set eyebrowKey = "web.academics.heroEyebrow" %}
+{% set titleKey = "web.academics.heroTitle" %}
+{% set bodyKey = "web.academics.heroBody" %}
+{% include "pages/page-hero.njk" %}
+
+{# ── Curriculum philosophy ─────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-20 max-w-3xl">
+  <h2 class="font-display text-heading-lg text-deep-indigo mb-6">{{ "web.academics.philosophyTitle" | t(lang) }}</h2>
+  <p class="text-body lg:text-[17px] leading-relaxed text-neutral-800">{{ "web.academics.philosophyBody" | t(lang) }}</p>
+</section>
+
+{# ── Programs grid (anchored) ──────────────────────────────────────── #}
+<section class="bg-neutral-50 scroll-mt-24">
+  <div class="container px-4 py-16 lg:py-20">
+    <h2 class="sr-only">{{ "web.home.programsTitle" | t(lang) }}</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7">
+      {% set programs = [
+        { id: "foundation", stage: "Foundation", range: "Nursery — KG", body: "Play-based learning, language confidence, motor skills." },
+        { id: "primary",    stage: "Primary",    range: "Class I — V",  body: "PSEB foundation curriculum strengthened by reading + sciences." },
+        { id: "middle",     stage: "Middle",     range: "Class VI — VIII", body: "Subject specialisation begins; debate, ethics, and lab work." },
+        { id: "secondary",  stage: "Secondary",  range: "Class IX — X", body: "PSEB board prep with weekly mock cycles and counselling." },
+        { id: "srsec-sci",  stage: "Sr. Sec. — Sciences", range: "Class XI — XII", body: "PCM & PCB streams; medical / engineering coaching support." },
+        { id: "srsec-comm", stage: "Sr. Sec. — Commerce / Arts", range: "Class XI — XII", body: "Commerce + Arts streams; CA / civil-services foundation." }
+      ] %}
+      {% for p in programs %}
+      <a href="#{{ p.id }}" class="card flex flex-col hover:shadow-2 transition-shadow">
+        <div class="crest-caps text-khalsa-blue mb-2">{{ p.range }}</div>
+        <h3 class="font-display text-heading-md text-deep-indigo mb-2">{{ p.stage }}</h3>
+        <p class="text-body-sm text-neutral-700 mb-4">{{ p.body }}</p>
+        <span class="mt-auto text-khalsa-blue font-semibold text-body-sm">{{ "common.readMore" | t(lang) }} →</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ── Sample expanded program — Sr. Sec. Sciences ──────────────────── #}
+<section id="srsec-sci" class="container px-4 py-16 lg:py-24 scroll-mt-24">
+  <div class="max-w-4xl">
+    <div class="crest-caps text-khalsa-blue mb-3">Class XI — XII</div>
+    <h2 class="font-display text-heading-lg text-deep-indigo mb-6">Sr. Sec. — Sciences</h2>
+    <p class="text-body text-neutral-700 mb-10 max-w-2xl">
+      {% if lang == 'en' %}Two streams — Medical (PCB) and Non-Medical (PCM). Sustained mock-test cycle, dedicated lab time, and weekly counselling slots with subject heads.
+      {% else %}ਦੋ ਸਟ੍ਰੀਮਾਂ — ਮੈਡੀਕਲ (PCB) ਅਤੇ ਨਾਨ-ਮੈਡੀਕਲ (PCM)। ਨਿਯਮਤ ਮੌਕ-ਟੈਸਟ ਚੱਕਰ, ਸਮਰਪਿਤ ਪ੍ਰਯੋਗਸ਼ਾਲਾ ਸਮਾਂ, ਅਤੇ ਵਿਸ਼ਾ-ਮੁਖੀਆਂ ਨਾਲ ਹਫ਼ਤਾਵਾਰੀ ਸਲਾਹ-ਮਸ਼ਵਰਾ।{% endif %}
+    </p>
+
+    <div class="overflow-x-auto">
+      <table class="w-full text-body-sm border-collapse">
+        <thead class="bg-vasant-cream text-deep-indigo">
+          <tr>
+            <th class="text-left px-4 py-3 font-semibold">{% if lang == 'en' %}Subject{% else %}ਵਿਸ਼ਾ{% endif %}</th>
+            <th class="text-left px-4 py-3 font-semibold">{% if lang == 'en' %}Stream{% else %}ਸਟ੍ਰੀਮ{% endif %}</th>
+            <th class="text-left px-4 py-3 font-semibold">{% if lang == 'en' %}Hrs / week{% else %}ਘੰਟੇ / ਹਫ਼ਤਾ{% endif %}</th>
+            <th class="text-left px-4 py-3 font-semibold">{% if lang == 'en' %}Subject head{% else %}ਵਿਸ਼ਾ-ਮੁਖੀ{% endif %}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set rows = [
+            ["Physics",   "PCM + PCB", "8", "Mr. I. Sandhu"],
+            ["Chemistry", "PCM + PCB", "8", "Dr. P. Bedi"],
+            ["Mathematics", "PCM",     "8", "Ms. R. Kaur"],
+            ["Biology",   "PCB",       "8", "Dr. M. Singh"],
+            ["English",   "Both",      "5", "Ms. S. Mehta"],
+            ["Punjabi",   "Both",      "4", "Sr. S. Bains"]
+          ] %}
+          {% for r in rows %}
+          <tr class="border-b border-neutral-200">
+            <td class="px-4 py-3 font-semibold text-deep-indigo">{{ r[0] }}</td>
+            <td class="px-4 py-3">{{ r[1] }}</td>
+            <td class="px-4 py-3">{{ r[2] }}</td>
+            <td class="px-4 py-3 text-neutral-700">{{ r[3] }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+{# ── Co-curricular ─────────────────────────────────────────────────── #}
+<section class="bg-neutral-50">
+  <div class="container px-4 py-16 lg:py-20">
+    <h2 class="font-display text-heading-lg text-deep-indigo mb-10">{{ "web.academics.coCurricularTitle" | t(lang) }}</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {% set co = [
+        { titleEn: "Kirtan",         titlePa: "ਕੀਰਤਨ",      body: "Daily morning practice; inter-school competitions twice a year." },
+        { titleEn: "Debate & Ethics",titlePa: "ਵਾਦ-ਵਿਵਾਦ", body: "Weekly classes, English + Punjabi tracks." },
+        { titleEn: "Sports",         titlePa: "ਖੇਡਾਂ",      body: "Football, kabaddi, kho-kho, athletics. House-level tournaments." },
+        { titleEn: "Punjabi reading club", titlePa: "ਪੰਜਾਬੀ ਪੜ੍ਹਾਈ ਕਲੱਬ", body: "Saturday sessions: classical literature + storytelling." }
+      ] %}
+      {% for c in co %}
+      <div class="card">
+        <h3 class="font-display text-heading-md text-deep-indigo mb-2">{% if lang == 'en' %}{{ c.titleEn }}{% else %}{{ c.titlePa }}{% endif %}</h3>
+        <p class="text-body-sm text-neutral-700">{{ c.body }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ── Admissions CTA reuse ──────────────────────────────────────────── #}
+<section class="band-indigo">
+  <div class="container px-4 py-16 text-center">
+    <h2 class="font-display text-heading-xl mb-4">{{ "web.home.admissionsCtaTitle" | t(lang) }}</h2>
+    <a href="{{ site.basePath }}/{{ lang }}/admissions/" class="btn btn-lg" style="background:var(--color-royal-gold);color:var(--color-deep-indigo);">{{ "web.home.ctaApply" | t(lang) }}</a>
+  </div>
+</section>

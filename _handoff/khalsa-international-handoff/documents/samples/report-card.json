@@ -1,0 +1,103 @@
+{
+  "session": "2025-26",
+  "student": {
+    "name": {
+      "en": "Harleen Kaur",
+      "pa": "ਹਰਲੀਨ ਕੌਰ"
+    },
+    "class": "VIII",
+    "section": "B",
+    "rollNo": "14",
+    "fatherName": {
+      "en": "Sh. Jasbir Singh",
+      "pa": "ਸ੍ਰੀ ਜਸਬੀਰ ਸਿੰਘ"
+    },
+    "motherName": {
+      "en": "Smt. Manpreet Kaur",
+      "pa": "ਸ੍ਰੀਮਤੀ ਮਨਪ੍ਰੀਤ ਕੌਰ"
+    },
+    "dob": "2012-08-21",
+    "house": "Ravidas"
+  },
+  "subjects": [
+    {
+      "name": {
+        "en": "English",
+        "pa": "ਅੰਗ੍ਰੇਜ਼ੀ"
+      },
+      "marks": 88,
+      "max": 100,
+      "grade": "A1"
+    },
+    {
+      "name": {
+        "en": "Punjabi",
+        "pa": "ਪੰਜਾਬੀ"
+      },
+      "marks": 92,
+      "max": 100,
+      "grade": "A1"
+    },
+    {
+      "name": {
+        "en": "Hindi",
+        "pa": "ਹਿੰਦੀ"
+      },
+      "marks": 85,
+      "max": 100,
+      "grade": "A2"
+    },
+    {
+      "name": {
+        "en": "Mathematics",
+        "pa": "ਗਣਿਤ"
+      },
+      "marks": 94,
+      "max": 100,
+      "grade": "A1"
+    },
+    {
+      "name": {
+        "en": "Science",
+        "pa": "ਵਿਗਿਆਨ"
+      },
+      "marks": 90,
+      "max": 100,
+      "grade": "A1"
+    },
+    {
+      "name": {
+        "en": "Social Studies",
+        "pa": "ਸਮਾਜਿਕ ਅਧਿਐਨ"
+      },
+      "marks": 87,
+      "max": 100,
+      "grade": "A2"
+    },
+    {
+      "name": {
+        "en": "Computer Science",
+        "pa": "ਕੰਪਿਊਟਰ ਸਾਇੰਸ"
+      },
+      "marks": 93,
+      "max": 100,
+      "grade": "A1"
+    }
+  ],
+  "summary": {
+    "total": 629,
+    "max": 700,
+    "percentage": 89.86,
+    "rank": 3,
+    "attendancePct": 96.5,
+    "remarks": {
+      "en": "Diligent and curious. Excellent performance throughout the year.",
+      "pa": "ਮਿਹਨਤੀ ਅਤੇ ਜਗਿਆਸੂ। ਸਾਲ ਭਰ ਸ਼ਾਨਦਾਰ ਪ੍ਰਦਰਸ਼ਨ।"
+    },
+    "promotion": "Promoted"
+  },
+  "signatures": {
+    "classTeacher": "Ms. Harpreet Kaur",
+    "principal": "Dr. Manpreet Kaur"
+  }
+}

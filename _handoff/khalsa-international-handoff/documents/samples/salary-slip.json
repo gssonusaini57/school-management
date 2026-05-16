@@ -1,0 +1,32 @@
+{
+  "month": "2026-04",
+  "employee": {
+    "id": "KIS-T-0042",
+    "name": "Monika Chachinda",
+    "designation": "TGT — Mathematics",
+    "department": "Middle School",
+    "doj": "2018-07-02",
+    "pan": "ABCDE1234F"
+  },
+  "workingDays": 26,
+  "leavesTaken": 1,
+  "earnings": {
+    "basic": 28000,
+    "hra": 8400,
+    "da": 4200,
+    "conveyance": 1600,
+    "special": 2800
+  },
+  "deductions": {
+    "pf": 3360,
+    "esi": 0,
+    "tds": 1500,
+    "advance": 0
+  },
+  "netPay": 40140,
+  "bank": {
+    "accountNo": "XXXXXX4821",
+    "ifsc": "PUNB0123456",
+    "bankName": "Punjab National Bank"
+  }
+}

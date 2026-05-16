@@ -1,0 +1,67 @@
+<header class="sticky top-0 z-sticky border-b border-neutral-200 bg-white/95 backdrop-blur">
+  <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-toast focus:rounded focus:bg-khalsa-blue focus:px-3 focus:py-2 focus:text-white">Skip to main content</a>
+
+  <!-- Announcement bar -->
+  <div class="bg-khalsa-blue text-white text-center text-caption">
+    <div class="container py-2 px-4 text-[12px]">{{ "web.announcement.admissionsOpen" | t(lang) }}</div>
+  </div>
+
+  <div class="container flex items-center justify-between gap-4 py-3 px-4">
+    <a href="{{ site.basePath }}/{{ lang }}/" class="flex items-center gap-3" aria-label="{{ 'common.schoolName' | t(lang) }}">
+      <img src="{{ site.crestMark }}" alt="" width="56" height="44" class="h-11 w-auto">
+      <span class="hidden sm:flex flex-col leading-tight">
+        <span class="font-display text-heading-sm text-deep-indigo">{{ "common.schoolNameShort" | t(lang) }}</span>
+        <span class="crest-caps text-neutral-500">{{ "common.lockup" | t(lang) }}</span>
+      </span>
+    </a>
+
+    <nav aria-label="Primary" class="hidden lg:flex items-center gap-1">
+      {% for item in site.nav %}
+        {% set href = site.basePath + "/" + lang + "/" + item.slug + ("/" if item.slug else "") %}
+        {% set active = page | isCurrent(item.slug if item.slug else "home") %}
+        <a href="{{ href }}"
+           class="px-3 py-2 rounded-md text-body-sm font-semibold transition-colors {% if active %}text-khalsa-blue bg-vasant-cream{% else %}text-ink hover:bg-neutral-50{% endif %}"
+           {% if active %}aria-current="page"{% endif %}>
+          {{ item.labelKey | t(lang) }}
+        </a>
+      {% endfor %}
+    </nav>
+
+    <div class="flex items-center gap-2">
+      <!-- Language switch -->
+      <a href="{{ site.basePath }}{{ page.url | flipLocale }}"
+         class="text-caption font-semibold uppercase tracking-wider px-2 py-1.5 rounded hover:bg-neutral-50"
+         aria-label="{{ 'common.language' | t(lang) }}">
+        {% if lang == 'en' %}<span lang="pa">ਪੰਜਾਬੀ</span>{% else %}<span lang="en">English</span>{% endif %}
+      </a>
+      <a href="{{ site.basePath }}/{{ lang }}/admissions/" class="btn btn-primary hidden md:inline-flex">
+        {{ "web.nav.applyNow" | t(lang) }}
+      </a>
+
+      <!-- Mobile menu toggle -->
+      <button type="button"
+              class="lg:hidden p-2 rounded hover:bg-neutral-50"
+              aria-label="Menu"
+              onclick="document.getElementById('mobile-nav').classList.toggle('hidden')">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <nav id="mobile-nav" aria-label="Mobile" class="lg:hidden hidden border-t border-neutral-200 bg-white">
+    <div class="container py-2 px-4 flex flex-col gap-1">
+      {% for item in site.nav %}
+        {% set href = site.basePath + "/" + lang + "/" + item.slug + ("/" if item.slug else "") %}
+        {% set active = page | isCurrent(item.slug if item.slug else "home") %}
+        <a href="{{ href }}"
+           class="px-3 py-2.5 rounded-md text-body font-semibold {% if active %}text-khalsa-blue bg-vasant-cream{% else %}text-ink hover:bg-neutral-50{% endif %}"
+           {% if active %}aria-current="page"{% endif %}>
+          {{ item.labelKey | t(lang) }}
+        </a>
+      {% endfor %}
+      <a href="{{ site.basePath }}/{{ lang }}/admissions/" class="btn btn-primary mt-2">{{ "web.nav.applyNow" | t(lang) }}</a>
+    </div>
+  </nav>
+</header>

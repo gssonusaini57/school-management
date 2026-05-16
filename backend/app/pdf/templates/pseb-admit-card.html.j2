@@ -1,0 +1,187 @@
+{% extends "_base.html.j2" %}
+
+{% block doc_title %}PSEB Admit Card · {{ data.candidate.name.en }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .grid-cell { display:grid; grid-template-columns:120px 1fr; border-bottom:1px solid #C8C8C8; }
+  .grid-cell .k { background:#F0F0F0; padding:5px 8px; font-size:9.5pt; font-weight:700; border-right:1px solid #C8C8C8; }
+  .grid-cell .v { padding:5px 10px; font-size:10pt; font-weight:700; }
+  .grid-cell .v.normal { font-weight:500; }
+  .section-band { background:#DCDCDC; text-align:center; padding:4px 0; font-weight:800; font-size:10.5pt; letter-spacing:0.04em; border-bottom:1px solid #888; }
+</style>
+{% endblock %}
+
+{% block page_body %}
+<div class="page" style="font-family: 'Manrope', system-ui, sans-serif; color:#111;">
+  {# Format-B style header strip #}
+  <div class="tri-band thin"></div>
+  <header class="letterhead-compact">
+    <img class="crest" src="{{ assets_dir }}/crest-512.png" alt="">
+    <div style="flex:1;">
+      <div class="school">Khalsa International</div>
+      <div class="sub">SENIOR &nbsp; SECONDARY &nbsp; SCHOOL</div>
+      <div class="meta">Jalalabad, District Patiala — Punjab · Affiliated to P.S.E.B. · Aff. No. 4906</div>
+      <div style="font-size:9pt; color:var(--ink-soft); margin-top:5px; display:flex; gap:12px; flex-wrap:wrap; align-items:center;">
+        <span style="color:var(--blue); font-weight:700; font-size:8pt; letter-spacing:0.18em;">CONTACT</span>
+        <span>Mob. <b style="color:var(--ink);">93563-31762</b></span>
+        <span>info@khalsainternational.in</span>
+        <span>www.khalsainternational.in</span>
+      </div>
+    </div>
+  </header>
+
+  {# School / centre meta #}
+  <div style="padding:7px 16px; display:flex; justify-content:space-between; font-size:9.5pt; border-bottom:1.5px solid #C8C8C8;">
+    <div><b>School Code:</b> {{ data.schoolCode }}</div>
+    <div><b>Student ID:</b> {{ data.studentId }}</div>
+  </div>
+  <div style="padding:0 16px; display:flex; border-bottom:1.5px solid #C8C8C8; font-size:9.5pt;">
+    {% set centre_cells = [
+      ('Exam Centre Code', data.centre.code),
+      ('Centre School Code', data.centre.schoolCode),
+      ('District Name', data.centre.district | upper),
+      ('Set', data.centre.set),
+    ] %}
+    {% for label, val in centre_cells %}
+    <div style="flex:1; padding:6px 8px; {% if not loop.last %}border-right:1px solid #C8C8C8;{% endif %} background: {% if loop.index0 % 2 %}#FAFAFA{% else %}#FFF{% endif %};">
+      <span style="color:#555; font-weight:600;">{{ label }}: </span><b>{{ val }}</b>
+    </div>
+    {% endfor %}
+  </div>
+  <div style="padding:0 16px;">
+    <div class="grid-cell" style="border-bottom:1.5px solid #888;">
+      <div class="k">Exam Centre</div>
+      <div class="v" style="line-height:1.4;">
+        {{ data.centre.name.en }}
+        {% if data.centre.name.pa %}
+        <div class="gurmukhi" style="font-weight:600;">{{ data.centre.name.pa }}</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {# Personal information #}
+  <div style="padding:0 16px;">
+    <div class="section-band">Personal Information</div>
+    <div style="display:flex; border-bottom:1.5px solid #888;">
+      <div style="flex:1;">
+        {% macro bi_cell(label, en, pa, bold=true) %}
+        <div class="grid-cell">
+          <div class="k">{{ label }}</div>
+          <div class="v {% if not bold %}normal{% endif %}">{{ en }}{% if pa %} / <span class="gurmukhi">{{ pa }}</span>{% endif %}</div>
+        </div>
+        {% endmacro %}
+        {{ bi_cell("Roll No.", data.candidate.rollNo, "") }}
+        {{ bi_cell("Reg. No.", data.candidate.regNo, "") }}
+        {{ bi_cell("Candidate Name", data.candidate.name.en, data.candidate.name.pa) }}
+        {{ bi_cell("Father's Name", data.candidate.fatherName.en, data.candidate.fatherName.pa) }}
+        {{ bi_cell("Mother's Name", data.candidate.motherName.en, data.candidate.motherName.pa) }}
+        {{ bi_cell("Differently Abled", data.candidate.differentlyAbled or "N.A.", "", false) }}
+        {{ bi_cell("Date of Birth", data.candidate.dob | dt_pseb, "") }}
+        {{ bi_cell("Regular / Open", data.candidate.category, "") }}
+        <div class="grid-cell">
+          <div class="k">Examination Time</div>
+          <div class="v">
+            {{ data.examTime.en }}
+            {% if data.examTime.pa %}<div class="gurmukhi" style="font-weight:500;">{{ data.examTime.pa }}</div>{% endif %}
+          </div>
+        </div>
+        {% if data.practicalDateRange %}
+        <div class="grid-cell">
+          <div class="k">Practical Exam</div>
+          <div class="v normal">{{ data.practicalDateRange.from }} to {{ data.practicalDateRange.to }} (at school)</div>
+        </div>
+        {% endif %}
+      </div>
+      <div style="width:160px; border-left:1px solid #C8C8C8; display:flex; flex-direction:column;">
+        <div style="flex:1; min-height:130px; display:flex; align-items:center; justify-content:center; background:linear-gradient(160deg, #1A3A96, #08205C); color:rgba(255,255,255,0.55); font-family:'Cinzel', serif; font-size:8pt; letter-spacing:0.3em; text-align:center;">
+          {% if data.candidate.photoUrl %}
+          <img src="{{ data.candidate.photoUrl }}" alt="" style="width:100%; height:100%; object-fit:cover;">
+          {% else %}
+          CANDIDATE<br>PHOTO
+          {% endif %}
+        </div>
+        <div style="border-top:1px solid #C8C8C8; height:38px; background:#FBFAF6; display:flex; align-items:center; justify-content:center; font-family:'Cormorant Garamond', serif; font-style:italic; font-size:13pt; color:var(--blue-soft);">
+          {{ data.candidate.name.en.split(' ')[0][:1] }}. {{ data.candidate.name.en.split(' ')[-1] }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {# Date sheet #}
+  <div style="padding:0 16px;">
+    <div class="section-band">Date Sheet</div>
+    <table style="width:100%; border-collapse:collapse; font-size:9.5pt;">
+      <thead>
+        <tr style="background:#F0F0F0; font-weight:800;">
+          <th style="padding:5px 8px; text-align:left; border-bottom:1px solid #888; border-right:1px solid #C8C8C8; width:60px;">Sub Code</th>
+          <th style="padding:5px 8px; text-align:left; border-bottom:1px solid #888; border-right:1px solid #C8C8C8;">Subject Name</th>
+          <th style="padding:5px 8px; text-align:left; border-bottom:1px solid #888; border-right:1px solid #C8C8C8; width:130px;">Theory Exam Date</th>
+          <th style="padding:5px 8px; text-align:left; border-bottom:1px solid #888; width:80px;">Practical</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in data.dateSheet %}
+        <tr style="background: {% if loop.index0 % 2 %}#FAFAFA{% else %}#FFF{% endif %};">
+          <td style="padding:5px 8px; border-bottom:1px solid #E0E0E0; border-right:1px solid #E0E0E0; font-weight:700;">{{ r.subCode }}</td>
+          <td style="padding:5px 8px; border-bottom:1px solid #E0E0E0; border-right:1px solid #E0E0E0; font-weight:700;">
+            {{ r.subject.en | upper }}
+            {% if r.subject.pa %}<div class="gurmukhi" style="font-weight:500; font-size:9pt;">{{ r.subject.pa }}</div>{% endif %}
+          </td>
+          <td class="mono" style="padding:5px 8px; border-bottom:1px solid #E0E0E0; border-right:1px solid #E0E0E0;">{{ r.theoryDate }}</td>
+          <td style="padding:5px 8px; border-bottom:1px solid #E0E0E0; font-weight:700; color: {% if r.practical == 'Yes' %}#B91C1C{% else %}#15803D{% endif %};">{{ r.practical }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Instructions #}
+  {% if data.instructions %}
+  <div style="padding:8px 16px 0;">
+    <div class="section-band">Instructions</div>
+    <ol style="margin:8px 0 0; padding:0 0 0 22px; font-size:8.5pt; line-height:1.5; color:#222;">
+      {% for ins in data.instructions %}
+      <li style="margin-bottom:3px;">
+        {{ ins.en }}
+        {% if ins.pa %}<div class="gurmukhi" style="font-size:8.5pt; color:var(--ink-soft);">{{ ins.pa }}</div>{% endif %}
+      </li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% endif %}
+
+  <div style="padding:10px 16px 0; display:flex; justify-content:space-between; font-size:9pt; color:#444;">
+    {% if data.printedOn %}<span><b>Printed on:</b> {{ data.printedOn | dt_pseb }}</span>{% endif %}
+    {% if data.documentId %}<span class="mono">Document ID: {{ data.documentId }}</span>{% endif %}
+  </div>
+
+  {# Signatures pinned to bottom of every page (position:fixed → WeasyPrint
+     repeats per page; for this single-page doc it always anchors at A4 bottom). #}
+  <div style="position:fixed; left:16px; right:16px; bottom:24px; border-top:1.5px solid #888; padding-top:10px; display:flex; gap:14px; font-size:9.5pt;">
+    <div style="flex:1;">
+      <div style="font-weight:800;">Signature of the Candidate</div>
+      <div style="margin-top:18px; border-bottom:1px solid #888; height:1px;"></div>
+      <div style="margin-top:6px; font-size:8.5pt;">In Punjabi <span style="display:inline-block; border-bottom:1px dotted #888; min-width:120px;">&nbsp;</span></div>
+      <div style="margin-top:6px; font-size:8.5pt;">In English <span style="display:inline-block; border-bottom:1px dotted #888; min-width:120px;">&nbsp;</span></div>
+    </div>
+    <div style="flex:1; text-align:center;">
+      <div class="signoff-script" style="font-size:18pt; height:22px;">Gurpreet Singh</div>
+      <div style="font-weight:800; margin-top:14px; border-top:1px solid #888; padding-top:4px;">
+        Signature of Head of the School<br>
+        <span style="font-weight:500; font-size:8.5pt;">With Stamp · Khalsa International Sr. Sec. School</span>
+      </div>
+    </div>
+    <div style="flex:1; text-align:right;">
+      <div class="signoff-script" style="font-size:18pt; height:22px;">A. Gupta</div>
+      <div style="font-weight:800; margin-top:14px; border-top:1px solid #888; padding-top:4px;">
+        Secretary<br>
+        <span style="font-weight:500; font-size:8.5pt;">Punjab School Education Board, Mohali</span>
+      </div>
+    </div>
+  </div>
+
+  <img class="watermark" src="{{ assets_dir }}/crest-512.png" alt="">
+</div>
+{% endblock %}

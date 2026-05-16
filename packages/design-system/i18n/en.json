@@ -1,0 +1,143 @@
+{
+  "common": {
+    "schoolName": "Khalsa International Senior Secondary School",
+    "schoolNameShort": "Khalsa International",
+    "lockup": "SENIOR · SECONDARY · SCHOOL",
+    "tagline": "VIDYA · VICHAR · SEVA",
+    "shabad": "Vidya Vichari Taan Parupkari",
+    "estYear": "EST. 2005",
+    "affiliation": "Affiliated to PSEB · Aff. No. 4906",
+    "address": "Jalalabad, District Patiala, Punjab",
+    "phone": "+91 93563-31762",
+    "email": "info@khalsainternational.in",
+    "website": "www.khalsainternational.in",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "cancel": "Cancel",
+    "save": "Save",
+    "submit": "Submit",
+    "close": "Close",
+    "viewAll": "View all",
+    "readMore": "Read more",
+    "back": "Back",
+    "next": "Next",
+    "language": "Language",
+    "english": "English",
+    "punjabi": "ਪੰਜਾਬੀ"
+  },
+  "web": {
+    "nav": {
+      "home": "Home",
+      "about": "About",
+      "academics": "Academics",
+      "admissions": "Admissions",
+      "notices": "Notices",
+      "gallery": "Gallery",
+      "contact": "Contact",
+      "career": "Careers",
+      "parentPortal": "Parent Portal",
+      "applyNow": "Apply now"
+    },
+    "announcement": {
+      "admissionsOpen": "Admissions open for 2026–27 · Nursery to XII"
+    },
+    "home": {
+      "heroEyebrow": "Since 2005 · Jalalabad, Patiala",
+      "heroTitle": "Education rooted in heritage. Built for tomorrow.",
+      "heroBody": "Khalsa International prepares Punjab's children with academic rigor, character grounded in Sikh values, and the courage to serve.",
+      "ctaApply": "Apply for 2026–27",
+      "ctaVisit": "Schedule a visit",
+      "stats": {
+        "students": "Students",
+        "faculty": "Faculty",
+        "boardResult": "PSEB result (X)",
+        "yearsServing": "Years serving Patiala"
+      },
+      "values": {
+        "title": "Why Khalsa International",
+        "vidyaTitle": "Vidya — knowledge that lasts",
+        "vidyaBody": "PSEB-aligned curriculum strengthened by reading, writing, and lab-based discovery.",
+        "vicharTitle": "Vichar — clear thought",
+        "vicharBody": "Debate, ethics class, and weekly reflection so children learn to think — not just remember.",
+        "sevaTitle": "Seva — service to community",
+        "sevaBody": "Langar duties, neighbourhood clean-up, and gurudwara seva are part of every term.",
+        "rootsTitle": "Roots — Punjabi pride",
+        "rootsBody": "Daily Punjabi reading, kirtan practice, and Sikh history from Class I onward."
+      },
+      "principal": {
+        "title": "A note from the Principal",
+        "body": "We do not measure our school by buildings or banners. We measure it by the children who walk out — confident in their roots, curious about the world, and ready to serve. Every parent who entrusts their child to us joins a sangat — and we hold that trust seriously.",
+        "name": "S. Gurpreet Singh",
+        "role": "Principal · Khalsa International Sr. Sec. School"
+      },
+      "programsTitle": "Academics",
+      "programsKicker": "Six programs across the school — from foundation play to senior streams.",
+      "lifeTitle": "Life at school",
+      "voicesTitle": "Voices from our sangat",
+      "noticesTitle": "Notice board",
+      "admissionsCtaTitle": "Admissions for 2026–27 are open",
+      "admissionsCtaBody": "Nursery to Class XII. Walk-in counselling Monday–Saturday, 9 a.m.–1 p.m."
+    },
+    "footer": {
+      "rights": "© 2026 Khalsa International Sr. Sec. School. All rights reserved.",
+      "quickLinks": "Quick links",
+      "policy": "Privacy policy",
+      "tnc": "Terms of use"
+    }
+  },
+  "mobile": {
+    "tabs": {
+      "home": "Home",
+      "timetable": "Timetable",
+      "notices": "Notices",
+      "fees": "Fees",
+      "profile": "Profile"
+    },
+    "welcome": {
+      "greeting": "Sat Sri Akal",
+      "greetingFull": "Ik Onkar · Sat Sri Akal",
+      "tagline": "The Khalsa International parent companion.",
+      "loginCta": "Sign in with phone"
+    },
+    "home": {
+      "todayLabel": "Today",
+      "viewTimetable": "View today's timetable",
+      "feesDueIn": "Fees due in {days} days",
+      "payNow": "Pay now",
+      "latestNotice": "Latest notice"
+    },
+    "timetable": {
+      "title": "Timetable",
+      "noClasses": "No classes scheduled today."
+    },
+    "notices": {
+      "title": "Notices",
+      "filterAll": "All",
+      "filterExam": "Exam",
+      "filterFee": "Fees",
+      "empty": "No notices yet."
+    },
+    "fees": {
+      "title": "Fees",
+      "outstanding": "Outstanding",
+      "dueDate": "Due {date}",
+      "payCta": "Pay ₹{amount}",
+      "history": "Receipt history",
+      "downloadReceipt": "Download receipt"
+    },
+    "profile": {
+      "title": "Profile",
+      "studentId": "Student ID",
+      "class": "Class",
+      "section": "Section",
+      "house": "House",
+      "father": "Father's name",
+      "mother": "Mother's name",
+      "logout": "Sign out"
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "offline": "You're offline. Showing cached data."
+    }
+  }
+}

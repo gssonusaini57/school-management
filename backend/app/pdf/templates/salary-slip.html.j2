@@ -1,0 +1,177 @@
+{% extends "_base.html.j2" %}
+
+{% block doc_title %}Salary Slip · {{ data.employee.name }} · {{ data.month }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .pay-row td:first-child { padding-left:10px; }
+  .pay-row td.amount { text-align:right; font-family:ui-monospace, SFMono-Regular, Menlo, monospace; }
+</style>
+{% endblock %}
+
+{% block page_body %}
+<div class="page">
+  <div class="tri-band"></div>
+
+  <header style="padding:18px 48px 14px; display:flex; gap:16px; align-items:center; border-bottom:1.5px solid var(--blue);">
+    <img src="{{ assets_dir }}/crest-512.png" alt="" style="width:80px; height:auto; flex-shrink:0;">
+    <div style="flex:1;">
+      <div class="display" style="font-size:24pt; color:var(--blue); line-height:1; letter-spacing:-0.015em;">Khalsa International</div>
+      <div class="caps" style="font-size:9.5pt; color:var(--ink); margin-top:5px;">SENIOR &nbsp; SECONDARY &nbsp; SCHOOL</div>
+      <div class="script" style="font-size:10pt; color:var(--ink-soft); margin-top:5px;">Vill. Jalalabad, Distt. Patiala — Punjab · Aff. No. 4906</div>
+    </div>
+    <div style="text-align:right; flex-shrink:0;">
+      <div style="display:inline-block; background:var(--blue); color:#fff; padding:4px 11px; border-radius:3px; font-family:'Cinzel', serif; font-size:9.5pt; letter-spacing:0.26em; font-weight:600;">SALARY SLIP</div>
+      <div style="font-size:9pt; color:var(--ink-soft); margin-top:6px;">For the month of <b style="color:var(--ink);">{{ (data.month | ym_label) }}</b></div>
+      {% if data.issuedDate %}
+      <div class="mono" style="font-size:8.5pt; color:var(--ink-faint); margin-top:2px;">Issued · {{ data.issuedDate | dt_pseb }}</div>
+      {% endif %}
+    </div>
+  </header>
+
+  {# Employee details #}
+  <div style="padding:14px 48px 0;">
+    <div class="label" style="color:var(--blue); margin-bottom:6px;">EMPLOYEE DETAILS</div>
+    <table style="width:100%; border-collapse:collapse; font-size:10pt; border:1px solid #E0D9BC;">
+      <tbody>
+        {% set rows = [
+          ('Name', data.employee.name, 'Employee ID', data.employee.id),
+          ('Designation', data.employee.designation, 'Contact No.', data.employee.contact or '—'),
+          ('Department', data.employee.department or '—', 'Date of joining', (data.employee.doj | dt) if data.employee.doj else '—'),
+          ('Address', data.employee.address or '—', 'PAN', data.employee.pan or '—'),
+        ] %}
+        {% for k1, v1, k2, v2 in rows %}
+        <tr style="background: {% if loop.index0 % 2 %}#FBFAF6{% else %}#FFF{% endif %};">
+          <td style="padding:7px 11px; border-bottom:1px solid #EEF0F3; color:var(--ink-faint); font-size:8.5pt; letter-spacing:0.12em; font-weight:700; width:120px; text-transform:uppercase;">{{ k1 }}</td>
+          <td style="padding:7px 11px; border-bottom:1px solid #EEF0F3; border-right:1px solid #EEF0F3; font-weight:600;">{{ v1 }}</td>
+          <td style="padding:7px 11px; border-bottom:1px solid #EEF0F3; color:var(--ink-faint); font-size:8.5pt; letter-spacing:0.12em; font-weight:700; width:120px; text-transform:uppercase;">{{ k2 }}</td>
+          <td style="padding:7px 11px; border-bottom:1px solid #EEF0F3; font-weight:600;">{{ v2 }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {# Earnings + Deductions side-by-side #}
+  <div style="padding:14px 48px 0; display:flex; gap:14px;">
+    <div style="flex:1;">
+      <div class="label" style="color:#15803D; margin-bottom:6px;">EARNINGS</div>
+      <table style="width:100%; border-collapse:collapse; font-size:10pt; border:1px solid #B9E4C2;">
+        <thead>
+          <tr style="background:#EEF9F0;">
+            <th style="text-align:left; padding:6px 10px; border-bottom:1px solid #B9E4C2; font-family:'Cinzel', serif; font-size:9pt; letter-spacing:0.16em;">HEAD</th>
+            <th style="text-align:right; padding:6px 10px; border-bottom:1px solid #B9E4C2; font-family:'Cinzel', serif; font-size:9pt; letter-spacing:0.16em;">AMOUNT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set elabels = {'basic':'Basic salary', 'da':'Dearness allowance', 'hra':'House rent allowance', 'conveyance':'Conveyance', 'special':'Special allowance'} %}
+          {% set egross = data.earnings.basic + data.earnings.da + data.earnings.hra + data.earnings.conveyance + data.earnings.special %}
+          {% for key in ['basic', 'da', 'hra', 'conveyance', 'special'] %}
+            {% set v = data.earnings[key] %}
+            {% if v %}
+            <tr class="pay-row"><td style="padding:6px 10px; border-bottom:1px solid #EEF0F3;">{{ elabels[key] }}</td><td class="amount" style="padding:6px 10px; border-bottom:1px solid #EEF0F3;">{{ v | inr }}</td></tr>
+            {% endif %}
+          {% endfor %}
+          <tr style="background:#DCF3E0;">
+            <td style="padding:7px 10px; font-weight:800;">Gross earnings</td>
+            <td class="amount" style="padding:7px 10px; font-weight:800; font-family:'Playfair Display', serif; font-size:12pt; color:#15803D;">{{ egross | inr }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="flex:1;">
+      <div class="label" style="color:#B91C1C; margin-bottom:6px;">DEDUCTIONS</div>
+      <table style="width:100%; border-collapse:collapse; font-size:10pt; border:1px solid #F5B8B8;">
+        <thead>
+          <tr style="background:#FEF2F2;">
+            <th style="text-align:left; padding:6px 10px; border-bottom:1px solid #F5B8B8; font-family:'Cinzel', serif; font-size:9pt; letter-spacing:0.16em;">HEAD</th>
+            <th style="text-align:right; padding:6px 10px; border-bottom:1px solid #F5B8B8; font-family:'Cinzel', serif; font-size:9pt; letter-spacing:0.16em;">AMOUNT</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set dlabels = {'pf':'Provident fund', 'esi':'ESI', 'tds':'TDS', 'profTax':'Professional tax', 'advance':'Loan / advance'} %}
+          {% set dtotal = data.deductions.pf + data.deductions.esi + data.deductions.tds + data.deductions.profTax + data.deductions.advance %}
+          {% for key in ['pf', 'esi', 'tds', 'profTax', 'advance'] %}
+            {% set v = data.deductions[key] %}
+            {% if v %}
+            <tr class="pay-row"><td style="padding:6px 10px; border-bottom:1px solid #EEF0F3;">{{ dlabels[key] }}</td><td class="amount" style="padding:6px 10px; border-bottom:1px solid #EEF0F3;">{{ v | inr }}</td></tr>
+            {% endif %}
+          {% endfor %}
+          <tr style="background:#FDE7E7;">
+            <td style="padding:7px 10px; font-weight:800;">Total deductions</td>
+            <td class="amount" style="padding:7px 10px; font-weight:800; font-family:'Playfair Display', serif; font-size:12pt; color:#B91C1C;">{{ dtotal | inr }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {# Net pay banner #}
+  <div style="padding:16px 48px 0;">
+    <div style="background:linear-gradient(90deg, var(--blue-deep), var(--blue)); color:#fff; border-radius:8px; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; position:relative; overflow:hidden;">
+      <div style="position:relative;">
+        <div style="font-family:'Cinzel', serif; font-size:9.5pt; letter-spacing:0.28em; color:var(--gold);">NET PAY · {{ (data.month | ym_label) | upper }}</div>
+        {% if data.netPayWords %}
+        <div class="script" style="font-size:11pt; opacity:0.85; margin-top:4px; color:#fff;">Rupees {{ data.netPayWords }}</div>
+        {% endif %}
+      </div>
+      <div style="font-family:'Playfair Display', serif; font-weight:800; font-size:28pt; line-height:1; position:relative;">{{ data.netPay | inr }}</div>
+    </div>
+  </div>
+
+  {# Working day stats #}
+  {% if data.workingDays or data.daysPresent or data.leavesTaken is not none %}
+  <div style="padding:14px 48px 0; display:flex; gap:12px;">
+    {% if data.workingDays %}
+    <div class="stat-tile" style="flex:1;">
+      <div class="label" style="color:var(--blue);">WORKING DAYS</div>
+      <div class="v">{{ data.workingDays }}</div>
+    </div>
+    {% endif %}
+    {% if data.daysPresent %}
+    <div class="stat-tile" style="flex:1;">
+      <div class="label" style="color:var(--blue);">DAYS PRESENT</div>
+      <div class="v">{{ data.daysPresent }}</div>
+    </div>
+    {% endif %}
+    {% if data.leavesTaken is not none %}
+    <div class="stat-tile" style="flex:1;">
+      <div class="label" style="color:var(--blue);">LEAVE TAKEN</div>
+      <div class="v">{{ data.leavesTaken }}{% if data.leaveType %} <span style="font-size:10pt; color:var(--ink-soft);">({{ data.leaveType }})</span>{% endif %}</div>
+    </div>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  {% if data.bank %}
+  <div style="padding:12px 48px 0; font-size:9.5pt; color:var(--ink-soft); display:flex; gap:18px;">
+    <div><b style="color:var(--ink);">Mode of payment:</b> Bank transfer · NEFT</div>
+    {% if data.bank.accountNo %}<div><b style="color:var(--ink);">Account:</b> {{ data.bank.accountNo }}</div>{% endif %}
+    {% if data.bank.txnId %}<div><b style="color:var(--ink);">Txn ID:</b> {{ data.bank.txnId }}</div>{% endif %}
+  </div>
+  {% endif %}
+
+  {# Sign-off #}
+  <div style="padding:30px 48px 0; display:flex; justify-content:space-between; align-items:flex-end;">
+    <div style="font-size:9pt; color:var(--ink-faint); max-width:280px; line-height:1.5;">
+      This is a computer-generated salary slip and does not require a physical seal. Discrepancies, if any, must be reported within 7 days.
+    </div>
+    <div style="text-align:left; min-width:220px;">
+      <div class="signoff-script">{{ data.signatory.name if data.signatory else "Gurpreet Singh" }}</div>
+      <div class="signoff-line">
+        <b>{{ data.signatory.role if data.signatory and data.signatory.role else "Principal — Auth. Signatory" }}</b><br>
+        Khalsa International Sen. Sec. School<br>
+        Jalalabad (Patiala) · Aff. No. 4906
+      </div>
+    </div>
+  </div>
+
+  <img class="watermark" src="{{ assets_dir }}/crest-512.png" alt="">
+
+  <footer class="brand-footer">
+    <span>VIDYA · VICHAR · SEVA</span>
+    <span class="gold">EST. 2005</span>
+    <span>Payroll · Office of the Principal</span>
+  </footer>
+</div>
+{% endblock %}

@@ -1,0 +1,2201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>KIS School Management Portal</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root {
+  --primary: #1a237e;
+  --sidebar-bg: #0f172a;
+  --accent: #38bdf8;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --sidebar-w: 260px;
+  --header-h: 64px;
+}
+* { box-sizing: border-box; }
+body { background: #f1f5f9; font-family: 'Segoe UI', sans-serif; margin: 0; }
+
+/* ─── LOGIN ─── */
+#loginOverlay {
+  position: fixed; inset: 0;
+  background: linear-gradient(135deg, #0f172a 0%, #1e3a5f 100%);
+  z-index: 9999; display: flex; align-items: center; justify-content: center;
+}
+.login-card {
+  background: white; border-radius: 20px; padding: 40px;
+  width: 100%; max-width: 420px; box-shadow: 0 30px 60px rgba(0,0,0,0.4);
+}
+.login-logo { width: 70px; height: 70px; background: var(--primary); border-radius: 50%;
+  display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; }
+.login-logo i { font-size: 32px; color: white; }
+
+/* ─── LAYOUT ─── */
+#dashboard { display: none; }
+.sidebar {
+  width: var(--sidebar-w); height: 100vh;
+  background: var(--sidebar-bg); position: fixed; top: 0; left: 0;
+  overflow-y: auto; z-index: 800; transition: transform 0.3s;
+}
+.sidebar-header {
+  height: var(--header-h); display: flex; align-items: center; padding: 0 20px;
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+.sidebar-logo { color: var(--accent); font-size: 1rem; font-weight: 800; }
+.sidebar-logo span { color: #94a3b8; font-weight: 400; font-size: 0.75rem; display: block; }
+.sidebar-section { padding: 18px 16px 4px; font-size: 0.65rem; font-weight: 700;
+  color: #475569; text-transform: uppercase; letter-spacing: 1.2px; }
+.nav-item {
+  display: flex; align-items: center; gap: 12px; padding: 10px 20px;
+  color: #94a3b8; text-decoration: none; cursor: pointer; transition: 0.15s;
+  font-size: 0.875rem; border-left: 3px solid transparent;
+}
+.nav-item:hover { color: white; background: rgba(255,255,255,0.05); }
+.nav-item.active { color: var(--accent); background: rgba(56,189,248,0.08); border-left-color: var(--accent); }
+.nav-item i { width: 18px; text-align: center; font-size: 0.9rem; }
+.nav-sub { font-size: 0.8rem; padding-left: 50px; }
+
+.topbar {
+  position: fixed; top: 0; left: var(--sidebar-w); right: 0; height: var(--header-h);
+  background: white; border-bottom: 1px solid #e2e8f0;
+  display: flex; align-items: center; justify-content: space-between; padding: 0 28px;
+  z-index: 700; box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+}
+.main-content {
+  margin-left: var(--sidebar-w); margin-top: var(--header-h);
+  min-height: calc(100vh - var(--header-h)); padding: 28px;
+}
+.page { display: none; }
+.page.active { display: block; }
+
+/* ─── CARDS ─── */
+.stat-card {
+  border-radius: 16px; padding: 22px; color: white;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.12);
+}
+.stat-card .stat-icon { width: 50px; height: 50px; background: rgba(255,255,255,0.2);
+  border-radius: 12px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; }
+.stat-card .stat-value { font-size: 2rem; font-weight: 800; line-height: 1; margin: 10px 0 4px; }
+.stat-card .stat-label { font-size: 0.8rem; opacity: 0.85; }
+.card { border: none; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.card-header-custom {
+  padding: 16px 20px; border-bottom: 1px solid #f1f5f9;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.card-header-custom h6 { margin: 0; font-weight: 700; color: #1e293b; }
+
+/* ─── TABLE ─── */
+.table thead th { background: #f8fafc; font-size: 0.78rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; border: none; padding: 12px 16px; }
+.table tbody td { padding: 12px 16px; font-size: 0.875rem; color: #374151; vertical-align: middle; border-color: #f1f5f9; }
+.badge-class { background: #eff6ff; color: #3b82f6; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+.badge-present { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; }
+.badge-absent  { background: #fee2e2; color: #dc2626; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; }
+.badge-paid    { background: #dcfce7; color: #16a34a; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; }
+.badge-pending { background: #fff7ed; color: #ea580c; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; }
+
+/* ─── FORM ─── */
+.form-label { font-size: 0.8rem; font-weight: 600; color: #374151; margin-bottom: 5px; }
+.form-label.req::after { content: " *"; color: #ef4444; }
+.form-control, .form-select { border-radius: 8px; border-color: #e2e8f0; font-size: 0.875rem; }
+.form-control:focus, .form-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(56,189,248,0.15); }
+.section-divider { font-size: 0.75rem; font-weight: 700; color: #94a3b8;
+  text-transform: uppercase; letter-spacing: 0.8px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; margin-bottom: 16px; }
+
+/* ─── NOTICE ─── */
+.notice-item { border-left: 4px solid var(--accent); padding: 14px 18px;
+  background: white; border-radius: 0 10px 10px 0; margin-bottom: 12px; }
+.notice-item.priority-high { border-left-color: #ef4444; }
+.notice-item.priority-medium { border-left-color: #f59e0b; }
+
+/* ─── ATTENDANCE GRID ─── */
+.att-row { display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+.att-row:last-child { border-bottom: none; }
+.att-name { flex: 1; font-size: 0.875rem; color: #1e293b; }
+.att-toggle { display: flex; gap: 8px; }
+.btn-att { width: 36px; height: 36px; border-radius: 8px; border: 2px solid transparent;
+  font-size: 0.75rem; font-weight: 700; cursor: pointer; transition: 0.15s; background: #f1f5f9; color: #64748b; }
+.btn-att.P { background: #dcfce7; color: #16a34a; border-color: #16a34a; }
+.btn-att.A { background: #fee2e2; color: #dc2626; border-color: #dc2626; }
+.btn-att.L { background: #fef9c3; color: #ca8a04; border-color: #ca8a04; }
+
+/* ─── STUDENT CARD (print) ─── */
+.student-profile-card { border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px;
+  background: white; transition: box-shadow 0.15s; }
+.student-profile-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+.avatar-circle { width: 44px; height: 44px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center; font-weight: 700; font-size: 1.1rem; }
+
+/* ─── PRINT ─── */
+@media print {
+  .sidebar, .topbar, .no-print { display: none !important; }
+  .main-content { margin: 0 !important; padding: 20px !important; }
+  body { background: white !important; }
+}
+
+/* ─── MISC ─── */
+/* ─── UPLOAD CARDS ─── */
+.doc-btn {
+  display:block; padding:10px 4px; border:1.5px dashed #cbd5e1; border-radius:10px;
+  text-align:center; cursor:pointer; font-size:0.78rem; color:#64748b;
+  transition:0.15s; background:#f8fafc; line-height:1.5; margin:0;
+}
+.doc-btn:hover { border-color:var(--accent); color:var(--accent); background:#f0f9ff; }
+.doc-btn.has-file { border-color:#22c55e; border-style:solid; background:#f0fdf4; color:#16a34a; font-weight:600; }
+
+.cursor-pointer { cursor: pointer; }
+.text-primary-custom { color: var(--primary); }
+.bg-gradient-primary { background: linear-gradient(135deg, #1a237e, #3949ab); }
+.bg-gradient-success { background: linear-gradient(135deg, #16a34a, #22c55e); }
+.bg-gradient-warning { background: linear-gradient(135deg, #d97706, #f59e0b); }
+.bg-gradient-danger  { background: linear-gradient(135deg, #dc2626, #ef4444); }
+.bg-gradient-info    { background: linear-gradient(135deg, #0369a1, #38bdf8); }
+.empty-state { text-align: center; padding: 60px 20px; color: #94a3b8; }
+.empty-state i { font-size: 3rem; margin-bottom: 12px; display: block; }
+.spinner-overlay { display: none; position: fixed; inset: 0; background: rgba(255,255,255,0.7);
+  z-index: 9998; align-items: center; justify-content: center; }
+.spinner-overlay.show { display: flex; }
+.mobile-toggle { display: none; }
+@media (max-width: 768px) {
+  .sidebar { transform: translateX(-100%); }
+  .sidebar.open { transform: translateX(0); }
+  .main-content, .topbar { margin-left: 0 !important; left: 0 !important; }
+  .mobile-toggle { display: block; }
+}
+</style>
+</head>
+<body>
+
+<!-- SPINNER -->
+<div class="spinner-overlay" id="spinner">
+  <div class="spinner-border text-primary" style="width:3rem;height:3rem;"></div>
+</div>
+
+<!-- ═══════════════ LOGIN ═══════════════ -->
+<div id="loginOverlay">
+  <div class="login-card">
+    <div class="login-logo"><i class="fas fa-school"></i></div>
+    <h5 class="text-center fw-bold mb-1">KIS Portal</h5>
+    <p class="text-center text-muted small mb-4">Khalsa International School, Jalalabad</p>
+    <select id="userRole" class="form-select mb-3" onchange="toggleAuthFields()">
+      <option value="staff">Teacher / Staff</option>
+      <option value="admin">Administrator</option>
+    </select>
+    <div id="adminInputs" class="d-none">
+      <input type="text" id="adminUser" class="form-control mb-3" placeholder="Username">
+      <input type="password" id="adminPass" class="form-control mb-3" placeholder="Password">
+    </div>
+    <div id="staffInputs">
+      <input type="text" id="accessCodeInput" class="form-control mb-3 text-center fw-bold fs-5 ls-wide" placeholder="Access Code" style="letter-spacing:4px">
+    </div>
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="rememberMe">
+      <label class="form-check-label text-muted small" for="rememberMe">Stay Logged In</label>
+    </div>
+    <button onclick="handleLogin()" class="btn btn-primary w-100 py-2 fw-bold">
+      <i class="fas fa-sign-in-alt me-2"></i>SIGN IN
+    </button>
+    <p class="text-center text-muted mt-3 small">Demo Admin: admin / admin123</p>
+  </div>
+</div>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<div id="dashboard">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar" id="mainSidebar">
+    <div class="sidebar-header">
+      <div>
+        <div class="sidebar-logo">KIS Portal</div>
+        <div class="sidebar-logo"><span id="sideRoleLabel">Loading...</span></div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">Main</div>
+    <div class="nav-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+      <i class="fas fa-tachometer-alt"></i> Dashboard
+    </div>
+
+    <div class="sidebar-section">Academics</div>
+    <div class="nav-item" onclick="showPage('admissions')" id="nav-admissions">
+      <i class="fas fa-user-plus"></i> Admissions
+    </div>
+    <div class="nav-item" onclick="showPage('students')" id="nav-students">
+      <i class="fas fa-users"></i> Student Records
+    </div>
+    <div class="nav-item" onclick="showPage('attendance')" id="nav-attendance">
+      <i class="fas fa-clipboard-check"></i> Attendance
+    </div>
+    <div class="nav-item" onclick="showPage('results')" id="nav-results">
+      <i class="fas fa-chart-line"></i> Results / Marks
+    </div>
+
+    <div class="sidebar-section">Administration</div>
+    <div class="nav-item admin-only d-none" onclick="showPage('fees')" id="nav-fees">
+      <i class="fas fa-rupee-sign"></i> Fee Management
+    </div>
+    <div class="nav-item" onclick="showPage('notices')" id="nav-notices">
+      <i class="fas fa-bullhorn"></i> Notice Board
+    </div>
+    <div class="nav-item admin-only d-none" onclick="showPage('staff')" id="nav-staff">
+      <i class="fas fa-chalkboard-teacher"></i> Staff Management
+    </div>
+    <div class="nav-item admin-only d-none" onclick="showPage('reports')" id="nav-reports">
+      <i class="fas fa-file-alt"></i> Reports
+    </div>
+    <div class="nav-item admin-only d-none" onclick="showChangePassword()" id="nav-changepwd">
+      <i class="fas fa-key"></i> Change Password
+    </div>
+
+    <div class="mt-auto p-3" style="margin-top: auto; border-top: 1px solid rgba(255,255,255,0.08);">
+      <div class="nav-item" onclick="logout()" style="margin: 0; padding: 10px; border-radius: 8px;">
+        <i class="fas fa-sign-out-alt"></i> Logout
+      </div>
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="d-flex align-items-center gap-3">
+      <button class="btn btn-sm btn-light mobile-toggle" onclick="toggleSidebar()">
+        <i class="fas fa-bars"></i>
+      </button>
+      <h6 class="m-0 fw-bold text-dark" id="pageTitle">Dashboard</h6>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <span id="onlineDot" class="d-flex align-items-center gap-1 small fw-semibold text-success">
+        <span id="dotCircle" style="width:9px;height:9px;border-radius:50%;background:#22c55e;display:inline-block;"></span>
+        <span id="dotLabel">Online</span>
+      </span>
+      <span class="badge bg-primary" id="topRoleLabel"></span>
+      <span class="text-muted small d-none d-md-block" id="topDateLabel"></span>
+      <button class="btn btn-sm btn-outline-danger" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastWrap" style="position:fixed;top:80px;right:20px;z-index:9000;display:flex;flex-direction:column;gap:8px;min-width:280px;"></div>
+
+  <!-- MAIN CONTENT -->
+  <main class="main-content">
+
+    <!-- ══ PAGE: DASHBOARD ══ -->
+    <div class="page active" id="page-dashboard">
+      <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+          <div class="stat-card bg-gradient-primary">
+            <div class="stat-icon"><i class="fas fa-users"></i></div>
+            <div class="stat-value" id="stat-students">—</div>
+            <div class="stat-label">Total Students</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="stat-card bg-gradient-success">
+            <div class="stat-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+            <div class="stat-value" id="stat-teachers">—</div>
+            <div class="stat-label">Teaching Staff</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6">
+          <div class="stat-card bg-gradient-warning">
+            <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+            <div class="stat-value" id="stat-att">—</div>
+            <div class="stat-label">Today's Attendance</div>
+          </div>
+        </div>
+        <div class="col-md-3 col-6 admin-only d-none" id="stat-fees-card">
+          <div class="stat-card bg-gradient-info">
+            <div class="stat-icon"><i class="fas fa-rupee-sign"></i></div>
+            <div class="stat-value" id="stat-fees">—</div>
+            <div class="stat-label">Fees Collected (₹)</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-7">
+          <div class="card p-3">
+            <div class="card-header-custom mb-3">
+              <h6>Students per Class</h6>
+            </div>
+            <canvas id="classChart" height="200"></canvas>
+          </div>
+        </div>
+        <div class="col-md-5">
+          <div class="card p-3 h-100">
+            <div class="card-header-custom mb-3">
+              <h6>Recent Notices</h6>
+            </div>
+            <div id="dashNotices"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: ADMISSIONS ══ -->
+    <div class="page" id="page-admissions">
+      <div class="card p-4">
+        <div class="card-header-custom mb-4">
+          <h6><i class="fas fa-user-plus me-2 text-primary"></i>New Student Admission</h6>
+        </div>
+        <form id="studentForm">
+          <div class="section-divider">Basic Information</div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-3">
+              <label class="form-label req">Admitting Class</label>
+              <select id="sClass" class="form-select" required>
+                <option value="">Select Class...</option>
+                <option>Nursery</option><option>L.K.G</option><option>U.K.G</option>
+                <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+                <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+                <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label req">Student Full Name</label>
+              <input type="text" id="sName" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label req">Father's Name</label>
+              <input type="text" id="fName" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label req">Mother's Name</label>
+              <input type="text" id="mName" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label req">Date of Birth</label>
+              <input type="date" id="sDob" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label req">Gender</label>
+              <select id="sGender" class="form-select" required>
+                <option value="">Select...</option>
+                <option>Male</option><option>Female</option><option>Other</option>
+              </select>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label req">Village / Address</label>
+              <input type="text" id="sVillage" class="form-control" required>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label req">Phone Number</label>
+              <input type="tel" id="sPhone" class="form-control" required maxlength="10">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label req">Aadhaar (12-digit)</label>
+              <input type="text" id="sAadhar" class="form-control" required maxlength="12" pattern="[0-9]{12}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Alternate Phone</label>
+              <input type="tel" id="sAltPhone" class="form-control" maxlength="10">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Religion / Caste</label>
+              <input type="text" id="sReligion" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Previous School</label>
+              <input type="text" id="sPrevSchool" class="form-control">
+            </div>
+          </div>
+
+          <div class="section-divider">Bank / Financial Details (Optional)</div>
+          <div class="row g-3 mb-4">
+            <div class="col-md-3">
+              <label class="form-label">Bank Name</label>
+              <input type="text" id="bankName" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Account Number</label>
+              <input type="text" id="bankAcc" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">IFSC Code</label>
+              <input type="text" id="bankIfsc" class="form-control" style="text-transform:uppercase">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Annual Fee (₹)</label>
+              <input type="number" id="annualFee" class="form-control" placeholder="0">
+            </div>
+          </div>
+
+          <div class="section-divider">Documents & Photo Upload</div>
+          <div class="row g-3 mb-4">
+
+            <!-- Documents -->
+            <div class="col-12">
+              <label class="form-label small text-muted">Documents <span class="fw-normal">(optional — synced in background)</span></label>
+              <div class="row g-2">
+                <div class="col-4">
+                  <label for="upload-photo" id="btn-photo" class="doc-btn"><i class="fas fa-camera d-block mb-1"></i>Photo</label>
+                  <input type="file" id="upload-photo" accept="image/*" class="d-none" onchange="markFileBtn(this,'btn-photo')">
+                </div>
+                <div class="col-4">
+                  <label for="upload-dob" id="btn-dob" class="doc-btn"><i class="fas fa-file-alt d-block mb-1"></i>DOB Cert</label>
+                  <input type="file" id="upload-dob" accept="image/*" class="d-none" onchange="markFileBtn(this,'btn-dob')">
+                </div>
+                <div class="col-4">
+                  <label for="upload-aadhar" id="btn-aadhar" class="doc-btn"><i class="fas fa-id-card d-block mb-1"></i>Aadhaar</label>
+                  <input type="file" id="upload-aadhar" accept="image/*" class="d-none" onchange="markFileBtn(this,'btn-aadhar')">
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <button type="submit" class="btn btn-primary px-5 fw-bold">
+            <i class="fas fa-save me-2"></i>SAVE RECORD
+          </button>
+          <button type="button" class="btn btn-light ms-2 px-4" onclick="resetAdmissionForm()">Clear Form</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: STUDENTS ══ -->
+    <div class="page" id="page-students">
+      <div class="row g-3 mb-3">
+        <div class="col-md-4">
+          <select id="filterClass" class="form-select" onchange="loadStudents()">
+            <option value="">All Classes</option>
+            <option>Nursery</option><option>L.K.G</option><option>U.K.G</option>
+            <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+            <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+            <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+          </select>
+        </div>
+        <div class="col-md-5">
+          <div class="input-group">
+            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+            <input type="text" id="studentSearch" class="form-control border-start-0" placeholder="Search by name, father, phone..." oninput="filterStudents()">
+          </div>
+        </div>
+        <div class="col-md-3 text-end no-print">
+          <button class="btn btn-success btn-sm px-3" onclick="window.print()">
+            <i class="fas fa-print me-1"></i>Print List
+          </button>
+          <button class="btn btn-info btn-sm px-3 ms-2 text-white" onclick="exportCSV()">
+            <i class="fas fa-file-csv me-1"></i>Export
+          </button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header-custom">
+          <h6 id="studentListTitle">All Students</h6>
+          <span class="badge bg-primary" id="studentCount">0</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table mb-0" id="studentTable">
+            <thead>
+              <tr>
+                <th>#</th><th>Student Name</th><th>Father</th><th>Class</th>
+                <th>DOB</th><th>Village</th><th>Phone</th><th>Aadhaar</th>
+                <th class="no-print">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentBody"></tbody>
+          </table>
+        </div>
+        <div id="studentEmptyState" class="empty-state d-none">
+          <i class="fas fa-user-slash"></i>No records found
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: ATTENDANCE ══ -->
+    <div class="page" id="page-attendance">
+      <div class="row g-3 mb-3">
+        <div class="col-md-3">
+          <select id="attClass" class="form-select" onchange="loadAttendance()">
+            <option value="">Select Class...</option>
+            <option>Nursery</option><option>L.K.G</option><option>U.K.G</option>
+            <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+            <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+            <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <input type="date" id="attDate" class="form-control" onchange="loadAttendance()">
+        </div>
+        <div class="col-md-6 d-flex gap-2 align-items-center no-print">
+          <button class="btn btn-success btn-sm px-3" onclick="markAll('P')">
+            <i class="fas fa-check me-1"></i>All Present
+          </button>
+          <button class="btn btn-danger btn-sm px-3" onclick="markAll('A')">
+            <i class="fas fa-times me-1"></i>All Absent
+          </button>
+          <button class="btn btn-primary btn-sm px-3 ms-auto" onclick="saveAttendance()">
+            <i class="fas fa-save me-1"></i>Save Attendance
+          </button>
+        </div>
+      </div>
+
+      <div class="row g-3">
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-header-custom">
+              <h6 id="attTitle">Select Class & Date</h6>
+              <div class="d-flex gap-3 small text-muted">
+                <span><i class="fas fa-circle text-success me-1"></i>P: <b id="countP">0</b></span>
+                <span><i class="fas fa-circle text-danger me-1"></i>A: <b id="countA">0</b></span>
+                <span><i class="fas fa-circle text-warning me-1"></i>L: <b id="countL">0</b></span>
+              </div>
+            </div>
+            <div id="attList" style="max-height: 500px; overflow-y: auto;">
+              <div class="empty-state"><i class="fas fa-clipboard-check"></i>Select a class and date</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card p-3 mb-3">
+            <h6 class="fw-bold mb-3">Attendance Summary</h6>
+            <canvas id="attPieChart"></canvas>
+          </div>
+          <div class="card p-3">
+            <h6 class="fw-bold mb-3">Monthly View</h6>
+            <div id="attMonthly" class="small text-muted">Select class first</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: RESULTS ══ -->
+    <div class="page" id="page-results">
+      <div class="row g-3">
+        <div class="col-md-5">
+          <div class="card p-3">
+            <div class="card-header-custom mb-3">
+              <h6><i class="fas fa-plus me-2 text-primary"></i>Enter Marks</h6>
+            </div>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-label">Class</label>
+                <select id="rClass" class="form-select" onchange="loadStudentsForMarks()">
+                  <option value="">Select...</option>
+                  <option>Nursery</option><option>L.K.G</option><option>U.K.G</option>
+                  <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+                  <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+                  <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Exam Type</label>
+                <select id="rExam" class="form-select">
+                  <option>Unit Test 1</option><option>Unit Test 2</option>
+                  <option>Half Yearly</option><option>Pre-Board</option>
+                  <option>Final / Annual</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Subject</label>
+                <input type="text" id="rSubject" class="form-control" placeholder="e.g. Mathematics">
+              </div>
+              <div class="col-3">
+                <label class="form-label">Max Marks</label>
+                <input type="number" id="rMaxMarks" class="form-control" value="100">
+              </div>
+              <div class="col-3">
+                <label class="form-label">Session</label>
+                <input type="text" id="rSession" class="form-control" value="2025-26">
+              </div>
+            </div>
+            <hr>
+            <div id="markEntryList">
+              <div class="empty-state"><i class="fas fa-list"></i>Select a class</div>
+            </div>
+            <button class="btn btn-primary w-100 mt-3 fw-bold" onclick="saveMarks()">
+              <i class="fas fa-save me-2"></i>Save All Marks
+            </button>
+          </div>
+        </div>
+        <div class="col-md-7">
+          <div class="card p-3">
+            <div class="card-header-custom mb-3">
+              <h6><i class="fas fa-table me-2 text-primary"></i>Results Sheet</h6>
+              <div class="d-flex gap-2">
+                <select id="viewRClass" class="form-select form-select-sm w-auto" onchange="loadResults()">
+                  <option value="">Class...</option>
+                  <option>Nursery</option><option>L.K.G</option><option>U.K.G</option>
+                  <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+                  <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+                  <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+                </select>
+                <select id="viewRExam" class="form-select form-select-sm w-auto" onchange="loadResults()">
+                  <option value="">Exam...</option>
+                  <option>Unit Test 1</option><option>Unit Test 2</option>
+                  <option>Half Yearly</option><option>Pre-Board</option>
+                  <option>Final / Annual</option>
+                </select>
+                <button class="btn btn-success btn-sm" onclick="window.print()">
+                  <i class="fas fa-print"></i>
+                </button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table table-sm mb-0">
+                <thead><tr id="resultsHead"></tr></thead>
+                <tbody id="resultsBody"></tbody>
+              </table>
+            </div>
+            <div id="resultsEmpty" class="empty-state"><i class="fas fa-chart-bar"></i>Select class & exam</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: FEES ══ -->
+    <div class="page" id="page-fees">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="card p-3">
+            <div class="card-header-custom mb-3">
+              <h6><i class="fas fa-plus me-2 text-primary"></i>Record Fee Payment</h6>
+            </div>
+            <div class="row g-2">
+              <div class="col-12">
+                <label class="form-label">Class</label>
+                <select id="feeClass" class="form-select" onchange="loadStudentsForFee()">
+                  <option value="">Select Class...</option>
+                  <option>Nursery</option><option>L.K.G</option><option>U.K.G</option>
+                  <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+                  <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+                  <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Student</label>
+                <select id="feeStudent" class="form-select">
+                  <option value="">Select Student...</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Month</label>
+                <select id="feeMonth" class="form-select">
+                  <option>April</option><option>May</option><option>June</option>
+                  <option>July</option><option>August</option><option>September</option>
+                  <option>October</option><option>November</option><option>December</option>
+                  <option>January</option><option>February</option><option>March</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Year</label>
+                <input type="text" id="feeYear" class="form-control" value="2025-26">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Amount (₹)</label>
+                <input type="number" id="feeAmount" class="form-control">
+              </div>
+              <div class="col-6">
+                <label class="form-label">Date Paid</label>
+                <input type="date" id="feeDate" class="form-control">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Receipt No</label>
+                <input type="text" id="feeReceipt" class="form-control" placeholder="Auto or manual">
+              </div>
+              <div class="col-12">
+                <button class="btn btn-primary w-100 fw-bold" onclick="saveFeePayment()">
+                  <i class="fas fa-save me-2"></i>Save Payment
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-header-custom">
+              <h6>Fee Records</h6>
+              <div class="d-flex gap-2">
+                <select id="feeFilterClass" class="form-select form-select-sm w-auto" onchange="loadFeeRecords()">
+                  <option value="">All Classes</option>
+                  <option>Nursery</option><option>L.K.G</option><option>U.K.G</option>
+                  <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+                  <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+                  <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+                </select>
+                <select id="feeFilterMonth" class="form-select form-select-sm w-auto" onchange="loadFeeRecords()">
+                  <option value="">All Months</option>
+                  <option>April</option><option>May</option><option>June</option>
+                  <option>July</option><option>August</option><option>September</option>
+                  <option>October</option><option>November</option><option>December</option>
+                  <option>January</option><option>February</option><option>March</option>
+                </select>
+                <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fas fa-print"></i></button>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table mb-0">
+                <thead>
+                  <tr>
+                    <th>Receipt</th><th>Student</th><th>Class</th><th>Month</th>
+                    <th>Amount</th><th>Date</th><th class="no-print">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="feeBody"></tbody>
+              </table>
+            </div>
+            <div id="feeEmpty" class="empty-state d-none">
+              <i class="fas fa-rupee-sign"></i>No fee records
+            </div>
+            <div class="p-3 border-top d-flex justify-content-between">
+              <span class="fw-bold text-muted small">Total Collected:</span>
+              <span class="fw-bold text-success" id="feeTotalLabel">₹0</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: NOTICES ══ -->
+    <div class="page" id="page-notices">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="card p-3">
+            <div class="card-header-custom mb-3">
+              <h6><i class="fas fa-plus me-2 text-primary"></i>Post Notice</h6>
+            </div>
+            <div class="row g-2">
+              <div class="col-12">
+                <label class="form-label">Title</label>
+                <input type="text" id="noticeTitle" class="form-control" placeholder="Notice title...">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Content</label>
+                <textarea id="noticeContent" class="form-control" rows="4" placeholder="Notice details..."></textarea>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Priority</label>
+                <select id="noticePriority" class="form-select">
+                  <option value="normal">Normal</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High / Urgent</option>
+                </select>
+              </div>
+              <div class="col-6">
+                <label class="form-label">Audience</label>
+                <select id="noticeAudience" class="form-select">
+                  <option value="all">All</option>
+                  <option value="teachers">Teachers</option>
+                  <option value="parents">Parents</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <button class="btn btn-primary w-100 fw-bold" onclick="saveNotice()">
+                  <i class="fas fa-bullhorn me-2"></i>Post Notice
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="card p-3">
+            <div class="card-header-custom mb-3">
+              <h6>All Notices</h6>
+              <select id="noticeFilter" class="form-select form-select-sm w-auto" onchange="loadNotices()">
+                <option value="">All</option>
+                <option value="high">Urgent</option>
+                <option value="medium">Medium</option>
+                <option value="normal">Normal</option>
+              </select>
+            </div>
+            <div id="noticeList"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: STAFF ══ -->
+    <div class="page" id="page-staff">
+      <div class="row g-3">
+        <div class="col-md-4">
+          <div class="card p-3">
+            <div class="card-header-custom mb-3">
+              <h6><i class="fas fa-plus me-2 text-primary"></i>Add Staff Member</h6>
+            </div>
+            <div class="row g-2">
+              <div class="col-12">
+                <label class="form-label">Full Name</label>
+                <input type="text" id="tName" class="form-control" placeholder="Teacher name">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Designation</label>
+                <select id="tDesig" class="form-select">
+                  <option>Class Teacher</option><option>Subject Teacher</option>
+                  <option>Principal</option><option>Vice Principal</option><option>Librarian</option>
+                  <option>Office Staff</option><option>Support Staff</option>
+                </select>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Assigned Class(es)</label>
+                <div id="tClassGrid" class="border rounded p-2" style="max-height:160px;overflow-y:auto;background:#f8fafc">
+                  <div class="form-check mb-1">
+                    <input class="form-check-input" type="checkbox" id="tc_All" value="All">
+                    <label class="form-check-label fw-semibold text-primary small" for="tc_All">All Classes (Full Access)</label>
+                  </div>
+                  <hr class="my-1">
+                  <div class="row row-cols-2 g-1">
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_Nr" value="Nursery"><label class="form-check-label small" for="tc_Nr">Nursery</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_LK" value="L.K.G"><label class="form-check-label small" for="tc_LK">L.K.G</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_UK" value="U.K.G"><label class="form-check-label small" for="tc_UK">U.K.G</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_1" value="1st"><label class="form-check-label small" for="tc_1">1st</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_2" value="2nd"><label class="form-check-label small" for="tc_2">2nd</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_3" value="3rd"><label class="form-check-label small" for="tc_3">3rd</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_4" value="4th"><label class="form-check-label small" for="tc_4">4th</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_5" value="5th"><label class="form-check-label small" for="tc_5">5th</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_6" value="6th"><label class="form-check-label small" for="tc_6">6th</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_7" value="7th"><label class="form-check-label small" for="tc_7">7th</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_8" value="8th"><label class="form-check-label small" for="tc_8">8th</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_9" value="9th"><label class="form-check-label small" for="tc_9">9th</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_10" value="10th"><label class="form-check-label small" for="tc_10">10th</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_11" value="11th"><label class="form-check-label small" for="tc_11">11th</label></div></div>
+                    <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="tc_12" value="12th"><label class="form-check-label small" for="tc_12">12th</label></div></div>
+                  </div>
+                </div>
+              </div>
+              <div class="col-12">
+                <label class="form-label">Phone</label>
+                <input type="tel" id="tPhone" class="form-control" maxlength="10">
+              </div>
+              <div class="col-12">
+                <label class="form-label">Access Code (Portal Login)</label>
+                <div class="input-group">
+                  <input type="text" id="tCodeManual" class="form-control" placeholder="Auto-generate or enter custom">
+                  <button class="btn btn-secondary btn-sm" onclick="genCode()"><i class="fas fa-random"></i></button>
+                </div>
+              </div>
+              <div class="col-12 mt-2">
+                <button onclick="addTeacher()" class="btn btn-warning w-100 fw-bold">
+                  <i class="fas fa-user-plus me-2"></i>Add Staff
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-8">
+          <div class="card">
+            <div class="card-header-custom">
+              <h6>Staff Directory</h6>
+              <span class="badge bg-warning text-dark" id="staffCount">0</span>
+            </div>
+            <div class="table-responsive">
+              <table class="table mb-0">
+                <thead>
+                  <tr><th>Name</th><th>Designation</th><th>Class</th><th>Phone</th><th>Access Code</th><th>Action</th></tr>
+                </thead>
+                <tbody id="staffListBody"></tbody>
+              </table>
+            </div>
+            <div id="staffEmpty" class="empty-state d-none">
+              <i class="fas fa-chalkboard-teacher"></i>No staff added yet
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PAGE: REPORTS ══ -->
+    <div class="page" id="page-reports">
+      <div class="row g-3">
+        <div class="col-12">
+          <div class="alert alert-info d-flex align-items-center">
+            <i class="fas fa-info-circle me-2"></i>
+            Select report type below to generate and print.
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3 text-center cursor-pointer" onclick="genReport('class-wise')" style="transition:0.2s" onmouseover="this.style.background='#f0f9ff'" onmouseout="this.style.background='white'">
+            <i class="fas fa-users fa-2x text-primary mb-2"></i>
+            <h6 class="fw-bold">Class-wise Student List</h6>
+            <small class="text-muted">All students grouped by class</small>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3 text-center cursor-pointer" onclick="genReport('fee-summary')" style="transition:0.2s" onmouseover="this.style.background='#f0fff4'" onmouseout="this.style.background='white'">
+            <i class="fas fa-rupee-sign fa-2x text-success mb-2"></i>
+            <h6 class="fw-bold">Fee Collection Report</h6>
+            <small class="text-muted">Monthly fee collection summary</small>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3 text-center cursor-pointer" onclick="genReport('attendance-monthly')" style="transition:0.2s" onmouseover="this.style.background='#fff7f0'" onmouseout="this.style.background='white'">
+            <i class="fas fa-calendar-check fa-2x text-warning mb-2"></i>
+            <h6 class="fw-bold">Attendance Report</h6>
+            <small class="text-muted">Class attendance overview</small>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card p-3 text-center cursor-pointer" onclick="genReport('staff-list')" style="transition:0.2s" onmouseover="this.style.background='#fff0f0'" onmouseout="this.style.background='white'">
+            <i class="fas fa-chalkboard-teacher fa-2x text-danger mb-2"></i>
+            <h6 class="fw-bold">Staff Directory</h6>
+            <small class="text-muted">Complete staff information</small>
+          </div>
+        </div>
+        <div class="col-12" id="reportOutput"></div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- STUDENT DETAIL MODAL -->
+<div class="modal fade" id="studentModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header bg-primary text-white">
+        <h6 class="modal-title fw-bold"><i class="fas fa-user me-2"></i>Student Profile</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" id="studentModalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fas fa-print me-1"></i>Print Profile</button>
+        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT EDIT MODAL -->
+<div class="modal fade" id="studentEditModal" tabindex="-1">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#3949ab);">
+        <h6 class="modal-title fw-bold text-white"><i class="fas fa-user-edit me-2"></i>Edit Student Record</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <form id="studentEditForm">
+          <input type="hidden" id="editStudentId">
+          <div class="section-divider">Basic Information</div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Class</label>
+              <select id="eClass" class="form-select" required>
+                <option>Nursery</option><option>L.K.G</option><option>U.K.G</option>
+                <option>1st</option><option>2nd</option><option>3rd</option><option>4th</option>
+                <option>5th</option><option>6th</option><option>7th</option><option>8th</option>
+                <option>9th</option><option>10th</option><option>11th</option><option>12th</option>
+              </select>
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Student Name</label>
+              <input type="text" id="eName" class="form-control" required>
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Father's Name</label>
+              <input type="text" id="eFather" class="form-control" required>
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Mother's Name</label>
+              <input type="text" id="eMother" class="form-control" required>
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Date of Birth</label>
+              <input type="date" id="eDob" class="form-control" required>
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Gender</label>
+              <select id="eGender" class="form-select" required>
+                <option>Male</option><option>Female</option><option>Other</option>
+              </select>
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Village / Address</label>
+              <input type="text" id="eVillage" class="form-control" required>
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Phone</label>
+              <input type="tel" id="ePhone" class="form-control" required maxlength="10">
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label req">Aadhaar (12-digit)</label>
+              <input type="text" id="eAadhar" class="form-control" required maxlength="12">
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label">Alternate Phone</label>
+              <input type="tel" id="eAltPhone" class="form-control" maxlength="10">
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label">Religion / Caste</label>
+              <input type="text" id="eReligion" class="form-control">
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label">Previous School</label>
+              <input type="text" id="ePrevSchool" class="form-control">
+            </div>
+          </div>
+          <div class="section-divider">Bank / Financial Details</div>
+          <div class="row g-3 mb-3">
+            <div class="col-md-3 col-6">
+              <label class="form-label">Bank Name</label>
+              <input type="text" id="eBankName" class="form-control">
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label">Account Number</label>
+              <input type="text" id="eBankAcc" class="form-control">
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label">IFSC Code</label>
+              <input type="text" id="eBankIfsc" class="form-control" style="text-transform:uppercase">
+            </div>
+            <div class="col-md-3 col-6">
+              <label class="form-label">Annual Fee (₹)</label>
+              <input type="number" id="eAnnualFee" class="form-control">
+            </div>
+          </div>
+          <div class="section-divider">Update Documents (leave blank to keep existing)</div>
+          <div class="mb-3">
+            <label class="form-label small text-muted">Replace Documents <span class="fw-normal">(leave blank to keep existing)</span></label>
+            <div class="row g-2">
+              <div class="col-4">
+                <label for="eupload-photo" id="ebtn-photo" class="doc-btn"><i class="fas fa-camera d-block mb-1"></i>Photo</label>
+                <input type="file" id="eupload-photo" accept="image/*" class="d-none" onchange="markFileBtn(this,'ebtn-photo')">
+              </div>
+              <div class="col-4">
+                <label for="eupload-dob" id="ebtn-dob" class="doc-btn"><i class="fas fa-file-alt d-block mb-1"></i>DOB Cert</label>
+                <input type="file" id="eupload-dob" accept="image/*" class="d-none" onchange="markFileBtn(this,'ebtn-dob')">
+              </div>
+              <div class="col-4">
+                <label for="eupload-aadhar" id="ebtn-aadhar" class="doc-btn"><i class="fas fa-id-card d-block mb-1"></i>Aadhaar</label>
+                <input type="file" id="eupload-aadhar" accept="image/*" class="d-none" onchange="markFileBtn(this,'ebtn-aadhar')">
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary fw-bold px-4" onclick="saveStudentEdit()">
+          <i class="fas fa-save me-2"></i>Save Changes
+        </button>
+        <button class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- STAFF EDIT MODAL -->
+<div class="modal fade" id="staffEditModal" tabindex="-1">
+  <div class="modal-dialog modal-md">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header" style="background:linear-gradient(135deg,#d97706,#f59e0b);">
+        <h6 class="modal-title fw-bold text-white"><i class="fas fa-user-edit me-2"></i>Edit Staff Record</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <input type="hidden" id="editStaffId">
+        <div class="row g-3">
+          <div class="col-12">
+            <label class="form-label req">Full Name</label>
+            <input type="text" id="esName" class="form-control" required>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Designation</label>
+            <select id="esDesig" class="form-select">
+              <option>Class Teacher</option><option>Subject Teacher</option>
+              <option>Principal</option><option>Vice Principal</option>
+              <option>Librarian</option><option>Office Staff</option><option>Support Staff</option>
+            </select>
+          </div>
+          <div class="col-12">
+            <label class="form-label">Assigned Class(es)</label>
+            <div id="esClassGrid" class="border rounded p-2" style="max-height:160px;overflow-y:auto;background:#f8fafc">
+              <div class="form-check mb-1">
+                <input class="form-check-input" type="checkbox" id="ec_All" value="All">
+                <label class="form-check-label fw-semibold text-primary small" for="ec_All">All Classes (Full Access)</label>
+              </div>
+              <hr class="my-1">
+              <div class="row row-cols-3 g-1">
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_Nr" value="Nursery"><label class="form-check-label small" for="ec_Nr">Nursery</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_LK" value="L.K.G"><label class="form-check-label small" for="ec_LK">L.K.G</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_UK" value="U.K.G"><label class="form-check-label small" for="ec_UK">U.K.G</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_1" value="1st"><label class="form-check-label small" for="ec_1">1st</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_2" value="2nd"><label class="form-check-label small" for="ec_2">2nd</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_3" value="3rd"><label class="form-check-label small" for="ec_3">3rd</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_4" value="4th"><label class="form-check-label small" for="ec_4">4th</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_5" value="5th"><label class="form-check-label small" for="ec_5">5th</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_6" value="6th"><label class="form-check-label small" for="ec_6">6th</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_7" value="7th"><label class="form-check-label small" for="ec_7">7th</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_8" value="8th"><label class="form-check-label small" for="ec_8">8th</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_9" value="9th"><label class="form-check-label small" for="ec_9">9th</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_10" value="10th"><label class="form-check-label small" for="ec_10">10th</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_11" value="11th"><label class="form-check-label small" for="ec_11">11th</label></div></div>
+                <div class="col"><div class="form-check"><input class="form-check-input" type="checkbox" id="ec_12" value="12th"><label class="form-check-label small" for="ec_12">12th</label></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Phone</label>
+            <input type="tel" id="esPhone" class="form-control" maxlength="10">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Access Code</label>
+            <div class="input-group">
+              <input type="text" id="esCode" class="form-control fw-bold" style="letter-spacing:2px">
+              <button class="btn btn-secondary btn-sm" type="button" onclick="document.getElementById('esCode').value=Math.floor(100000+Math.random()*900000).toString()">
+                <i class="fas fa-random"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-warning fw-bold px-4" onclick="saveStaffEdit()">
+          <i class="fas fa-save me-2"></i>Save Changes
+        </button>
+        <button class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ CHANGE PASSWORD MODAL ═══════════════ -->
+<div class="modal fade" id="changePwdModal" tabindex="-1">
+  <div class="modal-dialog modal-sm">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header" style="background:linear-gradient(135deg,#1a237e,#3949ab);">
+        <h6 class="modal-title fw-bold text-white"><i class="fas fa-key me-2"></i>Change Admin Password</h6>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Current Password</label>
+          <input type="password" id="cpCurrent" class="form-control" placeholder="Enter current password">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">New Password</label>
+          <input type="password" id="cpNew" class="form-control" placeholder="Minimum 6 characters">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Confirm New Password</label>
+          <input type="password" id="cpConfirm" class="form-control" placeholder="Re-enter new password">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary fw-bold px-4" onclick="changePassword()">
+          <i class="fas fa-save me-2"></i>Update Password
+        </button>
+        <button class="btn btn-light px-4" data-bs-dismiss="modal">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+
+<!-- toggleAuthFields must be global BEFORE the module loads so onchange works instantly -->
+<script>
+function toggleAuthFields() {
+  const r = document.getElementById('userRole').value;
+  document.getElementById('adminInputs').classList.toggle('d-none', r !== 'admin');
+  document.getElementById('staffInputs').classList.toggle('d-none', r !== 'staff');
+}
+// Run once on page load to show the correct fields for the default selection
+document.addEventListener('DOMContentLoaded', toggleAuthFields);
+</script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+import { getFirestore, collection, addDoc, onSnapshot, query, where, deleteDoc, doc,
+  orderBy, getDocs, setDoc, getDoc, updateDoc, enableNetwork, disableNetwork
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+const firebaseConfig = {
+  apiKey: "AIzaSyD84XDqu49gsOmETZGoWN6wHOi7r31-JOY",
+  authDomain: "test-mode-school-porfile.firebaseapp.com",
+  projectId: "test-mode-school-porfile",
+  storageBucket: "test-mode-school-porfile.firebasestorage.app",
+  messagingSenderId: "269292150903",
+  appId: "1:269292150903:web:61339cbea72a95ef486672"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const imageCompression = window.imageCompression;
+
+// ─── STATE ───
+let userRole = "", userName = "", allowedClasses = [];
+let allStudents = [], attStudents = {}, currentAttKey = "";
+let classChartInst = null, attPieInst = null;
+// Active real-time listeners (unsubscribe on logout)
+const listeners = [];
+
+const CLASSES = ["Nursery","L.K.G","U.K.G","1st","2nd","3rd","4th","5th","6th","7th","8th","9th","10th","11th","12th"];
+const COLORS  = ["#6366f1","#22c55e","#f59e0b","#ef4444","#38bdf8","#a78bfa","#fb923c","#34d399","#f472b6","#60a5fa","#facc15","#4ade80","#f87171","#818cf8","#2dd4bf"];
+
+// ─── EXPOSE GLOBALS ───
+Object.assign(window, {
+  handleLogin, logout, showPage, toggleSidebar,
+  loadStudents, filterStudents, exportCSV,
+  loadAttendance, markAll, saveAttendance, setAtt,
+  loadStudentsForMarks, saveMarks, loadResults,
+  loadStudentsForFee, saveFeePayment, loadFeeRecords, deleteFee,
+  saveNotice, loadNotices, deleteNotice,
+  addTeacher, genCode, genReport, showChangePassword, changePassword, markFileBtn,
+  deleteStudent, viewStudent, editStudent, saveStudentEdit, resetAdmissionForm,
+  editStaff, saveStaffEdit,
+  // needed by inline HTML buttons
+  db, doc, deleteDoc
+});
+
+// ─── ONLINE / OFFLINE ───
+function setOnlineStatus(online) {
+  document.getElementById('dotCircle').style.background = online ? '#22c55e' : '#ef4444';
+  document.getElementById('dotLabel').textContent  = online ? 'Online' : 'Offline';
+  document.getElementById('onlineDot').className   = `d-flex align-items-center gap-1 small fw-semibold text-${online?'success':'danger'}`;
+  if(online) enableNetwork(db).catch(()=>{});
+  else       disableNetwork(db).catch(()=>{});
+}
+window.addEventListener('online',  () => setOnlineStatus(true));
+window.addEventListener('offline', () => setOnlineStatus(false));
+setOnlineStatus(navigator.onLine);
+
+// ─── TOAST ───
+function toast(msg, type = 'success') {
+  const wrap = document.getElementById('toastWrap');
+  const id = 'toast_' + Date.now();
+  const icons = {success:'check-circle', danger:'times-circle', warning:'exclamation-triangle', info:'info-circle'};
+  const t = document.createElement('div');
+  t.id = id;
+  t.style.cssText = `background:white;border-radius:12px;padding:12px 16px;
+    box-shadow:0 4px 20px rgba(0,0,0,0.15);display:flex;align-items:center;gap:10px;
+    font-size:0.875rem;border-left:4px solid var(--${type==='success'?'success':type==='danger'?'danger':type==='warning'?'warning':'accent'});
+    animation:slideIn .25s ease;`;
+  const clr = {success:'#22c55e',danger:'#ef4444',warning:'#f59e0b',info:'#38bdf8'};
+  t.innerHTML = `<i class="fas fa-${icons[type]||'info-circle'}" style="color:${clr[type]||'#38bdf8'}"></i>
+    <span>${msg}</span>
+    <button onclick="document.getElementById('${id}').remove()" style="background:none;border:none;margin-left:auto;cursor:pointer;color:#94a3b8;font-size:1rem;">&times;</button>`;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), 4000);
+}
+// inject keyframe once
+const ks = document.createElement('style');
+ks.textContent = `@keyframes slideIn{from{opacity:0;transform:translateX(30px)}to{opacity:1;transform:translateX(0)}}`;
+document.head.appendChild(ks);
+
+// ─── AUTH ───
+window.onload = () => {
+  const d = new Date();
+  const days = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  document.getElementById('topDateLabel').textContent = `${days[d.getDay()]}, ${d.toLocaleDateString('en-IN')}`;
+  document.getElementById('attDate').value = d.toISOString().split('T')[0];
+  document.getElementById('feeDate').value  = d.toISOString().split('T')[0];
+
+  const saved = localStorage.getItem('kis_portal_login');
+  if(saved) {
+    try {
+      const data = JSON.parse(saved);
+      document.getElementById('userRole').value = data.role;
+      window.toggleAuthFields();
+      if(data.role === 'admin') { document.getElementById('adminUser').value = data.u; document.getElementById('adminPass').value = data.p; }
+      else { document.getElementById('accessCodeInput').value = data.c; }
+      document.getElementById('rememberMe').checked = true;
+    } catch(e) { localStorage.removeItem('kis_portal_login'); }
+  }
+};
+
+async function handleLogin() {
+  showSpinner(true);
+  try {
+    const r = document.getElementById('userRole').value;
+    const rem = document.getElementById('rememberMe').checked;
+    if(r === 'admin') {
+      const u = document.getElementById('adminUser').value.trim();
+      const p = document.getElementById('adminPass').value;
+      let storedPwd = 'admin123';
+      try {
+        const adminDoc = await getDoc(doc(db,'settings','admin_auth'));
+        if(adminDoc.exists() && adminDoc.data().password) storedPwd = adminDoc.data().password;
+      } catch(e) { /* Firestore unavailable — use default password */ }
+      if(u === 'admin' && p === storedPwd) {
+        if(rem) localStorage.setItem('kis_portal_login', JSON.stringify({role:r,u,p}));
+        userRole = 'admin'; userName = 'Administrator';
+        allowedClasses = [...CLASSES];
+        document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('d-none'));
+        startPortal();
+      } else { showSpinner(false); toast('Invalid credentials', 'danger'); }
+    } else {
+      const c = document.getElementById('accessCodeInput').value.trim();
+      if(!c) { showSpinner(false); toast('Enter access code', 'warning'); return; }
+      const qSnap = await getDocs(query(collection(db,'staff_roles'), where('accessCode','==',c)));
+      if(!qSnap.empty) {
+        const data = qSnap.docs[0].data();
+        if(rem) localStorage.setItem('kis_portal_login', JSON.stringify({role:r,c}));
+        userRole = 'staff'; userName = data.name;
+        const cls = data.assignedClasses || [data.assignedClass || 'All'];
+        allowedClasses = cls.includes('All') ? [...CLASSES] : cls;
+        startPortal();
+      } else { showSpinner(false); toast('Invalid access code', 'danger'); }
+    }
+  } catch(err) { showSpinner(false); toast('Connection error: ' + err.message, 'danger'); }
+}
+
+function startPortal() {
+  document.getElementById('loginOverlay').classList.add('d-none');
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('topRoleLabel').textContent = userName;
+  document.getElementById('sideRoleLabel').textContent = userRole === 'admin' ? 'Administrator' : 'Teacher';
+  if(userRole !== 'admin') document.querySelectorAll('.admin-only').forEach(el => el.classList.add('d-none'));
+  filterClassDropdowns();
+  startRealTimeListeners();
+  showSpinner(false);
+}
+
+function filterClassDropdowns() {
+  if(userRole === 'admin') return;
+  // All class <select> elements that teachers interact with
+  const ids = ['sClass','filterClass','attClass','rClass','viewRClass'];
+  ids.forEach(id => {
+    const sel = document.getElementById(id);
+    if(!sel) return;
+    Array.from(sel.options).forEach(opt => {
+      if(opt.value && !allowedClasses.includes(opt.value)) opt.remove();
+    });
+    // Auto-select the single assigned class so teacher doesn't have to pick
+    if(allowedClasses.length === 1) sel.value = allowedClasses[0];
+  });
+}
+
+function logout() {
+  listeners.forEach(unsub => { try { unsub(); } catch(e){} });
+  listeners.length = 0;
+  localStorage.removeItem('kis_portal_login');
+  location.reload();
+}
+
+// ─── REAL-TIME LISTENERS (attached once after login) ───
+function startRealTimeListeners() {
+  // 1. Dashboard student count + chart
+  const unsub1 = onSnapshot(collection(db,'student_profiles'), snap => {
+    allStudents = snap.docs.map(d => ({id:d.id,...d.data()}));
+    const visibleCount = allStudents.filter(s => allowedClasses.includes(s.className)).length;
+    document.getElementById('stat-students').textContent = visibleCount;
+    rebuildClassChart();
+  });
+  // 2. Staff count
+  const unsub2 = onSnapshot(collection(db,'staff_roles'), snap => {
+    document.getElementById('stat-teachers').textContent = snap.size;
+  });
+  // 3. Fees total (admin only)
+  if(userRole === 'admin') {
+    const unsub3 = onSnapshot(collection(db,'fees'), snap => {
+      const total = snap.docs.reduce((s,d) => s + (Number(d.data().amount)||0), 0);
+      document.getElementById('stat-fees').textContent = total >= 1000 ? (total/1000).toFixed(1)+'k' : total;
+    });
+    listeners.push(unsub3);
+  }
+  // 4. Notices (dashboard + notices page)
+  const unsub4 = onSnapshot(query(collection(db,'notices')), snap => {
+    const all = snap.docs.map(d => ({id:d.id,...d.data()}))
+      .sort((a,b) => (b.createdAt?.seconds||0) - (a.createdAt?.seconds||0));
+    renderDashNotices(all.slice(0,5));
+    // if notices page is visible, refresh it too
+    if(document.getElementById('page-notices').classList.contains('active')) renderNoticeList(all);
+  });
+  // 5. Students page (when visible — triggered by loadStudents filter)
+  listeners.push(unsub1, unsub2, unsub4);
+
+  // Initial attendance stat
+  refreshAttStat();
+  showPage('dashboard');
+}
+
+async function refreshAttStat() {
+  const today = new Date().toISOString().split('T')[0];
+  const snap = await getDocs(query(collection(db,'attendance'), where('date','==',today)));
+  let P=0, total=0;
+  snap.docs
+    .filter(d => allowedClasses.includes(d.data().className))
+    .forEach(d => Object.values(d.data().records||{}).forEach(v => { total++; if(v==='P') P++; }));
+  document.getElementById('stat-att').textContent = total ? `${Math.round(P/total*100)}%` : '—';
+}
+
+function rebuildClassChart() {
+  const chartClasses = userRole === 'admin' ? CLASSES : allowedClasses;
+  const counts = {};
+  chartClasses.forEach(c => counts[c] = 0);
+  allStudents.filter(s => allowedClasses.includes(s.className))
+             .forEach(s => { if(counts[s.className]!==undefined) counts[s.className]++; });
+  if(classChartInst) classChartInst.destroy();
+  const ctx = document.getElementById('classChart').getContext('2d');
+  classChartInst = new Chart(ctx, {
+    type: 'bar',
+    data: { labels: chartClasses, datasets: [{ label:'Students', data: chartClasses.map(c=>counts[c]), backgroundColor: COLORS, borderRadius:6 }] },
+    options: { responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{stepSize:1}}, x:{ticks:{font:{size:12}}} } }
+  });
+}
+
+function renderDashNotices(list) {
+  const el = document.getElementById('dashNotices');
+  if(!list.length) { el.innerHTML = '<div class="empty-state"><i class="fas fa-bullhorn"></i>No notices yet</div>'; return; }
+  el.innerHTML = list.map(n => `
+    <div class="notice-item priority-${n.priority||'normal'} mb-2">
+      <div class="d-flex justify-content-between">
+        <b class="small">${esc(n.title)}</b>
+        <small class="text-muted">${formatDate(n.createdAt?.toDate?.())}</small>
+      </div>
+      <p class="mb-0 small text-muted mt-1">${esc(n.content||'').substring(0,100)}${(n.content||'').length>100?'…':''}</p>
+    </div>`).join('');
+}
+
+// ─── NAVIGATION ───
+let studentsUnsub = null;
+let feesUnsub = null;
+let noticesUnsubPage = null;
+
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name)?.classList.add('active');
+  document.getElementById('nav-' + name)?.classList.add('active');
+  const titles = {dashboard:'Dashboard',admissions:'New Admission',students:'Student Records',
+    attendance:'Attendance',results:'Results / Marks',fees:'Fee Management',
+    notices:'Notice Board',staff:'Staff Management',reports:'Reports'};
+  document.getElementById('pageTitle').textContent = titles[name] || name;
+  if(name === 'students')  attachStudentsListener();
+  if(name === 'fees')      { if(userRole !== 'admin') { toast('Fee Management is restricted to administrators.','danger'); showPage('dashboard'); return; } attachFeesListener(); }
+  if(name === 'notices')   attachNoticesListener();
+  if(name === 'staff')     loadStaff();
+  document.getElementById('mainSidebar').classList.remove('open');
+}
+
+function toggleSidebar() { document.getElementById('mainSidebar').classList.toggle('open'); }
+
+// ─── STUDENTS (real-time) ───
+function attachStudentsListener() {
+  if(studentsUnsub) { studentsUnsub(); studentsUnsub = null; }
+  const cls = document.getElementById('filterClass').value;
+  let q;
+  if(cls && allowedClasses.includes(cls)) q = query(collection(db,'student_profiles'), where('className','==',cls));
+  else                                    q = query(collection(db,'student_profiles'));
+  showSpinner(true);
+  studentsUnsub = onSnapshot(q, snap => {
+    allStudents = snap.docs.map(d => ({id:d.id,...d.data()}))
+      .sort((a,b) => (a.name||'').localeCompare(b.name||''));
+    renderStudents(allStudents);
+    showSpinner(false);
+  }, err => { showSpinner(false); toast('Load error: '+err.message,'danger'); });
+}
+
+function loadStudents() { attachStudentsListener(); }
+
+function renderStudents(list) {
+  const body = document.getElementById('studentBody');
+  const searchQ = document.getElementById('studentSearch').value.toLowerCase();
+  let filtered = list.filter(s => allowedClasses.includes(s.className));
+  if(searchQ) filtered = filtered.filter(s =>
+    (s.name||'').toLowerCase().includes(searchQ) ||
+    (s.father||'').toLowerCase().includes(searchQ) ||
+    (s.phone||'').includes(searchQ) ||
+    (s.village||'').toLowerCase().includes(searchQ));
+
+  document.getElementById('studentCount').textContent = filtered.length;
+  document.getElementById('studentListTitle').textContent =
+    document.getElementById('filterClass').value
+      ? `${document.getElementById('filterClass').value} — ${filtered.length} Students`
+      : `All Students — ${filtered.length} Records`;
+
+  if(!filtered.length) {
+    body.innerHTML = '';
+    document.getElementById('studentEmptyState').classList.remove('d-none');
+    return;
+  }
+  document.getElementById('studentEmptyState').classList.add('d-none');
+  body.innerHTML = filtered.map((s,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td><div class="d-flex align-items-center gap-2">
+        <div class="avatar-circle" style="background:${COLORS[i%COLORS.length]}22;color:${COLORS[i%COLORS.length]};width:32px;height:32px;font-size:.8rem;">
+          ${(s.name||'?').charAt(0).toUpperCase()}
+        </div>
+        <span class="fw-medium">${esc(s.name)}</span>
+      </div></td>
+      <td>${esc(s.father||'—')}</td>
+      <td><span class="badge-class">${s.className}</span></td>
+      <td>${s.dob||'—'}</td>
+      <td>${esc(s.village||'—')}</td>
+      <td>${s.phone||'—'}</td>
+      <td>${s.aadhar||'—'}</td>
+      <td class="no-print">
+        <button class="btn btn-sm btn-outline-primary py-0 me-1" onclick="viewStudent('${s.id}')" title="View"><i class="fas fa-eye"></i></button>
+        <button class="btn btn-sm btn-outline-warning py-0 me-1" onclick="editStudent('${s.id}')" title="Edit"><i class="fas fa-pen"></i></button>
+        ${userRole==='admin'?`<button class="btn btn-sm btn-outline-danger py-0" onclick="deleteStudent('${s.id}')" title="Delete"><i class="fas fa-trash"></i></button>`:''}
+      </td>
+    </tr>`).join('');
+}
+
+function filterStudents() { renderStudents(allStudents); }
+
+function exportCSV() {
+  const rows = [['#','Name','Father','Class','DOB','Village','Phone','Aadhaar']];
+  allStudents.filter(s => allowedClasses.includes(s.className))
+    .forEach((s,i) => rows.push([i+1,s.name,s.father,s.className,s.dob,s.village,s.phone,s.aadhar]));
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(rows.map(r=>r.join(',')).join('\n'));
+  a.download = `KIS_Students_${document.getElementById('filterClass').value||'All'}_${new Date().toLocaleDateString('en-IN').replace(/\//g,'-')}.csv`;
+  a.click();
+}
+
+async function deleteStudent(id) {
+  if(!confirm('Delete this student record? This cannot be undone.')) return;
+  try { await deleteDoc(doc(db,'student_profiles',id)); toast('Student deleted','warning'); }
+  catch(e) { toast('Error: '+e.message,'danger'); }
+}
+
+function viewStudent(id) {
+  const s = allStudents.find(x => x.id === id);
+  if(!s) return;
+  document.getElementById('studentModalBody').innerHTML = `
+    <div class="row g-3">
+      <div class="col-12 text-center mb-2">
+        <div style="width:64px;height:64px;border-radius:50%;background:#6366f122;color:#6366f1;font-size:1.5rem;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">
+          ${(s.name||'?').charAt(0).toUpperCase()}
+        </div>
+        <h5 class="fw-bold mb-0">${esc(s.name)}</h5>
+        <span class="badge-class">${s.className}</span>
+      </div>
+      <div class="col-md-6"><small class="text-muted d-block">Father</small><b>${esc(s.father||'—')}</b></div>
+      <div class="col-md-6"><small class="text-muted d-block">Mother</small><b>${esc(s.mother||'—')}</b></div>
+      <div class="col-md-6"><small class="text-muted d-block">Date of Birth</small><b>${s.dob||'—'}</b></div>
+      <div class="col-md-6"><small class="text-muted d-block">Gender</small><b>${s.gender||'—'}</b></div>
+      <div class="col-md-6"><small class="text-muted d-block">Village</small><b>${esc(s.village||'—')}</b></div>
+      <div class="col-md-6"><small class="text-muted d-block">Phone</small><b>${s.phone||'—'}</b></div>
+      <div class="col-md-6"><small class="text-muted d-block">Alt Phone</small><b>${s.altPhone||'—'}</b></div>
+      <div class="col-md-6"><small class="text-muted d-block">Aadhaar</small><b>${s.aadhar||'—'}</b></div>
+      <div class="col-12"><hr class="my-1"></div>
+      <div class="col-md-4"><small class="text-muted d-block">Bank</small><b>${esc(s.bankName||'—')}</b></div>
+      <div class="col-md-4"><small class="text-muted d-block">Account No</small><b>${s.bankAcc||'—'}</b></div>
+      <div class="col-md-4"><small class="text-muted d-block">IFSC</small><b>${s.bankIfsc||'—'}</b></div>
+      <div class="col-md-4"><small class="text-muted d-block">Annual Fee</small><b>₹${s.annualFee||0}</b></div>
+      <div class="col-md-4"><small class="text-muted d-block">Religion</small><b>${s.religion||'—'}</b></div>
+      <div class="col-md-4"><small class="text-muted d-block">Prev School</small><b>${esc(s.prevSchool||'—')}</b></div>
+      ${(s.photoURL||s.dobCertURL||s.aadharURL) ? `
+      <div class="col-12"><hr class="my-1"><small class="text-muted fw-bold text-uppercase" style="letter-spacing:.5px">Documents</small></div>
+      ${s.photoURL    ? `<div class="col-md-4 col-6 text-center">
+        <img src="${s.photoURL}" style="width:90px;height:90px;object-fit:cover;border-radius:50%;border:3px solid #6366f1;cursor:zoom-in;" class="mb-1" title="Click to enlarge" onclick="const w=window.open();w.document.write('<img src=\\''+this.src+'\\'>')">
+        <br><small class="text-muted">Student Photo</small></div>` : ''}
+      ${s.dobCertURL  ? `<div class="col-md-4 col-6 text-center">
+        <img src="${s.dobCertURL}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid #6366f1;cursor:zoom-in;" class="mb-1" title="Click to enlarge" onclick="const w=window.open();w.document.write('<img src=\\''+this.src+'\\'>')">
+        <br><small class="text-muted">DOB Cert</small></div>` : ''}
+      ${s.aadharURL   ? `<div class="col-md-4 col-6 text-center">
+        <img src="${s.aadharURL}" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:2px solid #22c55e;cursor:zoom-in;" class="mb-1" title="Click to enlarge" onclick="const w=window.open();w.document.write('<img src=\\''+this.src+'\\'>')">
+        <br><small class="text-muted">Aadhaar</small></div>` : ''}
+      ` : ''}
+    </div>`;
+  new bootstrap.Modal(document.getElementById('studentModal')).show();
+}
+
+// ─── EDIT STUDENT ───
+function editStudent(id) {
+  const s = allStudents.find(x => x.id === id);
+  if(!s) return;
+  // Fill all fields
+  document.getElementById('editStudentId').value = id;
+  document.getElementById('eClass').value       = s.className || '';
+  document.getElementById('eName').value        = s.name      || '';
+  document.getElementById('eFather').value      = s.father    || '';
+  document.getElementById('eMother').value      = s.mother    || '';
+  document.getElementById('eDob').value         = s.dob       || '';
+  document.getElementById('eGender').value      = s.gender    || 'Male';
+  document.getElementById('eVillage').value     = s.village   || '';
+  document.getElementById('ePhone').value       = s.phone     || '';
+  document.getElementById('eAadhar').value      = s.aadhar    || '';
+  document.getElementById('eAltPhone').value    = s.altPhone  !== 'N/A' ? (s.altPhone||'') : '';
+  document.getElementById('eReligion').value    = s.religion  !== 'N/A' ? (s.religion||'') : '';
+  document.getElementById('ePrevSchool').value  = s.prevSchool!== 'N/A' ? (s.prevSchool||'') : '';
+  document.getElementById('eBankName').value    = s.bankName  !== 'N/A' ? (s.bankName||'') : '';
+  document.getElementById('eBankAcc').value     = s.bankAcc   !== 'N/A' ? (s.bankAcc||'')  : '';
+  document.getElementById('eBankIfsc').value    = s.bankIfsc  !== 'N/A' ? (s.bankIfsc||'') : '';
+  document.getElementById('eAnnualFee').value   = s.annualFee || 0;
+  // Reset doc buttons; highlight green if doc already on record
+  const icons = {photo:'fa-camera', dob:'fa-file-alt', aadhar:'fa-id-card'};
+  const labels = {photo:'Photo', dob:'DOB Cert', aadhar:'Aadhaar'};
+  const urlMap = {photo:s.photoURL, dob:s.dobCertURL, aadhar:s.aadharURL};
+  ['photo','dob','aadhar'].forEach(t => {
+    const inp = document.getElementById(`eupload-${t}`);
+    if(inp) { inp.value = ''; inp._base64 = null; }
+    const btn = document.getElementById(`ebtn-${t}`);
+    if(!btn) return;
+    if(urlMap[t]) {
+      btn.classList.add('has-file');
+      btn.innerHTML = `<i class="fas fa-check-circle d-block mb-1"></i><small>On record</small>`;
+    } else {
+      resetDocBtn(`ebtn-${t}`, icons[t], labels[t]);
+    }
+  });
+  new bootstrap.Modal(document.getElementById('studentEditModal')).show();
+}
+
+async function saveStudentEdit() {
+  const id  = document.getElementById('editStudentId').value;
+  const cls = document.getElementById('eClass').value;
+  if(!id) return;
+  const fileSlots = [
+    { key:'photoURL',   id:'eupload-photo'  },
+    { key:'dobCertURL', id:'eupload-dob'    },
+    { key:'aadharURL',  id:'eupload-aadhar' },
+  ];
+  const studentName = document.getElementById('eName').value.trim();
+  showSpinner(true);
+  try {
+    // Read pre-processed Base64 strings (_base64 set by markFileBtn at file-select time)
+    const imgData = {};
+    fileSlots.forEach(s => {
+      const el = document.getElementById(s.id);
+      if(el && el._base64) imgData[s.key] = el._base64;
+    });
+    await updateDoc(doc(db,'student_profiles',id), {
+      className:  cls, name: studentName,
+      father:     document.getElementById('eFather').value.trim(),
+      mother:     document.getElementById('eMother').value.trim(),
+      dob:        document.getElementById('eDob').value,
+      gender:     document.getElementById('eGender').value,
+      village:    document.getElementById('eVillage').value.trim(),
+      phone:      document.getElementById('ePhone').value,
+      aadhar:     document.getElementById('eAadhar').value,
+      altPhone:   document.getElementById('eAltPhone').value  || 'N/A',
+      religion:   document.getElementById('eReligion').value  || 'N/A',
+      prevSchool: document.getElementById('ePrevSchool').value|| 'N/A',
+      bankName:   document.getElementById('eBankName').value  || 'N/A',
+      bankAcc:    document.getElementById('eBankAcc').value   || 'N/A',
+      bankIfsc:   (document.getElementById('eBankIfsc').value ||'N/A').toUpperCase(),
+      annualFee:  Number(document.getElementById('eAnnualFee').value)||0,
+      updatedAt:  new Date(), updatedBy: userName,
+      ...imgData
+    });
+    bootstrap.Modal.getInstance(document.getElementById('studentEditModal')).hide();
+    toast('Student record updated!','success');
+  } catch(err) { toast('Update failed: '+err.message,'danger'); }
+  showSpinner(false);
+}
+
+// ─── EDIT STAFF ───
+function editStaff(id) {
+  const rows  = document.getElementById('staffListBody').querySelectorAll('tr');
+  // Get data from the live onSnapshot cache instead of re-querying
+  const staffCache = window._staffCache || [];
+  const r = staffCache.find(x => x.id === id);
+  if(!r) return;
+  document.getElementById('editStaffId').value = id;
+  document.getElementById('esName').value  = r.name        || '';
+  document.getElementById('esDesig').value = r.designation || 'Class Teacher';
+  document.getElementById('esPhone').value = r.phone       || '';
+  document.getElementById('esCode').value  = r.accessCode  || '';
+  setCheckedClasses('esClassGrid', r.assignedClasses || [r.assignedClass || 'All']);
+  new bootstrap.Modal(document.getElementById('staffEditModal')).show();
+}
+
+async function saveStaffEdit() {
+  const id = document.getElementById('editStaffId').value;
+  if(!id) return;
+  showSpinner(true);
+  try {
+    await updateDoc(doc(db,'staff_roles',id), {
+      name:            document.getElementById('esName').value.trim(),
+      designation:     document.getElementById('esDesig').value,
+      assignedClasses: getCheckedClasses('esClassGrid'),
+      phone:           document.getElementById('esPhone').value,
+      accessCode:      document.getElementById('esCode').value.trim(),
+      updatedAt: new Date(), updatedBy: userName
+    });
+    bootstrap.Modal.getInstance(document.getElementById('staffEditModal')).hide();
+    toast('Staff record updated!','success');
+  } catch(err) { toast('Update failed: '+err.message,'danger'); }
+  showSpinner(false);
+}
+
+// Edit modal upload helpers
+
+// ─── UPLOAD PREVIEW ───
+async function markFileBtn(input, btnId) {
+  const btn = document.getElementById(btnId);
+  if(!btn) return;
+  const file = input.files[0];
+  if(!file) { input._base64 = null; btn.classList.remove('has-file'); return; }
+
+  // Immediate feedback — show spinner before compression starts
+  btn.classList.add('has-file');
+  btn.innerHTML = `<i class="fas fa-circle-notch fa-spin d-block mb-1"></i><small style="font-size:0.7rem">Processing…</small>`;
+
+  try {
+    const dataUrl = await compressToBase64(file);
+    input._base64 = dataUrl;
+    // Show thumbnail so user knows it worked
+    btn.innerHTML = `<img src="${dataUrl}" style="width:48px;height:48px;object-fit:cover;border-radius:6px;display:block;margin:0 auto 3px;border:1.5px solid #22c55e;"><small style="font-size:0.7rem">Ready ✓</small>`;
+  } catch(err) {
+    input._base64 = null;
+    btn.classList.remove('has-file');
+    btn.innerHTML = `<i class="fas fa-exclamation-triangle d-block mb-1"></i><small style="font-size:0.7rem">Failed</small>`;
+    alert('Image processing failed:\n' + err.message);
+  }
+}
+
+function resetDocBtn(btnId, icon, label) {
+  const btn = document.getElementById(btnId);
+  if(!btn) return;
+  btn.classList.remove('has-file');
+  btn.innerHTML = `<i class="fas ${icon} d-block mb-1"></i>${label}`;
+}
+
+function resetAdmissionForm() {
+  document.getElementById('studentForm').reset();
+  ['upload-photo','upload-dob','upload-aadhar'].forEach(id => {
+    const el = document.getElementById(id); if(el) el._base64 = null;
+  });
+  resetDocBtn('btn-photo',  'fa-camera',   'Photo');
+  resetDocBtn('btn-dob',    'fa-file-alt', 'DOB Cert');
+  resetDocBtn('btn-aadhar', 'fa-id-card',  'Aadhaar');
+}
+
+async function compressToBase64(file) {
+  const compressed = await imageCompression(file, {
+    maxSizeMB: 0.15,
+    maxWidthOrHeight: 800,
+    useWebWorker: true
+  });
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload  = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(compressed);
+  });
+}
+
+
+// ─── ADMISSION ───
+document.getElementById('studentForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const cls = document.getElementById('sClass').value;
+  if(!allowedClasses.includes(cls)) { toast('Not authorized for class: '+cls,'danger'); return; }
+  const fileSlots = [
+    { key:'photoURL',   id:'upload-photo'  },
+    { key:'dobCertURL', id:'upload-dob'    },
+    { key:'aadharURL',  id:'upload-aadhar' },
+  ];
+  const studentName = document.getElementById('sName').value.trim();
+  showSpinner(true);
+  try {
+    // Read pre-processed Base64 strings from each input element (_base64 set by markFileBtn)
+    const imgData = { photoURL: '', dobCertURL: '', aadharURL: '' };
+    fileSlots.forEach(s => {
+      const el = document.getElementById(s.id);
+      if(el && el._base64) imgData[s.key] = el._base64;
+    });
+    await addDoc(collection(db,'student_profiles'), {
+      name: studentName,
+      father:     document.getElementById('fName').value.trim(),
+      mother:     document.getElementById('mName').value.trim(),
+      dob:        document.getElementById('sDob').value,
+      gender:     document.getElementById('sGender').value,
+      village:    document.getElementById('sVillage').value.trim(),
+      aadhar:     document.getElementById('sAadhar').value,
+      phone:      document.getElementById('sPhone').value,
+      altPhone:   document.getElementById('sAltPhone').value || 'N/A',
+      religion:   document.getElementById('sReligion').value || 'N/A',
+      prevSchool: document.getElementById('sPrevSchool').value || 'N/A',
+      bankName:   document.getElementById('bankName').value || 'N/A',
+      bankAcc:    document.getElementById('bankAcc').value || 'N/A',
+      bankIfsc:   (document.getElementById('bankIfsc').value||'N/A').toUpperCase(),
+      annualFee:  Number(document.getElementById('annualFee').value)||0,
+      ...imgData,
+      className: cls, createdAt: new Date(), addedBy: userName
+    });
+    toast('Student saved!', 'success');
+    showSpinner(false);
+    resetAdmissionForm();
+  } catch(err) { toast('Save failed: '+err.message,'danger'); showSpinner(false); }
+};
+
+// ─── ATTENDANCE ───
+async function loadAttendance() {
+  const cls  = document.getElementById('attClass').value;
+  const date = document.getElementById('attDate').value;
+  if(!cls || !date) return;
+  if(!allowedClasses.includes(cls)) { toast('Access denied for this class','danger'); return; }
+  document.getElementById('attTitle').textContent = `${cls} — ${date}`;
+  currentAttKey = `${cls}_${date}`;
+  attStudents = {};
+  showSpinner(true);
+  try {
+    // students: filter only, sort client-side (no composite index needed)
+    const sSnap = await getDocs(query(collection(db,'student_profiles'), where('className','==',cls)));
+    const students = sSnap.docs.map(d => ({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    const attDoc = await getDoc(doc(db,'attendance',currentAttKey));
+    const existing = attDoc.exists() ? attDoc.data().records||{} : {};
+    students.forEach(s => attStudents[s.id] = existing[s.id]||'P');
+    renderAttendance(students);
+    updateAttPie();
+  } catch(e) { toast('Error: '+e.message,'danger'); }
+  showSpinner(false);
+}
+
+function renderAttendance(students) {
+  if(!students.length) {
+    document.getElementById('attList').innerHTML = '<div class="empty-state"><i class="fas fa-users-slash"></i>No students in this class</div>'; return;
+  }
+  document.getElementById('attList').innerHTML = students.map(s => `
+    <div class="att-row">
+      <div class="att-name">${esc(s.name)}</div>
+      <div class="att-toggle">
+        <button class="btn-att ${attStudents[s.id]==='P'?'P':''}" onclick="setAtt('${s.id}','P',this)">P</button>
+        <button class="btn-att ${attStudents[s.id]==='A'?'A':''}" onclick="setAtt('${s.id}','A',this)">A</button>
+        <button class="btn-att ${attStudents[s.id]==='L'?'L':''}" onclick="setAtt('${s.id}','L',this)">L</button>
+      </div>
+    </div>`).join('');
+}
+
+function setAtt(id, status, btn) {
+  attStudents[id] = status;
+  btn.closest('.att-row').querySelectorAll('.btn-att').forEach(b => {
+    b.classList.remove('P','A','L');
+    if(b.textContent.trim()===status) b.classList.add(status);
+  });
+  updateAttPie();
+}
+
+function markAll(status) {
+  Object.keys(attStudents).forEach(id => attStudents[id] = status);
+  document.querySelectorAll('.att-row .btn-att').forEach(b => {
+    b.classList.remove('P','A','L');
+    if(b.textContent.trim()===status) b.classList.add(status);
+  });
+  updateAttPie();
+}
+
+async function saveAttendance() {
+  if(!currentAttKey) { toast('Select class and date first','warning'); return; }
+  const [cls, date] = currentAttKey.split('_');
+  showSpinner(true);
+  try {
+    await setDoc(doc(db,'attendance',currentAttKey), {
+      className: cls, date, records: attStudents, updatedAt: new Date(), updatedBy: userName
+    });
+    toast('Attendance saved!','success');
+    refreshAttStat();
+  } catch(e) { toast('Save failed: '+e.message,'danger'); }
+  showSpinner(false);
+}
+
+function updateAttPie() {
+  const vals = Object.values(attStudents);
+  const P=vals.filter(v=>v==='P').length, A=vals.filter(v=>v==='A').length, L=vals.filter(v=>v==='L').length;
+  document.getElementById('countP').textContent=P;
+  document.getElementById('countA').textContent=A;
+  document.getElementById('countL').textContent=L;
+  if(attPieInst) attPieInst.destroy();
+  if(!vals.length) return;
+  attPieInst = new Chart(document.getElementById('attPieChart').getContext('2d'), {
+    type:'doughnut',
+    data:{labels:['Present','Absent','Leave'],datasets:[{data:[P,A,L],backgroundColor:['#22c55e','#ef4444','#f59e0b'],borderWidth:0}]},
+    options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}
+  });
+}
+
+// ─── RESULTS ───
+async function loadStudentsForMarks() {
+  const cls = document.getElementById('rClass').value;
+  if(!cls || !allowedClasses.includes(cls)) return;
+  const snap = await getDocs(query(collection(db,'student_profiles'), where('className','==',cls)));
+  const students = snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  document.getElementById('markEntryList').innerHTML = students.length
+    ? students.map(s=>`<div class="d-flex align-items-center gap-2 mb-2">
+        <div class="flex-grow-1 small fw-medium">${esc(s.name)}</div>
+        <input type="number" class="form-control form-control-sm" style="width:80px" id="mark_${s.id}" placeholder="—" min="0">
+      </div>`).join('')
+    : '<div class="text-muted small">No students found</div>';
+}
+
+async function saveMarks() {
+  const cls=document.getElementById('rClass').value, exam=document.getElementById('rExam').value;
+  const subject=document.getElementById('rSubject').value.trim(), maxMarks=parseInt(document.getElementById('rMaxMarks').value)||100;
+  const session=document.getElementById('rSession').value;
+  if(!cls||!subject) { toast('Select class and enter subject','warning'); return; }
+  showSpinner(true);
+  try {
+    const inputs = document.querySelectorAll('[id^="mark_"]');
+    const saves = [];
+    inputs.forEach(inp => {
+      if(inp.value==='') return;
+      const studentId = inp.id.replace('mark_','');
+      saves.push(addDoc(collection(db,'marks'),{studentId,className:cls,examType:exam,subject,marks:Number(inp.value),maxMarks,session,createdAt:new Date(),savedBy:userName}));
+    });
+    await Promise.all(saves);
+    toast(`Marks saved for ${saves.length} students!`,'success');
+  } catch(e) { toast('Error: '+e.message,'danger'); }
+  showSpinner(false);
+}
+
+async function loadResults() {
+  const cls=document.getElementById('viewRClass').value, exam=document.getElementById('viewRExam').value;
+  if(!cls||!exam) return;
+  showSpinner(true);
+  try {
+    // two separate where clauses work without composite index since they're both equality
+    const snap = await getDocs(query(collection(db,'marks'), where('className','==',cls), where('examType','==',exam)));
+    const studentMap={}, subjects=new Set();
+    snap.docs.forEach(d=>{
+      const m=d.data();
+      if(!studentMap[m.studentId]) studentMap[m.studentId]={name:'',marks:{}};
+      studentMap[m.studentId].marks[m.subject]=m.marks;
+      subjects.add(m.subject);
+    });
+    const sSnap = await getDocs(query(collection(db,'student_profiles'), where('className','==',cls)));
+    sSnap.docs.forEach(d => { if(studentMap[d.id]) studentMap[d.id].name=d.data().name; });
+    const subArr=[...subjects].sort();
+    document.getElementById('resultsHead').innerHTML=`<th>#</th><th>Student</th>${subArr.map(s=>`<th>${esc(s)}</th>`).join('')}<th>Total</th><th>%</th>`;
+    const rows=Object.entries(studentMap).filter(([,v])=>v.name);
+    document.getElementById('resultsBody').innerHTML=rows.map(([,v],i)=>{
+      const tot=subArr.reduce((s,sub)=>s+(v.marks[sub]||0),0);
+      const pct=subArr.length?Math.round(tot/(subArr.length*100)*100):0;
+      const badge=pct>=75?'badge-present':pct>=50?'bg-warning text-dark':'badge-absent';
+      return `<tr><td>${i+1}</td><td class="fw-medium">${esc(v.name)}</td>${subArr.map(s=>`<td>${v.marks[s]??'—'}</td>`).join('')}<td class="fw-bold">${tot}</td><td><span class="badge ${badge}">${pct}%</span></td></tr>`;
+    }).join('');
+    document.getElementById('resultsEmpty').style.display=rows.length?'none':'block';
+  } catch(e) { toast('Error: '+e.message,'danger'); }
+  showSpinner(false);
+}
+
+// ─── FEES (real-time) ───
+function attachFeesListener() {
+  if(feesUnsub) { feesUnsub(); feesUnsub=null; }
+  const cls=document.getElementById('feeFilterClass').value;
+  const q = cls ? query(collection(db,'fees'),where('className','==',cls)) : query(collection(db,'fees'));
+  feesUnsub = onSnapshot(q, snap => {
+    const month=document.getElementById('feeFilterMonth').value;
+    let records=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    if(month) records=records.filter(r=>r.month===month);
+    const body=document.getElementById('feeBody');
+    if(!records.length){body.innerHTML='';document.getElementById('feeEmpty').classList.remove('d-none');document.getElementById('feeTotalLabel').textContent='₹0';return;}
+    document.getElementById('feeEmpty').classList.add('d-none');
+    let total=0;
+    body.innerHTML=records.map(r=>{total+=r.amount||0;return`<tr>
+      <td><code>${r.receiptNo}</code></td>
+      <td class="fw-medium">${esc(r.studentName)}</td>
+      <td><span class="badge-class">${r.className}</span></td>
+      <td>${r.month} ${r.year||''}</td>
+      <td class="fw-bold text-success">₹${r.amount}</td>
+      <td>${r.date||'—'}</td>
+      <td class="no-print">${userRole==='admin'?`<button class="btn btn-sm btn-outline-danger py-0" onclick="deleteFee('${r.id}')"><i class="fas fa-trash"></i></button>`:''}</td>
+    </tr>`;}).join('');
+    document.getElementById('feeTotalLabel').textContent=`₹${total.toLocaleString('en-IN')}`;
+  }, err => toast('Fee load error: '+err.message,'danger'));
+  listeners.push(feesUnsub);
+}
+
+function loadFeeRecords() { attachFeesListener(); }
+
+async function loadStudentsForFee() {
+  const cls=document.getElementById('feeClass').value;
+  if(!cls) return;
+  const snap=await getDocs(query(collection(db,'student_profiles'),where('className','==',cls)));
+  const sel=document.getElementById('feeStudent');
+  const sorted=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  sel.innerHTML='<option value="">Select Student...</option>'+sorted.map(d=>`<option value="${d.id}">${esc(d.name)}</option>`).join('');
+}
+
+async function saveFeePayment() {
+  const studentId=document.getElementById('feeStudent').value;
+  const cls=document.getElementById('feeClass').value, month=document.getElementById('feeMonth').value;
+  const year=document.getElementById('feeYear').value, amount=document.getElementById('feeAmount').value;
+  const date=document.getElementById('feeDate').value, receipt=document.getElementById('feeReceipt').value||`RC${Date.now()}`;
+  if(!studentId||!amount){toast('Select student and enter amount','warning');return;}
+  const studentName=document.getElementById('feeStudent').selectedOptions[0].text;
+  showSpinner(true);
+  try {
+    await addDoc(collection(db,'fees'),{studentId,studentName,className:cls,month,year,amount:Number(amount),date,receiptNo:receipt,createdAt:new Date(),savedBy:userName});
+    toast(`Fee ₹${amount} recorded for ${studentName}`,'success');
+    document.getElementById('feeAmount').value=''; document.getElementById('feeReceipt').value='';
+  } catch(e){toast('Error: '+e.message,'danger');}
+  showSpinner(false);
+}
+
+async function deleteFee(id){
+  if(!confirm('Delete this fee record?'))return;
+  try{await deleteDoc(doc(db,'fees',id));toast('Fee record deleted','warning');}
+  catch(e){toast('Error: '+e.message,'danger');}
+}
+
+// ─── NOTICES (real-time) ───
+function attachNoticesListener() {
+  if(noticesUnsubPage){noticesUnsubPage();noticesUnsubPage=null;}
+  noticesUnsubPage=onSnapshot(query(collection(db,'notices')), snap=>{
+    const filter=document.getElementById('noticeFilter').value;
+    let all=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0));
+    if(filter) all=all.filter(n=>n.priority===filter);
+    renderNoticeList(all);
+  });
+  listeners.push(noticesUnsubPage);
+}
+
+function loadNotices(){attachNoticesListener();}
+
+function renderNoticeList(list) {
+  const el=document.getElementById('noticeList');
+  if(!list.length){el.innerHTML='<div class="empty-state"><i class="fas fa-bullhorn"></i>No notices posted</div>';return;}
+  const pLabel={high:'🔴 Urgent',medium:'🟡 Medium',normal:'🔵 Normal'};
+  el.innerHTML=list.map(n=>`
+    <div class="notice-item priority-${n.priority||'normal'} mb-2">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><b>${esc(n.title)}</b><span class="ms-2 small text-muted">${pLabel[n.priority]||'Normal'}</span></div>
+        <div class="d-flex align-items-center gap-2">
+          <small class="text-muted">${formatDate(n.createdAt?.toDate?.())}</small>
+          ${userRole==='admin'?`<button class="btn btn-sm text-danger border-0 py-0" onclick="deleteNotice('${n.id}')"><i class="fas fa-times"></i></button>`:''}
+        </div>
+      </div>
+      <p class="mb-0 mt-1 text-muted small">${esc(n.content||'')}</p>
+      <small class="text-muted d-block mt-1">Posted by: ${esc(n.postedBy||'—')} | For: ${n.audience||'All'}</small>
+    </div>`).join('');
+}
+
+async function saveNotice(){
+  const title=document.getElementById('noticeTitle').value.trim();
+  const content=document.getElementById('noticeContent').value.trim();
+  if(!title||!content){toast('Enter title and content','warning');return;}
+  showSpinner(true);
+  try{
+    await addDoc(collection(db,'notices'),{title,content,priority:document.getElementById('noticePriority').value,audience:document.getElementById('noticeAudience').value,postedBy:userName,createdAt:new Date()});
+    document.getElementById('noticeTitle').value=''; document.getElementById('noticeContent').value='';
+    toast('Notice posted!','success');
+  }catch(e){toast('Error: '+e.message,'danger');}
+  showSpinner(false);
+}
+
+async function deleteNotice(id){
+  if(!confirm('Delete this notice?'))return;
+  try{await deleteDoc(doc(db,'notices',id));toast('Notice deleted','warning');}
+  catch(e){toast('Error: '+e.message,'danger');}
+}
+
+// ─── CHANGE PASSWORD ───
+function showChangePassword(){
+  ['cpCurrent','cpNew','cpConfirm'].forEach(id=>document.getElementById(id).value='');
+  new bootstrap.Modal(document.getElementById('changePwdModal')).show();
+}
+async function changePassword(){
+  const current=document.getElementById('cpCurrent').value;
+  const newPwd=document.getElementById('cpNew').value;
+  const confirm=document.getElementById('cpConfirm').value;
+  if(!current||!newPwd||!confirm){toast('Fill in all fields','warning');return;}
+  if(newPwd.length<6){toast('New password must be at least 6 characters','warning');return;}
+  if(newPwd!==confirm){toast('New passwords do not match','danger');return;}
+  showSpinner(true);
+  try{
+    const adminDoc=await getDoc(doc(db,'settings','admin_auth'));
+    const storedPwd=adminDoc.exists()?adminDoc.data().password:'admin123';
+    if(current!==storedPwd){showSpinner(false);toast('Current password is incorrect','danger');return;}
+    await setDoc(doc(db,'settings','admin_auth'),{password:newPwd,updatedAt:new Date()});
+    const saved=localStorage.getItem('kis_portal_login');
+    if(saved){try{const d=JSON.parse(saved);if(d.role==='admin'){d.p=newPwd;localStorage.setItem('kis_portal_login',JSON.stringify(d));}}catch(e){}}
+    bootstrap.Modal.getInstance(document.getElementById('changePwdModal')).hide();
+    toast('Password updated successfully!','success');
+  }catch(err){toast('Error: '+err.message,'danger');}
+  showSpinner(false);
+}
+
+// ─── STAFF (real-time) ───
+function loadStaff(){
+  onSnapshot(collection(db,'staff_roles'), snap=>{
+    const list=snap.docs.map(d=>({id:d.id,...d.data()}));
+    window._staffCache = list;
+    document.getElementById('staffCount').textContent=list.length;
+    const empty=document.getElementById('staffEmpty');
+    if(!list.length){document.getElementById('staffListBody').innerHTML='';empty.classList.remove('d-none');return;}
+    empty.classList.add('d-none');
+    document.getElementById('staffListBody').innerHTML=list.map(r=>`
+      <tr>
+        <td class="fw-medium">${esc(r.name)}</td>
+        <td>${r.designation||'—'}</td>
+        <td>${(r.assignedClasses||[r.assignedClass||'All']).map(c=>`<span class="badge-class me-1">${esc(c)}</span>`).join('')}</td>
+        <td>${r.phone||'—'}</td>
+        <td><code class="text-primary fw-bold">${r.accessCode}</code></td>
+        <td class="d-flex gap-1">
+          <button onclick="editStaff('${r.id}')" class="btn btn-sm btn-outline-warning py-0" title="Edit"><i class="fas fa-pen"></i></button>
+          <button onclick="window.deleteDoc(window.doc(window.db,'staff_roles','${r.id}'))" class="btn btn-sm btn-outline-danger py-0" title="Delete"><i class="fas fa-trash"></i></button>
+        </td>
+      </tr>`).join('');
+  });
+}
+
+function getCheckedClasses(gridId){
+  const vals=Array.from(document.querySelectorAll(`#${gridId} input[type=checkbox]:checked`)).map(b=>b.value);
+  return vals.length ? vals : ['All'];
+}
+function setCheckedClasses(gridId,classes){
+  const arr=Array.isArray(classes)?classes:[classes||'All'];
+  document.querySelectorAll(`#${gridId} input[type=checkbox]`).forEach(b=>{b.checked=arr.includes(b.value);});
+}
+
+async function addTeacher(){
+  const name=document.getElementById('tName').value.trim();
+  if(!name){toast('Enter teacher name','warning');return;}
+  const code=document.getElementById('tCodeManual').value.trim()||Math.floor(100000+Math.random()*900000).toString();
+  const classes=getCheckedClasses('tClassGrid');
+  showSpinner(true);
+  try{
+    await addDoc(collection(db,'staff_roles'),{name,designation:document.getElementById('tDesig').value,assignedClasses:classes,phone:document.getElementById('tPhone').value,accessCode:code,createdAt:new Date()});
+    toast(`${name} added — Code: ${code}`,'success');
+    document.getElementById('tName').value=''; document.getElementById('tPhone').value=''; document.getElementById('tCodeManual').value='';
+    document.querySelectorAll('#tClassGrid input[type=checkbox]').forEach(b=>b.checked=false);
+  }catch(e){toast('Error: '+e.message,'danger');}
+  showSpinner(false);
+}
+
+function genCode(){document.getElementById('tCodeManual').value=Math.floor(100000+Math.random()*900000).toString();}
+
+// ─── REPORTS ───
+async function genReport(type){
+  showSpinner(true);
+  const out=document.getElementById('reportOutput');
+  try{
+    if(type==='class-wise'){
+      const snap=await getDocs(collection(db,'student_profiles'));
+      const grouped={};CLASSES.forEach(c=>grouped[c]=[]);
+      snap.docs.forEach(d=>{const s=d.data();if(grouped[s.className])grouped[s.className].push(s);});
+      CLASSES.forEach(c=>grouped[c].sort((a,b)=>(a.name||'').localeCompare(b.name||'')));
+      let html=`<div class="card p-4 mt-3"><div class="text-center mb-4"><h4>Khalsa International School</h4><h6>Class-wise Student Report — ${new Date().toLocaleDateString('en-IN')}</h6></div>`;
+      CLASSES.forEach(c=>{if(!grouped[c].length)return;
+        html+=`<h6 class="bg-primary text-white px-3 py-2 rounded">${c} — ${grouped[c].length} Students</h6>
+        <table class="table table-sm table-bordered mb-4"><thead><tr><th>#</th><th>Name</th><th>Father</th><th>DOB</th><th>Phone</th></tr></thead><tbody>
+        ${grouped[c].map((s,i)=>`<tr><td>${i+1}</td><td>${esc(s.name)}</td><td>${esc(s.father)}</td><td>${s.dob}</td><td>${s.phone}</td></tr>`).join('')}
+        </tbody></table>`;});
+      out.innerHTML=html+'</div>';
+    }else if(type==='fee-summary'){
+      const snap=await getDocs(collection(db,'fees'));
+      const byMonth={};
+      snap.docs.forEach(d=>{const r=d.data();if(!byMonth[r.month])byMonth[r.month]={total:0,count:0};byMonth[r.month].total+=r.amount;byMonth[r.month].count++;});
+      out.innerHTML=`<div class="card p-4 mt-3"><h5 class="text-center mb-4">Fee Collection Summary — ${new Date().toLocaleDateString('en-IN')}</h5>
+        <table class="table table-bordered"><thead><tr><th>Month</th><th>Transactions</th><th>Total Collected</th></tr></thead>
+        <tbody>${Object.entries(byMonth).map(([m,v])=>`<tr><td>${m}</td><td>${v.count}</td><td class="fw-bold text-success">₹${v.total.toLocaleString('en-IN')}</td></tr>`).join('')}</tbody></table>
+        <div class="text-end fw-bold mt-2">Grand Total: ₹${Object.values(byMonth).reduce((s,v)=>s+v.total,0).toLocaleString('en-IN')}</div></div>`;
+    }else if(type==='attendance-monthly'){
+      const snap=await getDocs(collection(db,'attendance'));
+      const rows=snap.docs.map(d=>d.data()).sort((a,b)=>a.date?.localeCompare(b.date));
+      out.innerHTML=`<div class="card p-4 mt-3"><h5 class="text-center mb-4">Attendance Report</h5>
+        <table class="table table-bordered table-sm"><thead><tr><th>Date</th><th>Class</th><th>Present</th><th>Absent</th><th>Leave</th><th>Total</th></tr></thead>
+        <tbody>${rows.map(r=>{const vals=Object.values(r.records||{});const P=vals.filter(v=>v==='P').length,A=vals.filter(v=>v==='A').length,L=vals.filter(v=>v==='L').length;
+          return`<tr><td>${r.date}</td><td>${r.className}</td><td class="text-success fw-bold">${P}</td><td class="text-danger">${A}</td><td class="text-warning">${L}</td><td>${vals.length}</td></tr>`;}).join('')}</tbody></table></div>`;
+    }else if(type==='staff-list'){
+      const snap=await getDocs(collection(db,'staff_roles'));
+      out.innerHTML=`<div class="card p-4 mt-3"><h5 class="text-center mb-4">Staff Directory</h5>
+        <table class="table table-bordered"><thead><tr><th>#</th><th>Name</th><th>Designation</th><th>Class</th><th>Phone</th></tr></thead>
+        <tbody>${snap.docs.map((d,i)=>{const r=d.data();const cls=(r.assignedClasses||[r.assignedClass||'All']).join(', ');return`<tr><td>${i+1}</td><td>${esc(r.name)}</td><td>${r.designation||'—'}</td><td>${cls}</td><td>${r.phone||'—'}</td></tr>`;}).join('')}</tbody></table></div>`;
+    }
+  }catch(e){toast('Report error: '+e.message,'danger');showSpinner(false);return;}
+  showSpinner(false);
+  setTimeout(()=>window.print(),300);
+}
+
+// ─── UTILS ───
+function showSpinner(show){document.getElementById('spinner').classList.toggle('show',show);}
+function formatDate(d){if(!d)return'—';return new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'});}
+function esc(s){const d=document.createElement('div');d.textContent=s??'';return d.innerHTML;}
+</script>
+</body>
+</html>

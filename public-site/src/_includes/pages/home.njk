@@ -1,0 +1,189 @@
+{# ── 1. HERO ───────────────────────────────────────────────────────── #}
+<section class="band-cream">
+  <div class="container px-4 py-16 lg:py-24 grid lg:grid-cols-12 gap-10 items-center">
+    <div class="lg:col-span-7">
+      <div class="crest-caps text-khalsa-blue mb-3">{{ "web.home.heroEyebrow" | t(lang) }}</div>
+      <h1 class="font-display text-display text-deep-indigo mb-6 max-w-2xl">
+        {{ "web.home.heroTitle" | t(lang) }}
+      </h1>
+      <p class="text-body lg:text-[17px] leading-relaxed max-w-xl text-neutral-700 mb-8">
+        {{ "web.home.heroBody" | t(lang) }}
+      </p>
+      <div class="flex flex-wrap gap-3">
+        <a href="{{ site.basePath }}/{{ lang }}/admissions/" class="btn btn-primary btn-lg">{{ "web.home.ctaApply" | t(lang) }}</a>
+        <a href="{{ site.basePath }}/{{ lang }}/contact/" class="btn btn-secondary btn-lg">{{ "web.home.ctaVisit" | t(lang) }}</a>
+      </div>
+    </div>
+    <div class="lg:col-span-5 flex justify-center">
+      <div class="relative">
+        <div class="absolute -inset-6 bg-royal-gold/20 rounded-full blur-3xl" aria-hidden="true"></div>
+        <img src="{{ site.crestFull }}" alt="" width="400" height="320" class="relative h-72 w-auto md:h-80 md:w-auto">
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── 2. STATS STRIP ───────────────────────────────────────────────────── #}
+<section aria-labelledby="stats-heading" class="border-y border-neutral-200 bg-white">
+  <h2 id="stats-heading" class="sr-only">By the numbers</h2>
+  <div class="container px-4 py-10 grid grid-cols-2 md:grid-cols-4 gap-6 lg:gap-10">
+    {% set stats = [
+      { value: "1,240", labelKey: "web.home.stats.students" },
+      { value: "78",    labelKey: "web.home.stats.faculty" },
+      { value: "98%",   labelKey: "web.home.stats.boardResult" },
+      { value: "19",    labelKey: "web.home.stats.yearsServing" }
+    ] %}
+    {% for s in stats %}
+    <div class="text-center">
+      <div class="font-display text-heading-xl text-deep-indigo">{{ s.value }}</div>
+      <div class="mt-1 text-caption text-neutral-500 uppercase tracking-wider">{{ s.labelKey | t(lang) }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── 3. WHY KIS — VALUE PROPS ─────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-24">
+  <h2 class="font-display text-heading-lg text-deep-indigo text-center mb-12">{{ "web.home.values.title" | t(lang) }}</h2>
+  <div class="grid sm:grid-cols-2 gap-5 lg:gap-7 max-w-5xl mx-auto">
+    {% set values = [
+      { title: "web.home.values.vidyaTitle",  body: "web.home.values.vidyaBody"  },
+      { title: "web.home.values.vicharTitle", body: "web.home.values.vicharBody" },
+      { title: "web.home.values.sevaTitle",   body: "web.home.values.sevaBody"   },
+      { title: "web.home.values.rootsTitle",  body: "web.home.values.rootsBody"  }
+    ] %}
+    {% for v in values %}
+    <div class="card">
+      <h3 class="font-display text-heading-md text-deep-indigo mb-2">{{ v.title | t(lang) }}</h3>
+      <p class="text-body text-neutral-700">{{ v.body | t(lang) }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── 4. PRINCIPAL LETTER ──────────────────────────────────────────────── #}
+<section class="band-cream">
+  <div class="container px-4 py-16 lg:py-24 grid lg:grid-cols-12 gap-10">
+    <div class="lg:col-span-4 flex justify-center lg:justify-start">
+      <div class="w-44 h-44 lg:w-56 lg:h-56 rounded-full bg-deep-indigo/10 flex items-center justify-center text-neutral-500 text-caption uppercase tracking-wider">
+        Portrait
+      </div>
+    </div>
+    <div class="lg:col-span-8">
+      <h2 class="font-display text-heading-lg text-deep-indigo mb-6">{{ "web.home.principal.title" | t(lang) }}</h2>
+      <blockquote class="text-body lg:text-[17px] leading-relaxed text-neutral-800 mb-6">
+        “{{ "web.home.principal.body" | t(lang) }}”
+      </blockquote>
+      <div>
+        <div class="font-semibold text-deep-indigo">{{ "web.home.principal.name" | t(lang) }}</div>
+        <div class="text-caption text-neutral-500">{{ "web.home.principal.role" | t(lang) }}</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+{# ── 5. PROGRAMS GRID ─────────────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-24">
+  <div class="text-center max-w-3xl mx-auto mb-12">
+    <h2 class="font-display text-heading-lg text-deep-indigo mb-3">{{ "web.home.programsTitle" | t(lang) }}</h2>
+    <p class="text-body text-neutral-600">{{ "web.home.programsKicker" | t(lang) }}</p>
+  </div>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7">
+    {% set programs = [
+      { stage: "Foundation",   range: "Nursery — KG",         body: "Play-based learning, language confidence, motor skills." },
+      { stage: "Primary",      range: "Class I — V",          body: "PSEB foundation curriculum strengthened by reading + sciences." },
+      { stage: "Middle",       range: "Class VI — VIII",      body: "Subject specialisation begins; debate, ethics, and lab work." },
+      { stage: "Secondary",    range: "Class IX — X",         body: "PSEB board prep with weekly mock cycles and counselling." },
+      { stage: "Sr. Sec. — Sci",  range: "Class XI — XII",    body: "PCM & PCB streams; medical / engineering coaching support." },
+      { stage: "Sr. Sec. — Comm/Arts",range: "Class XI — XII","body": "Commerce + Arts streams; CA / civil-services foundation." }
+    ] %}
+    {% for p in programs %}
+    <article class="card flex flex-col">
+      <div class="crest-caps text-khalsa-blue mb-2">{{ p.range }}</div>
+      <h3 class="font-display text-heading-md text-deep-indigo mb-2">{{ p.stage }}</h3>
+      <p class="text-body-sm text-neutral-700 mb-4">{{ p.body }}</p>
+      <a href="{{ site.basePath }}/{{ lang }}/academics/" class="mt-auto text-khalsa-blue font-semibold hover:underline">{{ "common.readMore" | t(lang) }} →</a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── 6. LIFE AT SCHOOL — GALLERY STRIP ────────────────────────────────── #}
+<section class="bg-neutral-50">
+  <div class="container px-4 py-16 lg:py-20">
+    <h2 class="font-display text-heading-lg text-deep-indigo text-center mb-10">{{ "web.home.lifeTitle" | t(lang) }}</h2>
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 lg:gap-4">
+      {% for i in range(1, 8) %}
+      <div class="aspect-square rounded-md bg-white border border-neutral-200 flex items-center justify-center text-neutral-400 text-caption uppercase tracking-wider">
+        Photo {{ i }}
+      </div>
+      {% endfor %}
+    </div>
+    <div class="text-center mt-8">
+      <a href="{{ site.basePath }}/{{ lang }}/gallery/" class="btn btn-secondary">{{ "common.viewAll" | t(lang) }}</a>
+    </div>
+  </div>
+</section>
+
+{# ── 7. VOICES ────────────────────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-24">
+  <h2 class="font-display text-heading-lg text-deep-indigo text-center mb-12">{{ "web.home.voicesTitle" | t(lang) }}</h2>
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-7">
+    {% set voices = [
+      { quote: "ਮੇਰੀ ਧੀ ਪੰਜਾਬੀ ਅਤੇ ਅੰਗਰੇਜ਼ੀ ਦੋਵਾਂ ਵਿੱਚ ਬਰਾਬਰ ਪੜ੍ਹਦੀ ਹੈ। ਇਹ ਸਕੂਲ ਨੇ ਉਸ ਨੂੰ ਘਰ ਵਾਂਗ ਮਹਿਸੂਸ ਕਰਾਇਆ।", author: "Jasbir Kaur · ਮਾਪੇ, ਜਮਾਤ ਅੱਠਵੀਂ", lang: "pa" },
+      { quote: "PSEB ਨਤੀਜੇ ਚੰਗੇ ਤਾਂ ਹੁੰਦੇ ਹੀ ਹਨ — ਪਰ ਜੋ ਚਰਿੱਤਰ ਇੱਥੇ ਬਣਦਾ ਹੈ, ਉਹ ਅਣਮੁੱਲਾ ਹੈ।", author: "Harpreet Singh · Alumnus, 2018",      lang: "pa" },
+      { quote: "Teachers know every child by name. That alone is rare.",                                          author: "Manjit Sandhu · Parent, Class IV", lang: "en" },
+      { quote: "ਲਾਇਬਰੇਰੀ ਅਤੇ ਸਾਇੰਸ ਲੈਬ ਬਹੁਤ ਚੰਗੀ ਹੈ। ਮੈਨੂੰ ਇੱਥੇ ਰੋਜ਼ ਕੁਝ ਨਵਾਂ ਸਿੱਖਣ ਨੂੰ ਮਿਲਦਾ ਹੈ।",                              author: "Simran Kaur · Class XI",        lang: "pa" },
+      { quote: "Kirtan, debate, langar duty — the school treats character as part of the curriculum.",            author: "Dr. Inder Pal · Trustee",          lang: "en" },
+      { quote: "ਇੱਕ ਛੋਟੇ ਜਿਹੇ ਪਿੰਡ ਤੋਂ ਆਏ ਬੱਚੇ ਨੂੰ ਜੋ ਮੌਕੇ ਇੱਥੇ ਮਿਲੇ — ਉਹ ਕਿਤੇ ਹੋਰ ਨਹੀਂ ਮਿਲ ਸਕਦੇ ਸਨ।",                          author: "Gurmeet Kaur · Alumna, 2020",   lang: "pa" }
+    ] %}
+    {% for v in voices %}
+    <figure class="card">
+      <blockquote class="text-body text-neutral-800 mb-4" lang="{{ v.lang }}">“{{ v.quote }}”</blockquote>
+      <figcaption class="text-caption text-neutral-500 uppercase tracking-wider">{{ v.author }}</figcaption>
+    </figure>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── 8. NOTICE BOARD — latest 5 ────────────────────────────────────────── #}
+<section class="bg-neutral-50">
+  <div class="container px-4 py-16 lg:py-20">
+    <div class="flex items-end justify-between mb-8">
+      <h2 class="font-display text-heading-lg text-deep-indigo">{{ "web.home.noticesTitle" | t(lang) }}</h2>
+      <a href="{{ site.basePath }}/{{ lang }}/notices/" class="text-khalsa-blue font-semibold hover:underline">{{ "common.viewAll" | t(lang) }} →</a>
+    </div>
+    <div class="grid md:grid-cols-2 gap-4">
+      {% set notices = [
+        { category: "Exam",       date: "23 Apr 2026", title: "Pre-board examinations begin May 6", summary: "Class X and XII students should report to the hall by 8:45 a.m." },
+        { category: "Fee",        date: "18 Apr 2026", title: "Term-2 fee window closes 10 May",     summary: "Pay online via the portal or at the office. Late fee ₹200 per week." },
+        { category: "Event",      date: "15 Apr 2026", title: "Vaisakhi celebrations 14 May",        summary: "Kirtan, langar, and student-led plays. Parents invited." },
+        { category: "Result",     date: "10 Apr 2026", title: "PSEB Class X result — 98% pass",      summary: "Congratulations to our 2025 batch and their teachers." },
+        { category: "Admission",  date: "01 Apr 2026", title: "Counselling Mon–Sat, 9 a.m.–1 p.m.", summary: "Walk-in or schedule a slot via the contact form." }
+      ] %}
+      {% for n in notices %}
+      <article class="card flex flex-col">
+        <div class="flex items-center justify-between mb-2">
+          <span class="text-caption uppercase tracking-wider text-khalsa-blue font-semibold">{{ n.category }}</span>
+          <span class="text-caption text-neutral-500">{{ n.date }}</span>
+        </div>
+        <h3 class="font-display text-heading-md text-deep-indigo mb-2">{{ n.title }}</h3>
+        <p class="text-body-sm text-neutral-700 mb-4">{{ n.summary }}</p>
+        <a href="{{ site.basePath }}/{{ lang }}/notices/" class="mt-auto text-khalsa-blue font-semibold hover:underline text-body-sm">{{ "common.readMore" | t(lang) }} →</a>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+{# ── 9. ADMISSIONS CTA ───────────────────────────────────────────────── #}
+<section class="band-indigo">
+  <div class="container px-4 py-16 lg:py-20 text-center">
+    <h2 class="font-display text-heading-xl mb-4">{{ "web.home.admissionsCtaTitle" | t(lang) }}</h2>
+    <p class="text-body lg:text-[17px] opacity-90 mb-8 max-w-2xl mx-auto">{{ "web.home.admissionsCtaBody" | t(lang) }}</p>
+    <div class="flex flex-wrap justify-center gap-3">
+      <a href="{{ site.basePath }}/{{ lang }}/admissions/" class="btn btn-lg" style="background:var(--color-royal-gold);color:var(--color-deep-indigo);">{{ "web.home.ctaApply" | t(lang) }}</a>
+      <a href="{{ site.basePath }}/{{ lang }}/contact/" class="btn btn-lg btn-ghost text-white border border-white/30 hover:bg-white/10">{{ "web.home.ctaVisit" | t(lang) }}</a>
+    </div>
+  </div>
+</section>

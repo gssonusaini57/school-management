@@ -1,0 +1,458 @@
+{
+  "common": {
+    "schoolName": {
+      "en": "Khalsa International Senior Secondary School",
+      "pa": "ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ ਸੀਨੀਅਰ ਸੈਕੰਡਰੀ ਸਕੂਲ"
+    },
+    "schoolNameShort": {
+      "en": "Khalsa International",
+      "pa": "ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ"
+    },
+    "lockup": {
+      "en": "SENIOR · SECONDARY · SCHOOL",
+      "pa": "ਸੀਨੀਅਰ · ਸੈਕੰਡਰੀ · ਸਕੂਲ"
+    },
+    "tagline": {
+      "en": "VIDYA · VICHAR · SEVA",
+      "pa": "ਵਿਦਿਆ · ਵੀਚਾਰ · ਸੇਵਾ"
+    },
+    "shabad": {
+      "en": "Vidya Vichari Taan Parupkari",
+      "pa": "ਵਿਦਿਆ ਵੀਚਾਰੀ ਤਾਂ ਪਰਉਪਕਾਰੀ"
+    },
+    "estYear": {
+      "en": "EST. 2005",
+      "pa": "ਸਥਾਪਨਾ ੨੦੦੫"
+    },
+    "affiliation": {
+      "en": "Affiliated to PSEB · Aff. No. 4906",
+      "pa": "ਪੀ.ਐਸ.ਈ.ਬੀ. ਨਾਲ ਮਾਨਤਾ-ਪ੍ਰਾਪਤ · ਮਾਨਤਾ ਨੰ. 4906"
+    },
+    "address": {
+      "en": "Jalalabad, District Patiala, Punjab",
+      "pa": "ਜਲਾਲਾਬਾਦ, ਜ਼ਿਲ੍ਹਾ ਪਟਿਆਲਾ, ਪੰਜਾਬ"
+    },
+    "phone": {
+      "en": "+91 93563-31762",
+      "pa": "+91 93563-31762"
+    },
+    "email": {
+      "en": "info@khalsainternational.in",
+      "pa": "info@khalsainternational.in"
+    },
+    "website": {
+      "en": "www.khalsainternational.in",
+      "pa": "www.khalsainternational.in"
+    },
+    "loading": {
+      "en": "Loading…",
+      "pa": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…"
+    },
+    "retry": {
+      "en": "Retry",
+      "pa": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ"
+    },
+    "cancel": {
+      "en": "Cancel",
+      "pa": "ਰੱਦ ਕਰੋ"
+    },
+    "save": {
+      "en": "Save",
+      "pa": "ਸੰਭਾਲੋ"
+    },
+    "submit": {
+      "en": "Submit",
+      "pa": "ਜਮ੍ਹਾਂ ਕਰੋ"
+    },
+    "close": {
+      "en": "Close",
+      "pa": "ਬੰਦ ਕਰੋ"
+    },
+    "viewAll": {
+      "en": "View all",
+      "pa": "ਸਾਰੇ ਵੇਖੋ"
+    },
+    "readMore": {
+      "en": "Read more",
+      "pa": "ਹੋਰ ਪੜ੍ਹੋ"
+    },
+    "back": {
+      "en": "Back",
+      "pa": "ਵਾਪਸ"
+    },
+    "next": {
+      "en": "Next",
+      "pa": "ਅਗਲਾ"
+    },
+    "language": {
+      "en": "Language",
+      "pa": "ਭਾਸ਼ਾ"
+    },
+    "english": {
+      "en": "English",
+      "pa": "ਅੰਗਰੇਜ਼ੀ"
+    },
+    "punjabi": {
+      "en": "ਪੰਜਾਬੀ",
+      "pa": "ਪੰਜਾਬੀ"
+    }
+  },
+  "web": {
+    "nav": {
+      "home": {
+        "en": "Home",
+        "pa": "ਮੁੱਖ ਪੰਨਾ"
+      },
+      "about": {
+        "en": "About",
+        "pa": "ਸਾਡੇ ਬਾਰੇ"
+      },
+      "academics": {
+        "en": "Academics",
+        "pa": "ਅਕਾਦਮਿਕ"
+      },
+      "admissions": {
+        "en": "Admissions",
+        "pa": "ਦਾਖਲੇ"
+      },
+      "notices": {
+        "en": "Notices",
+        "pa": "ਨੋਟਿਸ"
+      },
+      "gallery": {
+        "en": "Gallery",
+        "pa": "ਗੈਲਰੀ"
+      },
+      "contact": {
+        "en": "Contact",
+        "pa": "ਸੰਪਰਕ"
+      },
+      "career": {
+        "en": "Careers",
+        "pa": "ਨੌਕਰੀਆਂ"
+      },
+      "parentPortal": {
+        "en": "Parent Portal",
+        "pa": "ਮਾਪੇ ਪੋਰਟਲ"
+      },
+      "applyNow": {
+        "en": "Apply now",
+        "pa": "ਹੁਣੇ ਅਪਲਾਈ ਕਰੋ"
+      }
+    },
+    "announcement": {
+      "admissionsOpen": {
+        "en": "Admissions open for 2026–27 · Nursery to XII",
+        "pa": "ਦਾਖਲੇ ਖੁੱਲ੍ਹੇ ਹਨ 2026–27 · ਨਰਸਰੀ ਤੋਂ ਬਾਰ੍ਹਵੀਂ ਤੱਕ"
+      }
+    },
+    "home": {
+      "heroEyebrow": {
+        "en": "Since 2005 · Jalalabad, Patiala",
+        "pa": "2005 ਤੋਂ · ਜਲਾਲਾਬਾਦ, ਪਟਿਆਲਾ"
+      },
+      "heroTitle": {
+        "en": "Education rooted in heritage. Built for tomorrow.",
+        "pa": "ਵਿਰਾਸਤ ਵਿੱਚ ਜੜ੍ਹਾਂ। ਆਉਣ ਵਾਲੇ ਕੱਲ ਲਈ ਤਿਆਰ ਸਿੱਖਿਆ।"
+      },
+      "heroBody": {
+        "en": "Khalsa International prepares Punjab's children with academic rigor, character grounded in Sikh values, and the courage to serve.",
+        "pa": "ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ ਪੰਜਾਬ ਦੇ ਬੱਚਿਆਂ ਨੂੰ ਅਕਾਦਮਿਕ ਮਜ਼ਬੂਤੀ, ਸਿੱਖ ਕਦਰਾਂ-ਕੀਮਤਾਂ ਉੱਤੇ ਚਰਿੱਤਰ, ਅਤੇ ਸੇਵਾ ਦੀ ਹਿੰਮਤ ਨਾਲ ਤਿਆਰ ਕਰਦਾ ਹੈ।"
+      },
+      "ctaApply": {
+        "en": "Apply for 2026–27",
+        "pa": "2026–27 ਲਈ ਅਪਲਾਈ ਕਰੋ"
+      },
+      "ctaVisit": {
+        "en": "Schedule a visit",
+        "pa": "ਮੁਲਾਕਾਤ ਤੈਅ ਕਰੋ"
+      },
+      "stats": {
+        "students": {
+          "en": "Students",
+          "pa": "ਵਿਦਿਆਰਥੀ"
+        },
+        "faculty": {
+          "en": "Faculty",
+          "pa": "ਅਧਿਆਪਕ"
+        },
+        "boardResult": {
+          "en": "PSEB result (X)",
+          "pa": "ਪੀ.ਐਸ.ਈ.ਬੀ. ਨਤੀਜਾ (ਦਸਵੀਂ)"
+        },
+        "yearsServing": {
+          "en": "Years serving Patiala",
+          "pa": "ਸਾਲ ਪਟਿਆਲਾ ਦੀ ਸੇਵਾ"
+        }
+      },
+      "values": {
+        "title": {
+          "en": "Why Khalsa International",
+          "pa": "ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ ਕਿਉਂ"
+        },
+        "vidyaTitle": {
+          "en": "Vidya — knowledge that lasts",
+          "pa": "ਵਿਦਿਆ — ਜੋ ਸਦਾ ਨਾਲ ਰਹੇ"
+        },
+        "vidyaBody": {
+          "en": "PSEB-aligned curriculum strengthened by reading, writing, and lab-based discovery.",
+          "pa": "ਪੀ.ਐਸ.ਈ.ਬੀ. ਆਧਾਰਿਤ ਪਾਠਕ੍ਰਮ, ਪੜ੍ਹਾਈ, ਲਿਖਾਈ ਅਤੇ ਪ੍ਰਯੋਗਸ਼ਾਲਾ ਨਾਲ ਮਜ਼ਬੂਤ।"
+        },
+        "vicharTitle": {
+          "en": "Vichar — clear thought",
+          "pa": "ਵੀਚਾਰ — ਸਪਸ਼ਟ ਸੋਚ"
+        },
+        "vicharBody": {
+          "en": "Debate, ethics class, and weekly reflection so children learn to think — not just remember.",
+          "pa": "ਵਾਦ-ਵਿਵਾਦ, ਨੈਤਿਕ ਕਲਾਸ, ਅਤੇ ਹਫ਼ਤਾਵਾਰੀ ਚਿੰਤਨ — ਯਾਦ ਨਹੀਂ, ਸੋਚਣਾ ਸਿੱਖੋ।"
+        },
+        "sevaTitle": {
+          "en": "Seva — service to community",
+          "pa": "ਸੇਵਾ — ਸਮਾਜ ਦੀ ਸੇਵਾ"
+        },
+        "sevaBody": {
+          "en": "Langar duties, neighbourhood clean-up, and gurudwara seva are part of every term.",
+          "pa": "ਲੰਗਰ ਸੇਵਾ, ਸਫ਼ਾਈ ਮੁਹਿੰਮ, ਅਤੇ ਗੁਰਦੁਆਰਾ ਸੇਵਾ — ਹਰ ਟਰਮ ਦਾ ਹਿੱਸਾ।"
+        },
+        "rootsTitle": {
+          "en": "Roots — Punjabi pride",
+          "pa": "ਜੜ੍ਹਾਂ — ਪੰਜਾਬੀ ਮਾਣ"
+        },
+        "rootsBody": {
+          "en": "Daily Punjabi reading, kirtan practice, and Sikh history from Class I onward.",
+          "pa": "ਰੋਜ਼ਾਨਾ ਪੰਜਾਬੀ ਪੜ੍ਹਾਈ, ਕੀਰਤਨ ਅਭਿਆਸ, ਅਤੇ ਪਹਿਲੀ ਜਮਾਤ ਤੋਂ ਸਿੱਖ ਇਤਿਹਾਸ।"
+        }
+      },
+      "principal": {
+        "title": {
+          "en": "A note from the Principal",
+          "pa": "ਪ੍ਰਿੰਸੀਪਲ ਵੱਲੋਂ"
+        },
+        "body": {
+          "en": "We do not measure our school by buildings or banners. We measure it by the children who walk out — confident in their roots, curious about the world, and ready to serve. Every parent who entrusts their child to us joins a sangat — and we hold that trust seriously.",
+          "pa": "ਅਸੀਂ ਆਪਣੇ ਸਕੂਲ ਨੂੰ ਇਮਾਰਤਾਂ ਜਾਂ ਬੈਨਰਾਂ ਨਾਲ ਨਹੀਂ ਮਾਪਦੇ। ਅਸੀਂ ਉਨ੍ਹਾਂ ਬੱਚਿਆਂ ਨਾਲ ਮਾਪਦੇ ਹਾਂ ਜੋ ਇੱਥੋਂ ਨਿਕਲਦੇ ਹਨ — ਆਪਣੀਆਂ ਜੜ੍ਹਾਂ ਉੱਤੇ ਮਾਣਮੱਤੇ, ਜਗਤ ਪ੍ਰਤੀ ਉਤਸੁਕ, ਅਤੇ ਸੇਵਾ ਲਈ ਤਿਆਰ। ਹਰ ਮਾਪਾ ਜੋ ਆਪਣਾ ਬੱਚਾ ਸਾਨੂੰ ਸੌਂਪਦਾ ਹੈ, ਉਹ ਇੱਕ ਸੰਗਤ ਵਿੱਚ ਸ਼ਾਮਲ ਹੁੰਦਾ ਹੈ — ਅਤੇ ਅਸੀਂ ਉਸ ਭਰੋਸੇ ਨੂੰ ਗੰਭੀਰਤਾ ਨਾਲ ਨਿਭਾਉਂਦੇ ਹਾਂ।"
+        },
+        "name": {
+          "en": "S. Gurpreet Singh",
+          "pa": "ਸ. ਗੁਰਪ੍ਰੀਤ ਸਿੰਘ"
+        },
+        "role": {
+          "en": "Principal · Khalsa International Sr. Sec. School",
+          "pa": "ਪ੍ਰਿੰਸੀਪਲ · ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ ਸੀ. ਸੈ. ਸਕੂਲ"
+        }
+      },
+      "programsTitle": {
+        "en": "Academics",
+        "pa": "ਅਕਾਦਮਿਕ"
+      },
+      "programsKicker": {
+        "en": "Six programs across the school — from foundation play to senior streams.",
+        "pa": "ਸਕੂਲ ਭਰ ਦੇ ਛੇ ਪ੍ਰੋਗਰਾਮ — ਫਾਊਂਡੇਸ਼ਨ ਤੋਂ ਸੀਨੀਅਰ ਸਟ੍ਰੀਮਾਂ ਤੱਕ।"
+      },
+      "lifeTitle": {
+        "en": "Life at school",
+        "pa": "ਸਕੂਲ ਦੀ ਜ਼ਿੰਦਗੀ"
+      },
+      "voicesTitle": {
+        "en": "Voices from our sangat",
+        "pa": "ਸਾਡੀ ਸੰਗਤ ਦੀ ਆਵਾਜ਼"
+      },
+      "noticesTitle": {
+        "en": "Notice board",
+        "pa": "ਨੋਟਿਸ ਬੋਰਡ"
+      },
+      "admissionsCtaTitle": {
+        "en": "Admissions for 2026–27 are open",
+        "pa": "2026–27 ਲਈ ਦਾਖਲੇ ਖੁੱਲ੍ਹੇ ਹਨ"
+      },
+      "admissionsCtaBody": {
+        "en": "Nursery to Class XII. Walk-in counselling Monday–Saturday, 9 a.m.–1 p.m.",
+        "pa": "ਨਰਸਰੀ ਤੋਂ ਬਾਰ੍ਹਵੀਂ ਤੱਕ। ਸੋਮਵਾਰ–ਸ਼ਨਿੱਚਰਵਾਰ, 9 ਵਜੇ ਤੋਂ 1 ਵਜੇ ਤੱਕ ਮੁਫ਼ਤ ਸਲਾਹ-ਮਸ਼ਵਰਾ।"
+      }
+    },
+    "footer": {
+      "rights": {
+        "en": "© 2026 Khalsa International Sr. Sec. School. All rights reserved.",
+        "pa": "© 2026 ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ ਸੀ. ਸੈ. ਸਕੂਲ। ਸਾਰੇ ਹੱਕ ਰਾਖਵੇਂ।"
+      },
+      "quickLinks": {
+        "en": "Quick links",
+        "pa": "ਜਲਦੀ ਲਿੰਕ"
+      },
+      "policy": {
+        "en": "Privacy policy",
+        "pa": "ਪ੍ਰਾਈਵੇਸੀ ਨੀਤੀ"
+      },
+      "tnc": {
+        "en": "Terms of use",
+        "pa": "ਵਰਤੋਂ ਦੀਆਂ ਸ਼ਰਤਾਂ"
+      }
+    }
+  },
+  "mobile": {
+    "tabs": {
+      "home": {
+        "en": "Home",
+        "pa": "ਘਰ"
+      },
+      "timetable": {
+        "en": "Timetable",
+        "pa": "ਸਮਾਂ-ਸਾਰਣੀ"
+      },
+      "notices": {
+        "en": "Notices",
+        "pa": "ਨੋਟਿਸ"
+      },
+      "fees": {
+        "en": "Fees",
+        "pa": "ਫੀਸ"
+      },
+      "profile": {
+        "en": "Profile",
+        "pa": "ਪ੍ਰੋਫ਼ਾਈਲ"
+      }
+    },
+    "welcome": {
+      "greeting": {
+        "en": "Sat Sri Akal",
+        "pa": "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ"
+      },
+      "greetingFull": {
+        "en": "Ik Onkar · Sat Sri Akal",
+        "pa": "ੴ · ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ"
+      },
+      "tagline": {
+        "en": "The Khalsa International parent companion.",
+        "pa": "ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ ਮਾਪੇ ਸਾਥੀ।"
+      },
+      "loginCta": {
+        "en": "Sign in with phone",
+        "pa": "ਫ਼ੋਨ ਨਾਲ ਸਾਈਨ-ਇਨ ਕਰੋ"
+      }
+    },
+    "home": {
+      "todayLabel": {
+        "en": "Today",
+        "pa": "ਅੱਜ"
+      },
+      "viewTimetable": {
+        "en": "View today's timetable",
+        "pa": "ਅੱਜ ਦੀ ਸਮਾਂ-ਸਾਰਣੀ ਵੇਖੋ"
+      },
+      "feesDueIn": {
+        "en": "Fees due in {days} days",
+        "pa": "{days} ਦਿਨਾਂ ਵਿੱਚ ਫੀਸ ਦੇਣੀ ਹੈ"
+      },
+      "payNow": {
+        "en": "Pay now",
+        "pa": "ਹੁਣੇ ਭੁਗਤਾਨ ਕਰੋ"
+      },
+      "latestNotice": {
+        "en": "Latest notice",
+        "pa": "ਤਾਜ਼ਾ ਨੋਟਿਸ"
+      }
+    },
+    "timetable": {
+      "title": {
+        "en": "Timetable",
+        "pa": "ਸਮਾਂ-ਸਾਰਣੀ"
+      },
+      "noClasses": {
+        "en": "No classes scheduled today.",
+        "pa": "ਅੱਜ ਕੋਈ ਕਲਾਸ ਨਹੀਂ ਹੈ।"
+      }
+    },
+    "notices": {
+      "title": {
+        "en": "Notices",
+        "pa": "ਨੋਟਿਸ"
+      },
+      "filterAll": {
+        "en": "All",
+        "pa": "ਸਾਰੇ"
+      },
+      "filterExam": {
+        "en": "Exam",
+        "pa": "ਪਰੀਖਿਆ"
+      },
+      "filterFee": {
+        "en": "Fees",
+        "pa": "ਫੀਸ"
+      },
+      "empty": {
+        "en": "No notices yet.",
+        "pa": "ਕੋਈ ਨੋਟਿਸ ਨਹੀਂ ਹੈ।"
+      }
+    },
+    "fees": {
+      "title": {
+        "en": "Fees",
+        "pa": "ਫੀਸ"
+      },
+      "outstanding": {
+        "en": "Outstanding",
+        "pa": "ਬਕਾਇਆ"
+      },
+      "dueDate": {
+        "en": "Due {date}",
+        "pa": "{date} ਨੂੰ ਦੇਣੀ ਹੈ"
+      },
+      "payCta": {
+        "en": "Pay ₹{amount}",
+        "pa": "₹{amount} ਭੁਗਤਾਨ ਕਰੋ"
+      },
+      "history": {
+        "en": "Receipt history",
+        "pa": "ਰਸੀਦਾਂ ਦਾ ਇਤਿਹਾਸ"
+      },
+      "downloadReceipt": {
+        "en": "Download receipt",
+        "pa": "ਰਸੀਦ ਡਾਊਨਲੋਡ ਕਰੋ"
+      }
+    },
+    "profile": {
+      "title": {
+        "en": "Profile",
+        "pa": "ਪ੍ਰੋਫ਼ਾਈਲ"
+      },
+      "studentId": {
+        "en": "Student ID",
+        "pa": "ਵਿਦਿਆਰਥੀ ID"
+      },
+      "class": {
+        "en": "Class",
+        "pa": "ਜਮਾਤ"
+      },
+      "section": {
+        "en": "Section",
+        "pa": "ਸੈਕਸ਼ਨ"
+      },
+      "house": {
+        "en": "House",
+        "pa": "ਹਾਊਸ"
+      },
+      "father": {
+        "en": "Father's name",
+        "pa": "ਪਿਤਾ ਦਾ ਨਾਮ"
+      },
+      "mother": {
+        "en": "Mother's name",
+        "pa": "ਮਾਤਾ ਦਾ ਨਾਮ"
+      },
+      "logout": {
+        "en": "Sign out",
+        "pa": "ਸਾਈਨ-ਆਊਟ"
+      }
+    },
+    "errors": {
+      "generic": {
+        "en": "Something went wrong. Please try again.",
+        "pa": "ਕੁਝ ਗ਼ਲਤ ਹੋ ਗਿਆ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।"
+      },
+      "offline": {
+        "en": "You're offline. Showing cached data.",
+        "pa": "ਤੁਸੀਂ ਆਫ਼ਲਾਈਨ ਹੋ। ਪੁਰਾਣਾ ਡਾਟਾ ਵਿਖਾਇਆ ਜਾ ਰਿਹਾ ਹੈ।"
+      }
+    }
+  }
+}

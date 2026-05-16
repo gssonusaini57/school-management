@@ -1,0 +1,48 @@
+<footer class="band-indigo mt-24">
+  <div class="container py-16 px-4 grid gap-10 md:grid-cols-4">
+    <!-- Identity column -->
+    <div class="md:col-span-2 flex gap-4">
+      <img src="{{ site.crestMark }}" alt="" width="70" height="56" class="h-14 w-auto shrink-0">
+      <div>
+        <div class="font-display text-heading-md">{{ "common.schoolNameShort" | t(lang) }}</div>
+        <div class="crest-caps text-vasant-cream">{{ "common.lockup" | t(lang) }}</div>
+        <p class="mt-4 text-body-sm opacity-90 max-w-md">
+          {{ "common.shabad" | t(lang) }} <span lang="pa">·</span>
+          <span lang="pa">ਵਿਦਿਆ ਵੀਚਾਰੀ ਤਾਂ ਪਰਉਪਕਾਰੀ</span>
+        </p>
+      </div>
+    </div>
+
+    <!-- Quick links -->
+    <div>
+      <h2 class="text-caption uppercase tracking-wider opacity-70 mb-3">{{ "web.footer.quickLinks" | t(lang) }}</h2>
+      <ul class="space-y-2">
+        {% for slug in site.footer.quickLinks %}
+        {% set labelKey = "web.nav." + (slug if slug else "home") %}
+        <li><a href="{{ site.basePath }}/{{ lang }}/{{ slug }}{{ '/' if slug else '' }}" class="hover:underline">{{ labelKey | t(lang) }}</a></li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- Contact -->
+    <div>
+      <h2 class="text-caption uppercase tracking-wider opacity-70 mb-3">{{ "web.nav.contact" | t(lang) }}</h2>
+      <ul class="space-y-2 text-body-sm">
+        <li>{{ "common.address" | t(lang) }}</li>
+        <li><a href="tel:{{ '+919356331762' }}" class="hover:underline">{{ "common.phone" | t(lang) }}</a></li>
+        <li><a href="mailto:{{ 'common.email' | t(lang) }}" class="hover:underline">{{ "common.email" | t(lang) }}</a></li>
+        <li class="opacity-70">{{ "common.affiliation" | t(lang) }}</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="border-t border-white/10">
+    <div class="container py-6 px-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3 text-body-sm">
+      <span class="opacity-70">{{ "web.footer.rights" | t(lang) }}</span>
+      <div class="flex gap-6">
+        <a href="{{ site.basePath }}/{{ lang }}/privacy/" class="hover:underline opacity-80">{{ "web.footer.policy" | t(lang) }}</a>
+        <a href="{{ site.basePath }}/{{ lang }}/terms/" class="hover:underline opacity-80">{{ "web.footer.tnc" | t(lang) }}</a>
+      </div>
+    </div>
+  </div>
+</footer>

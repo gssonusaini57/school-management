@@ -1,0 +1,113 @@
+{
+  "portal": {
+    "common": {
+      "save": "ਸੰਭਾਲੋ",
+      "cancel": "ਰੱਦ ਕਰੋ",
+      "delete": "ਮਿਟਾਓ",
+      "edit": "ਸੋਧੋ",
+      "add": "ਜੋੜੋ",
+      "close": "ਬੰਦ ਕਰੋ",
+      "confirm": "ਪੁਸ਼ਟੀ ਕਰੋ",
+      "search": "ਖੋਜੋ",
+      "loading": "ਲੋਡ ਹੋ ਰਿਹਾ ਹੈ…",
+      "actions": "ਕਾਰਵਾਈਆਂ",
+      "yes": "ਹਾਂ",
+      "no": "ਨਹੀਂ",
+      "filter": "ਫ਼ਿਲਟਰ",
+      "submit": "ਜਮ੍ਹਾਂ ਕਰੋ",
+      "reset": "ਰੀਸੈੱਟ",
+      "download": "ਡਾਊਨਲੋਡ",
+      "upload": "ਅੱਪਲੋਡ",
+      "view": "ਵੇਖੋ",
+      "details": "ਵੇਰਵੇ",
+      "tryAgain": "ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ",
+      "noData": "ਅਜੇ ਕੋਈ ਡਾਟਾ ਨਹੀਂ"
+    },
+    "layout": {
+      "appName": "KIS ਪੋਰਟਲ",
+      "appTag": "ਸਕੂਲ ਪ੍ਰਬੰਧਨ",
+      "roleAdmin": "ਪ੍ਰਬੰਧਕ",
+      "roleStaff": "ਅਧਿਆਪਕ",
+      "changePassword": "ਪਾਸਵਰਡ ਬਦਲੋ",
+      "logout": "ਸਾਈਨ-ਆਊਟ",
+      "language": "ਭਾਸ਼ਾ",
+      "english": "English",
+      "punjabi": "ਪੰਜਾਬੀ",
+      "menu": "ਮੀਨੂ"
+    },
+    "nav": {
+      "sectionMain": "ਮੁੱਖ",
+      "sectionAcademic": "ਅਕਾਦਮਿਕ",
+      "sectionAdministration": "ਪ੍ਰਸ਼ਾਸਨ",
+      "sectionStationery": "ਸਟੇਸ਼ਨਰੀ",
+      "sectionResources": "ਸਰੋਤ",
+      "dashboard": "ਡੈਸ਼ਬੋਰਡ",
+      "newAdmission": "ਨਵਾਂ ਦਾਖਲਾ",
+      "students": "ਵਿਦਿਆਰਥੀ",
+      "attendance": "ਹਾਜ਼ਰੀ",
+      "marksEntry": "ਅੰਕ — ਦਰਜ ਕਰੋ",
+      "marksResults": "ਅੰਕ — ਨਤੀਜੇ",
+      "fees": "ਫੀਸ",
+      "notices": "ਨੋਟਿਸ",
+      "staff": "ਸਟਾਫ਼",
+      "reports": "ਰਿਪੋਰਟਾਂ",
+      "letterheads": "ਪੱਤਰ-ਸ਼ੀਰਸ਼ਕ",
+      "salarySlips": "ਤਨਖ਼ਾਹ ਪਰਚੀਆਂ",
+      "templates": "ਟੈਮਪਲੇਟ",
+      "mobileApps": "ਮੋਬਾਈਲ ਐਪਾਂ",
+      "deletionRequests": "ਮਿਟਾਉਣ ਦੀਆਂ ਬੇਨਤੀਆਂ"
+    },
+    "login": {
+      "signIn": "ਸਾਈਨ-ਇਨ",
+      "identifier": "ਈ-ਮੇਲ ਜਾਂ ਫ਼ੋਨ",
+      "identifierPlaceholder": "ਉਦਾਹਰਨ: admin@direct.com ਜਾਂ ਤੁਹਾਡਾ ਫ਼ੋਨ ਨੰਬਰ",
+      "password": "ਪਾਸਵਰਡ",
+      "rememberMe": "ਇਸ ਡਿਵਾਈਸ ਉੱਤੇ ਯਾਦ ਰੱਖੋ",
+      "submit": "ਸਾਈਨ-ਇਨ",
+      "submittingLabel": "ਸਾਈਨ-ਇਨ ਹੋ ਰਿਹਾ ਹੈ…",
+      "errorInvalid": "ਗ਼ਲਤ ਪ੍ਰਮਾਣ-ਪੱਤਰ। ਮੁੜ ਕੋਸ਼ਿਸ਼ ਕਰੋ।",
+      "mustChangePassword": "ਤੁਸੀਂ ਆਰਜ਼ੀ ਪਾਸਵਰਡ ਵਰਤ ਰਹੇ ਹੋ। ਕਿਰਪਾ ਕਰਕੇ ਪਾਸਵਰਡ ਬਦਲੋ।",
+      "footer": "ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ? ਦਫ਼ਤਰ ਨੂੰ ਫ਼ੋਨ ਕਰੋ +91 93563-31762।"
+    },
+    "dashboard": {
+      "title": "ਡੈਸ਼ਬੋਰਡ",
+      "subtitle": "ਅੱਜ ਦੀ ਝਲਕ",
+      "kpiStudents": "ਵਿਦਿਆਰਥੀ",
+      "kpiPresentToday": "ਅੱਜ ਹਾਜ਼ਰ",
+      "kpiFeesCollected": "ਇਸ ਮਹੀਨੇ ਇਕੱਠੀ ਕੀਤੀ ਫੀਸ",
+      "kpiNoticesActive": "ਚਾਲੂ ਨੋਟਿਸ",
+      "monthlyCollection": "ਮਹੀਨਾਵਾਰ ਫੀਸ ਉਗਰਾਹੀ",
+      "attendanceTrend": "ਹਾਜ਼ਰੀ ਦਾ ਰੁਝਾਨ",
+      "recentNotices": "ਤਾਜ਼ਾ ਨੋਟਿਸ",
+      "quickActions": "ਜਲਦੀ ਕਾਰਵਾਈਆਂ"
+    },
+    "pages": {
+      "students":     "ਵਿਦਿਆਰਥੀ",
+      "studentDetail":"ਵਿਦਿਆਰਥੀ ਵੇਰਵੇ",
+      "admitStudent": "ਨਵਾਂ ਦਾਖਲਾ",
+      "attendance":   "ਹਾਜ਼ਰੀ",
+      "marksEntry":   "ਅੰਕ ਦਰਜ ਕਰੋ",
+      "marksResults": "ਅੰਕ ਨਤੀਜੇ",
+      "fees":         "ਫੀਸ",
+      "notices":      "ਨੋਟਿਸ",
+      "staff":        "ਸਟਾਫ਼",
+      "reports":      "ਰਿਪੋਰਟਾਂ",
+      "mobileApps":   "ਮੋਬਾਈਲ ਐਪਾਂ"
+    },
+    "actions": {
+      "addStudent":   "ਵਿਦਿਆਰਥੀ ਜੋੜੋ",
+      "bulkImport":   "ਬਲਕ ਅਯਾਤ",
+      "downloadCsv":  "CSV ਡਾਊਨਲੋਡ",
+      "saveChanges":  "ਤਬਦੀਲੀਆਂ ਸੰਭਾਲੋ",
+      "exportPdf":    "PDF ਨਿਰਯਾਤ"
+    },
+    "toasts": {
+      "saved":    "ਸੰਭਾਲ ਲਿਆ।",
+      "deleted":  "ਮਿਟਾ ਦਿੱਤਾ।",
+      "created":  "ਬਣਾ ਦਿੱਤਾ।",
+      "updated":  "ਅੱਪਡੇਟ ਕਰ ਦਿੱਤਾ।",
+      "error":    "ਕੁਝ ਗ਼ਲਤ ਹੋ ਗਿਆ।",
+      "imported": "{{count}} ਕਤਾਰਾਂ ਅਯਾਤ ਹੋ ਗਈਆਂ।"
+    }
+  }
+}

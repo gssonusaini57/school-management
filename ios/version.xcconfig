@@ -1,0 +1,5 @@
+// Single source of truth for iOS app version.
+// Edit MARKETING_VERSION (e.g. 1.0.0 → 1.1.0) when you want a user-visible bump.
+// CURRENT_PROJECT_VERSION (build number) is auto-incremented by scripts/build-ios.sh.
+MARKETING_VERSION = 1.0.0
+CURRENT_PROJECT_VERSION = 1

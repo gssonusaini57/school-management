@@ -1,0 +1,123 @@
+{% extends "_base.html.j2" %}
+
+{% block doc_title %}Fee Receipt · {{ data.receiptNo }}{% endblock %}
+
+{% block page_body %}
+<div class="page">
+  <div class="tri-band"></div>
+
+  <header style="padding:18px 48px 14px; display:flex; gap:16px; align-items:center; border-bottom:1.5px solid var(--blue);">
+    <img src="{{ assets_dir }}/crest-512.png" alt="" style="width:80px; height:auto; flex-shrink:0;">
+    <div style="flex:1;">
+      <div class="display" style="font-size:24pt; color:var(--blue); line-height:1; letter-spacing:-0.015em;">Khalsa International</div>
+      <div class="caps" style="font-size:9.5pt; color:var(--ink); margin-top:5px;">SENIOR &nbsp; SECONDARY &nbsp; SCHOOL</div>
+      <div class="script" style="font-size:10pt; color:var(--ink-soft); margin-top:5px;">Jalalabad, District Patiala — Punjab · Aff. No. 4906 · PSEB</div>
+    </div>
+    <div style="text-align:right; flex-shrink:0;">
+      <div style="display:inline-block; background:var(--blue); color:#fff; padding:4px 11px; border-radius:3px; font-family:'Cinzel', serif; font-size:9.5pt; letter-spacing:0.26em; font-weight:600;">FEE RECEIPT</div>
+      <div class="mono" style="font-size:9pt; color:var(--ink-soft); margin-top:6px;">No. <b style="color:var(--ink);">{{ data.receiptNo }}</b></div>
+    </div>
+  </header>
+
+  {# Meta strip — Received from / Student / Date #}
+  <div style="padding:14px 48px 0; display:flex; gap:14px; font-size:10pt;">
+    <div style="flex:1;">
+      <div class="label">RECEIVED FROM</div>
+      <div style="margin-top:3px;">
+        {% if data.student.fatherName %}
+        <b>Sh. {{ data.student.fatherName }}</b><br>
+        {% endif %}
+        Father of <i>{{ data.student.name }}</i>
+      </div>
+    </div>
+    <div style="flex:1;">
+      <div class="label">STUDENT</div>
+      <div style="margin-top:3px;">
+        Class <b>{{ data.student.class }}{% if data.student.section %}–{{ data.student.section }}{% endif %}</b> · Roll <b>{{ data.student.rollNo }}</b>
+        {% if data.student.admissionNo %}
+        <div style="margin-top:2px;">Adm. No. <b>{{ data.student.admissionNo }}</b></div>
+        {% endif %}
+      </div>
+    </div>
+    <div style="flex:1; text-align:right;">
+      <div class="label">DATE</div>
+      <div style="margin-top:3px;"><b>{{ data.date | dt }}</b></div>
+      {% if data.term %}
+      <div style="margin-top:2px; color:var(--ink-soft);">{{ data.term }}</div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# Itemised table #}
+  <div style="padding:18px 48px 0;">
+    <table style="width:100%; border-collapse:collapse; font-size:10.5pt;">
+      <thead>
+        <tr style="background:var(--blue); color:#fff; font-family:'Cinzel', serif; font-size:9pt; letter-spacing:0.16em;">
+          <th style="padding:9px 11px; text-align:left; width:32px;">#</th>
+          <th style="padding:9px 11px; text-align:left;">PARTICULARS</th>
+          <th style="padding:9px 11px; text-align:right; width:130px;">AMOUNT (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in data['items'] %}
+        <tr style="background: {% if loop.index0 % 2 %}#FBFAF6{% else %}#FFF{% endif %};">
+          <td style="padding:9px 11px; border-bottom:1px solid #EEF0F3; color:var(--ink-faint);">{{ loop.index }}</td>
+          <td style="padding:9px 11px; border-bottom:1px solid #EEF0F3;">{{ it.particulars }}</td>
+          <td class="mono" style="padding:9px 11px; border-bottom:1px solid #EEF0F3; text-align:right;">{{ it.amount | inr }}</td>
+        </tr>
+        {% endfor %}
+        <tr>
+          <td colspan="2" style="padding:12px; text-align:right; font-family:'Playfair Display', serif; font-weight:800; font-size:13pt; color:var(--blue);">TOTAL PAID</td>
+          <td style="padding:12px; text-align:right; font-family:'Playfair Display', serif; font-weight:800; font-size:15pt; color:var(--blue); border-top:2px solid var(--blue);">{{ data.total | inr }}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    {% if data.amountInWords %}
+    <div class="script" style="margin-top:8px; font-size:11pt; color:var(--ink-soft);">
+      Rupees <b style="color:var(--ink);">{{ data.amountInWords }}</b>
+    </div>
+    {% endif %}
+  </div>
+
+  {# Payment method block #}
+  <div style="padding:18px 48px 0; display:flex; gap:18px;">
+    <div style="flex:1; background:#FBFAF6; border:1px solid #ECE6C5; border-radius:8px; padding:12px 14px; font-size:10pt;">
+      <div class="label" style="margin-bottom:6px;">MODE OF PAYMENT</div>
+      <div><b>{{ data.modeOfPayment }}</b></div>
+      {% if data.txnRef %}
+      <div class="mono" style="font-size:9pt; color:var(--ink-soft); margin-top:2px;">Txn ID: {{ data.txnRef }}</div>
+      {% endif %}
+    </div>
+    <div style="flex:1; background:#EEF9F0; border:1px solid #B9E4C2; border-radius:8px; padding:12px 14px; display:flex; align-items:center; gap:10px;">
+      <div style="width:34px; height:34px; border-radius:50%; background:#16A34A; color:#fff; display:flex; align-items:center; justify-content:center; font-size:18pt; font-weight:800; line-height:1;">✓</div>
+      <div style="font-size:11pt;">
+        <div style="font-weight:800; color:#15803D;">Payment received</div>
+        <div style="font-size:9pt; color:var(--ink-soft);">Receipt issued on {{ data.date | dt }}</div>
+      </div>
+    </div>
+  </div>
+
+  {# Sign-off #}
+  <div style="padding:36px 48px 0; display:flex; justify-content:space-between; align-items:flex-end;">
+    <div style="font-size:9pt; color:var(--ink-faint); max-width:280px; line-height:1.5;">
+      This is a computer-generated receipt. For corrections, contact the school office within 7 days of issue.
+    </div>
+    <div style="text-align:left; min-width:200px;">
+      <div class="signoff-script">For KIS</div>
+      <div class="signoff-line">
+        <b>{{ data.signatory.role if data.signatory and data.signatory.role else "Accountant" }}</b><br>
+        <span style="color:var(--ink-soft);">Office Seal &amp; Signature</span>
+      </div>
+    </div>
+  </div>
+
+  <img class="watermark" src="{{ assets_dir }}/crest-512.png" alt="">
+
+  <footer class="brand-footer">
+    <span>VIDYA · VICHAR · SEVA</span>
+    <span class="gold">EST. 2005</span>
+    <span>www.khalsainternational.in</span>
+  </footer>
+</div>
+{% endblock %}

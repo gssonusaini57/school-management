@@ -1,0 +1,128 @@
+{
+  "web": {
+    "about": {
+      "heroEyebrow":   { "en": "About", "pa": "ਸਾਡੇ ਬਾਰੇ" },
+      "heroTitle":     { "en": "Serving Patiala since 2005.", "pa": "2005 ਤੋਂ ਪਟਿਆਲਾ ਦੀ ਸੇਵਾ।" },
+      "heroBody":      { "en": "Two decades of educating Punjab's children with academic rigor and Sikh values.", "pa": "ਦੋ ਦਹਾਕੇ ਪੰਜਾਬ ਦੇ ਬੱਚਿਆਂ ਨੂੰ ਅਕਾਦਮਿਕ ਮਜ਼ਬੂਤੀ ਅਤੇ ਸਿੱਖ ਕਦਰਾਂ-ਕੀਮਤਾਂ ਨਾਲ ਪੜ੍ਹਾਉਂਦੇ ਹੋਏ।" },
+
+      "storyTitle":    { "en": "Our story", "pa": "ਸਾਡੀ ਕਹਾਣੀ" },
+      "storyBody":     { "en": "Khalsa International began in 2005 as a 60-student primary school in a single rented building. Today we serve over 1,200 students from Nursery to Class XII. Through every milestone, the founding promise has stayed the same — every child who walks in deserves an education that respects their roots and prepares them for the world.", "pa": "ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ 2005 ਵਿੱਚ ਇੱਕ ਕਿਰਾਏ ਦੀ ਇਮਾਰਤ ਵਿੱਚ 60 ਵਿਦਿਆਰਥੀਆਂ ਨਾਲ ਸ਼ੁਰੂ ਹੋਇਆ। ਅੱਜ ਅਸੀਂ ਨਰਸਰੀ ਤੋਂ ਬਾਰ੍ਹਵੀਂ ਜਮਾਤ ਤੱਕ 1,200 ਤੋਂ ਵੱਧ ਵਿਦਿਆਰਥੀਆਂ ਦੀ ਸੇਵਾ ਕਰਦੇ ਹਾਂ। ਹਰ ਮੀਲ-ਪੱਥਰ ਉੱਤੇ, ਸਾਡਾ ਪਹਿਲਾ ਵਾਅਦਾ ਉਹੀ ਰਿਹਾ ਹੈ — ਹਰ ਬੱਚਾ ਜੋ ਇੱਥੇ ਆਉਂਦਾ ਹੈ, ਉਸ ਨੂੰ ਉਹ ਸਿੱਖਿਆ ਮਿਲਣੀ ਚਾਹੀਦੀ ਹੈ ਜੋ ਉਸ ਦੀਆਂ ਜੜ੍ਹਾਂ ਦਾ ਸਤਿਕਾਰ ਕਰੇ ਅਤੇ ਉਸ ਨੂੰ ਜਗਤ ਲਈ ਤਿਆਰ ਕਰੇ।" },
+
+      "milestonesTitle": { "en": "Milestones", "pa": "ਮੀਲ-ਪੱਥਰ" },
+
+      "missionTitle":  { "en": "Mission", "pa": "ਮਿਸ਼ਨ" },
+      "missionBody":   { "en": "Educate children with academic depth, character grounded in Sikh values, and the courage to serve their community.", "pa": "ਬੱਚਿਆਂ ਨੂੰ ਅਕਾਦਮਿਕ ਡੂੰਘਾਈ, ਸਿੱਖ ਕਦਰਾਂ-ਕੀਮਤਾਂ ਉੱਤੇ ਚਰਿੱਤਰ, ਅਤੇ ਆਪਣੇ ਸਮਾਜ ਦੀ ਸੇਵਾ ਦੀ ਹਿੰਮਤ ਨਾਲ ਪੜ੍ਹਾਉਣਾ।" },
+      "visionTitle":   { "en": "Vision", "pa": "ਦ੍ਰਿਸ਼ਟੀ" },
+      "visionBody":    { "en": "A graduating class confident in their roots, curious about the world, and ready to serve.", "pa": "ਇੱਕ ਅਜਿਹੀ ਪਾਸ-ਆਊਟ ਜਮਾਤ ਜੋ ਆਪਣੀਆਂ ਜੜ੍ਹਾਂ ਉੱਤੇ ਮਾਣਮੱਤੀ ਹੋਵੇ, ਜਗਤ ਪ੍ਰਤੀ ਉਤਸੁਕ ਹੋਵੇ, ਅਤੇ ਸੇਵਾ ਲਈ ਤਿਆਰ ਹੋਵੇ।" },
+      "valuesTitle":   { "en": "Values", "pa": "ਕਦਰਾਂ-ਕੀਮਤਾਂ" },
+      "valuesBody":    { "en": "Vidya · Vichar · Seva — knowledge, clear thought, and service to community.", "pa": "ਵਿਦਿਆ · ਵੀਚਾਰ · ਸੇਵਾ — ਗਿਆਨ, ਸਪਸ਼ਟ ਸੋਚ, ਅਤੇ ਸਮਾਜ ਦੀ ਸੇਵਾ।" },
+
+      "leadershipTitle": { "en": "Leadership", "pa": "ਆਗਵਾਈ" },
+      "affiliationsTitle": { "en": "Affiliations & accreditation", "pa": "ਮਾਨਤਾਵਾਂ" }
+    },
+
+    "academics": {
+      "heroEyebrow":   { "en": "Academics", "pa": "ਅਕਾਦਮਿਕ" },
+      "heroTitle":     { "en": "Six programs. One curriculum philosophy.", "pa": "ਛੇ ਪ੍ਰੋਗਰਾਮ। ਇੱਕ ਪਾਠਕ੍ਰਮ ਸੋਚ।" },
+      "heroBody":      { "en": "From foundation play to senior streams, every classroom is shaped by the same belief — children learn best when curiosity, character, and community grow together.", "pa": "ਫਾਊਂਡੇਸ਼ਨ ਖੇਡ ਤੋਂ ਸੀਨੀਅਰ ਸਟ੍ਰੀਮਾਂ ਤੱਕ, ਹਰ ਕਲਾਸ ਉਸੇ ਵਿਸ਼ਵਾਸ ਨਾਲ ਚੱਲਦੀ ਹੈ — ਬੱਚੇ ਸਭ ਤੋਂ ਚੰਗਾ ਸਿੱਖਦੇ ਹਨ ਜਦੋਂ ਉਤਸੁਕਤਾ, ਚਰਿੱਤਰ ਅਤੇ ਸੰਗਤ ਇਕੱਠੇ ਵਧਦੇ ਹਨ।" },
+
+      "philosophyTitle": { "en": "Curriculum philosophy", "pa": "ਪਾਠਕ੍ਰਮ ਸੋਚ" },
+      "philosophyBody":  { "en": "Vidya — knowledge that lasts. Vichar — clear thought, not memorisation. Seva — service that makes learning matter. Every program ties back to these three.", "pa": "ਵਿਦਿਆ — ਜੋ ਸਦਾ ਨਾਲ ਰਹੇ। ਵੀਚਾਰ — ਯਾਦ ਨਹੀਂ, ਸਪਸ਼ਟ ਸੋਚ। ਸੇਵਾ — ਜੋ ਸਿੱਖਿਆ ਨੂੰ ਅਰਥ ਦੇਵੇ। ਹਰ ਪ੍ਰੋਗਰਾਮ ਇਨ੍ਹਾਂ ਤਿੰਨਾਂ ਨਾਲ ਜੁੜਿਆ ਹੋਇਆ ਹੈ।" },
+
+      "coCurricularTitle": { "en": "Co-curricular life", "pa": "ਪਾਠਕ੍ਰਮ ਤੋਂ ਪਰੇ" }
+    },
+
+    "admissions": {
+      "heroEyebrow":   { "en": "Admissions 2026–27", "pa": "ਦਾਖਲੇ 2026–27" },
+      "heroTitle":     { "en": "Admissions for 2026–27 are open.", "pa": "2026–27 ਲਈ ਦਾਖਲੇ ਖੁੱਲ੍ਹੇ ਹਨ।" },
+      "heroBody":      { "en": "Walk in any weekday morning, fill the form online, or call us. We'll guide you through.", "pa": "ਕਿਸੇ ਵੀ ਕੰਮ-ਦਿਨ ਦੀ ਸਵੇਰ ਨੂੰ ਆਓ, ਆਨਲਾਈਨ ਫਾਰਮ ਭਰੋ, ਜਾਂ ਫ਼ੋਨ ਕਰੋ। ਅਸੀਂ ਤੁਹਾਡੀ ਅਗਵਾਈ ਕਰਾਂਗੇ।" },
+
+      "processTitle":  { "en": "How it works", "pa": "ਪ੍ਰਕਿਰਿਆ" },
+      "processStep1":  { "en": "Pick up the form", "pa": "ਫਾਰਮ ਲਵੋ" },
+      "processStep1Body": { "en": "From the school office or download below.", "pa": "ਸਕੂਲ ਦਫ਼ਤਰ ਤੋਂ ਜਾਂ ਹੇਠੋਂ ਡਾਊਨਲੋਡ ਕਰੋ।" },
+      "processStep2":  { "en": "Submit + interaction", "pa": "ਜਮ੍ਹਾਂ ਕਰੋ + ਮੁਲਾਕਾਤ" },
+      "processStep2Body": { "en": "Drop off the filled form. We'll meet your child briefly.", "pa": "ਭਰਿਆ ਹੋਇਆ ਫਾਰਮ ਜਮ੍ਹਾਂ ਕਰਾਓ। ਅਸੀਂ ਤੁਹਾਡੇ ਬੱਚੇ ਨੂੰ ਛੋਟੀ ਜਿਹੀ ਮੁਲਾਕਾਤ ਲਈ ਮਿਲਾਂਗੇ।" },
+      "processStep3":  { "en": "Result", "pa": "ਨਤੀਜਾ" },
+      "processStep3Body": { "en": "We confirm by phone within 5 working days.", "pa": "ਅਸੀਂ 5 ਕੰਮ-ਦਿਨਾਂ ਅੰਦਰ ਫ਼ੋਨ ਉੱਤੇ ਪੁਸ਼ਟੀ ਕਰਾਂਗੇ।" },
+      "processStep4":  { "en": "Pay & confirm", "pa": "ਅਦਾਇਗੀ + ਪੁਸ਼ਟੀ" },
+      "processStep4Body": { "en": "Pay the term-1 fee online or at office.", "pa": "ਟਰਮ-1 ਦੀ ਫੀਸ ਆਨਲਾਈਨ ਜਾਂ ਦਫ਼ਤਰ ਵਿੱਚ ਜਮ੍ਹਾਂ ਕਰੋ।" },
+
+      "eligibilityTitle":  { "en": "Eligibility", "pa": "ਯੋਗਤਾ" },
+      "feesTitle":         { "en": "Fees (per year)", "pa": "ਫੀਸ (ਪ੍ਰਤੀ ਸਾਲ)" },
+      "feesNote":          { "en": "Late fee ₹ 200 per week after the due date. All fees inclusive of books and uniform.", "pa": "ਨਿਰਧਾਰਤ ਮਿਤੀ ਤੋਂ ਬਾਅਦ ₹ 200 ਪ੍ਰਤੀ ਹਫ਼ਤਾ ਲੇਟ ਫੀਸ। ਸਾਰੀਆਂ ਫੀਸਾਂ ਵਿੱਚ ਕਿਤਾਬਾਂ ਅਤੇ ਯੂਨੀਫਾਰਮ ਸ਼ਾਮਲ।" },
+      "documentsTitle":    { "en": "Documents required", "pa": "ਲੋੜੀਂਦੇ ਦਸਤਾਵੇਜ਼" },
+      "applyTitle":        { "en": "Enquire online", "pa": "ਆਨਲਾਈਨ ਪੁੱਛੋ" },
+      "applyBody":         { "en": "Tell us about your child and we'll get back the same day.", "pa": "ਆਪਣੇ ਬੱਚੇ ਬਾਰੇ ਦੱਸੋ — ਅਸੀਂ ਉਸੇ ਦਿਨ ਸੰਪਰਕ ਕਰਾਂਗੇ।" },
+      "walkInTitle":       { "en": "Walk in", "pa": "ਮਿਲਣ ਆਓ" },
+      "walkInBody":        { "en": "Mon–Sat, 9 a.m.–1 p.m. No appointment needed.", "pa": "ਸੋਮਵਾਰ–ਸ਼ਨਿੱਚਰਵਾਰ, ਸਵੇਰੇ 9 ਤੋਂ ਦੁਪਹਿਰ 1 ਵਜੇ ਤੱਕ। ਮੁਲਾਕਾਤ ਤੈਅ ਕਰਨ ਦੀ ਲੋੜ ਨਹੀਂ।" }
+    },
+
+    "notices": {
+      "heroEyebrow": { "en": "Notices", "pa": "ਨੋਟਿਸ" },
+      "heroTitle":   { "en": "School notices", "pa": "ਸਕੂਲ ਨੋਟਿਸ" },
+      "heroBody":    { "en": "Exam dates, fee deadlines, events. Filter by category below.", "pa": "ਪਰੀਖਿਆ ਮਿਤੀਆਂ, ਫੀਸ ਦੀਆਂ ਆਖਰੀ ਤਰੀਕਾਂ, ਪ੍ਰੋਗਰਾਮ। ਹੇਠਾਂ ਸ਼੍ਰੇਣੀ ਅਨੁਸਾਰ ਫ਼ਿਲਟਰ ਕਰੋ।" },
+      "filterAll":      { "en": "All",       "pa": "ਸਾਰੇ" },
+      "filterExam":     { "en": "Exam",      "pa": "ਪਰੀਖਿਆ" },
+      "filterFee":      { "en": "Fees",      "pa": "ਫੀਸ" },
+      "filterAdmission":{ "en": "Admission", "pa": "ਦਾਖਲੇ" },
+      "filterEvent":    { "en": "Event",     "pa": "ਪ੍ਰੋਗਰਾਮ" },
+      "filterResult":   { "en": "Result",    "pa": "ਨਤੀਜਾ" },
+      "filterSports":   { "en": "Sports",    "pa": "ਖੇਡਾਂ" },
+      "empty":          { "en": "No notices in this category yet.", "pa": "ਇਸ ਸ਼੍ਰੇਣੀ ਵਿੱਚ ਅਜੇ ਕੋਈ ਨੋਟਿਸ ਨਹੀਂ ਹੈ।" }
+    },
+
+    "gallery": {
+      "heroEyebrow": { "en": "Gallery", "pa": "ਗੈਲਰੀ" },
+      "heroTitle":   { "en": "Life at school in pictures.", "pa": "ਤਸਵੀਰਾਂ ਵਿੱਚ ਸਕੂਲ ਦੀ ਜ਼ਿੰਦਗੀ।" },
+      "heroBody":    { "en": "Festivals, sports day, kirtan competitions, science fairs. Browse by year.", "pa": "ਤਿਉਹਾਰ, ਖੇਡ ਦਿਵਸ, ਕੀਰਤਨ ਮੁਕਾਬਲੇ, ਸਾਇੰਸ ਪ੍ਰਦਰਸ਼ਨੀਆਂ। ਸਾਲ ਅਨੁਸਾਰ ਵੇਖੋ।" }
+    },
+
+    "contact": {
+      "heroEyebrow":  { "en": "Contact", "pa": "ਸੰਪਰਕ" },
+      "heroTitle":    { "en": "Talk to us.", "pa": "ਸਾਡੇ ਨਾਲ ਗੱਲ ਕਰੋ।" },
+      "heroBody":     { "en": "Office hours, address, and a direct form to the principal's office.", "pa": "ਦਫ਼ਤਰੀ ਘੰਟੇ, ਪਤਾ, ਅਤੇ ਪ੍ਰਿੰਸੀਪਲ ਦਫ਼ਤਰ ਨੂੰ ਸਿੱਧਾ ਫਾਰਮ।" },
+
+      "officeHoursTitle":  { "en": "Office hours", "pa": "ਦਫ਼ਤਰੀ ਘੰਟੇ" },
+      "officeHours":       { "en": "Mon–Sat · 9 a.m.–4 p.m.", "pa": "ਸੋਮਵਾਰ–ਸ਼ਨਿੱਚਰਵਾਰ · ਸਵੇਰੇ 9 ਤੋਂ ਸ਼ਾਮ 4 ਵਜੇ ਤੱਕ" },
+      "addressTitle":      { "en": "Address", "pa": "ਪਤਾ" },
+      "phoneTitle":        { "en": "Phone", "pa": "ਫ਼ੋਨ" },
+      "emailTitle":        { "en": "Email", "pa": "ਈਮੇਲ" },
+
+      "formTitle":         { "en": "Send a message", "pa": "ਸੁਨੇਹਾ ਭੇਜੋ" },
+      "fieldName":         { "en": "Name", "pa": "ਨਾਮ" },
+      "fieldPhone":        { "en": "Phone", "pa": "ਫ਼ੋਨ" },
+      "fieldEmail":        { "en": "Email (optional)", "pa": "ਈਮੇਲ (ਵਿਕਲਪਕ)" },
+      "fieldSubject":      { "en": "Subject", "pa": "ਵਿਸ਼ਾ" },
+      "fieldMessage":      { "en": "Message", "pa": "ਸੁਨੇਹਾ" },
+      "send":              { "en": "Send message", "pa": "ਸੁਨੇਹਾ ਭੇਜੋ" }
+    },
+
+    "career": {
+      "heroEyebrow": { "en": "Careers", "pa": "ਨੌਕਰੀਆਂ" },
+      "heroTitle":   { "en": "Teach with us.", "pa": "ਸਾਡੇ ਨਾਲ ਪੜ੍ਹਾਓ।" },
+      "heroBody":    { "en": "We hire teachers who care about both subject mastery and the well-being of every student.", "pa": "ਅਸੀਂ ਉਹਨਾਂ ਅਧਿਆਪਕਾਂ ਨੂੰ ਨੌਕਰੀ ਦਿੰਦੇ ਹਾਂ ਜਿਨ੍ਹਾਂ ਨੂੰ ਆਪਣੇ ਵਿਸ਼ੇ ਦੀ ਮਾਹਰਤਾ ਅਤੇ ਹਰ ਵਿਦਿਆਰਥੀ ਦੀ ਭਲਾਈ — ਦੋਵਾਂ ਦੀ ਪਰਵਾਹ ਹੈ।" },
+
+      "openingsTitle":  { "en": "Current openings", "pa": "ਮੌਜੂਦਾ ਨੌਕਰੀਆਂ" },
+      "vacancy1Title":  { "en": "TGT Mathematics — Middle School", "pa": "TGT ਗਣਿਤ — ਮੱਧ ਸਕੂਲ" },
+      "vacancy1Body":   { "en": "Class VI–VIII. B.Ed. with Mathematics specialisation. 3+ years preferred.", "pa": "ਜਮਾਤ ਛੇਵੀਂ ਤੋਂ ਅੱਠਵੀਂ। B.Ed. ਗਣਿਤ ਵਿਸ਼ੇਸ਼ਤਾ ਨਾਲ। 3+ ਸਾਲ ਦਾ ਤਜਰਬਾ ਤਰਜੀਹ।" },
+
+      "applyTitle":     { "en": "Apply", "pa": "ਅਪਲਾਈ ਕਰੋ" },
+      "applyBody":      { "en": "Send your CV (PDF, ≤ 5 MB) and a short note on why you teach.", "pa": "ਆਪਣੀ CV (PDF, ≤ 5 MB) ਅਤੇ ਤੁਸੀਂ ਕਿਉਂ ਪੜ੍ਹਾਉਂਦੇ ਹੋ — ਇਸ ਉੱਤੇ ਛੋਟੀ ਜਿਹੀ ਟਿੱਪਣੀ ਭੇਜੋ।" },
+      "fieldPosition":  { "en": "Position applied for", "pa": "ਜਿਸ ਅਹੁਦੇ ਲਈ ਅਪਲਾਈ ਕਰ ਰਹੇ ਹੋ" },
+      "fieldCv":        { "en": "CV (PDF)", "pa": "CV (PDF)" }
+    },
+
+    "parentPortal": {
+      "heroEyebrow": { "en": "Parent Portal", "pa": "ਮਾਪੇ ਪੋਰਟਲ" },
+      "heroTitle":   { "en": "The parent app is on its way.", "pa": "ਮਾਪੇ ਐਪ ਆ ਰਹੀ ਹੈ।" },
+      "heroBody":    { "en": "Timetable, notices, fees, and your child's progress — soon in your pocket. Until then, the office is happy to help in person or by phone.", "pa": "ਸਮਾਂ-ਸਾਰਣੀ, ਨੋਟਿਸ, ਫੀਸ, ਅਤੇ ਤੁਹਾਡੇ ਬੱਚੇ ਦੀ ਤਰੱਕੀ — ਜਲਦੀ ਹੀ ਤੁਹਾਡੀ ਜੇਬ ਵਿੱਚ। ਉਦੋਂ ਤੱਕ ਦਫ਼ਤਰ ਫ਼ੋਨ ਜਾਂ ਮੁਲਾਕਾਤ ਉੱਤੇ ਉਪਲਬਧ ਹੈ।" },
+      "comingSoon":  { "en": "Coming soon", "pa": "ਜਲਦੀ ਆ ਰਹੀ ਹੈ" },
+      "downloadAndroid": { "en": "Get it on Google Play", "pa": "Google Play ਉੱਤੇ ਪਾਓ" },
+      "downloadIos":     { "en": "Download on the App Store", "pa": "App Store ਤੋਂ ਡਾਊਨਲੋਡ ਕਰੋ" }
+    }
+  },
+
+  "common": {
+    "downloadForm":    { "en": "Download admission form (PDF)", "pa": "ਦਾਖਲਾ ਫਾਰਮ ਡਾਊਨਲੋਡ ਕਰੋ (PDF)" }
+  }
+}

@@ -1,0 +1,91 @@
+{% set eyebrowKey = "web.about.heroEyebrow" %}
+{% set titleKey = "web.about.heroTitle" %}
+{% set bodyKey = "web.about.heroBody" %}
+{% include "pages/page-hero.njk" %}
+
+{# ── Our Story ───────────────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-24 grid lg:grid-cols-12 gap-12">
+  <div class="lg:col-span-7">
+    <h2 class="font-display text-heading-lg text-deep-indigo mb-6">{{ "web.about.storyTitle" | t(lang) }}</h2>
+    <p class="text-body lg:text-[17px] leading-relaxed text-neutral-800">{{ "web.about.storyBody" | t(lang) }}</p>
+  </div>
+  <aside class="lg:col-span-5">
+    <h3 class="crest-caps text-khalsa-blue mb-6">{{ "web.about.milestonesTitle" | t(lang) }}</h3>
+    <ol class="space-y-5 border-l-2 border-vasant-cream pl-6">
+      {% set milestones = [
+        { year: "2005", textEn: "Founded as a 60-student primary school.", textPa: "60 ਵਿਦਿਆਰਥੀਆਂ ਦੀ ਪ੍ਰਾਇਮਰੀ ਸਕੂਲ ਵਜੋਂ ਸਥਾਪਨਾ।" },
+        { year: "2010", textEn: "Affiliated to Punjab School Education Board.", textPa: "ਪੰਜਾਬ ਸਕੂਲ ਸਿੱਖਿਆ ਬੋਰਡ ਨਾਲ ਮਾਨਤਾ-ਪ੍ਰਾਪਤ।" },
+        { year: "2015", textEn: "Senior wing (Class XI–XII) opens.", textPa: "ਸੀਨੀਅਰ ਵਿੰਗ (ਜਮਾਤ ਗਿਆਰਵੀਂ–ਬਾਰ੍ਹਵੀਂ) ਖੁੱਲ੍ਹੀ।" },
+        { year: "2020", textEn: "Digital classrooms across all sections.", textPa: "ਸਾਰੇ ਸੈਕਸ਼ਨਾਂ ਵਿੱਚ ਡਿਜੀਟਲ ਕਲਾਸਾਂ।" },
+        { year: "2023", textEn: "PSEB Best Affiliated School (district).", textPa: "ਪੀ.ਐਸ.ਈ.ਬੀ. ਜ਼ਿਲ੍ਹਾ ਪੱਧਰ ਉੱਤੇ ਸਰਵੋਤਮ ਮਾਨਤਾ-ਪ੍ਰਾਪਤ ਸਕੂਲ।" }
+      ] %}
+      {% for m in milestones %}
+      <li>
+        <div class="font-display text-heading-md text-khalsa-blue">{{ m.year }}</div>
+        <p class="text-body-sm text-neutral-700">{% if lang == 'en' %}{{ m.textEn }}{% else %}{{ m.textPa }}{% endif %}</p>
+      </li>
+      {% endfor %}
+    </ol>
+  </aside>
+</section>
+
+{# ── Mission · Vision · Values ─────────────────────────────────────── #}
+<section class="bg-neutral-50">
+  <div class="container px-4 py-16 lg:py-20 grid sm:grid-cols-3 gap-5 lg:gap-7">
+    {% set mvv = [
+      { titleKey: "web.about.missionTitle", bodyKey: "web.about.missionBody" },
+      { titleKey: "web.about.visionTitle",  bodyKey: "web.about.visionBody"  },
+      { titleKey: "web.about.valuesTitle",  bodyKey: "web.about.valuesBody"  }
+    ] %}
+    {% for c in mvv %}
+    <div class="card">
+      <h3 class="font-display text-heading-md text-deep-indigo mb-3">{{ c.titleKey | t(lang) }}</h3>
+      <p class="text-body text-neutral-700">{{ c.bodyKey | t(lang) }}</p>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── Leadership ────────────────────────────────────────────────────── #}
+<section class="container px-4 py-16 lg:py-24">
+  <h2 class="font-display text-heading-lg text-deep-indigo mb-10">{{ "web.about.leadershipTitle" | t(lang) }}</h2>
+  <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-5 lg:gap-7">
+    {% set leaders = [
+      { name: "S. Gurpreet Singh",     role: "Principal",                   credentialEn: "M.Ed., 22 years in PSEB schools" },
+      { name: "Dr. Harleen Kaur",      role: "Vice Principal · Academics",  credentialEn: "Ph.D. (Math Education), Panjab Univ." },
+      { name: "Mr. Inderjit Sandhu",   role: "Head · Sr. Sec. Sciences",    credentialEn: "M.Sc. Physics, NET-qualified" },
+      { name: "Ms. Simranpreet Kaur",  role: "Head · Primary",              credentialEn: "B.El.Ed., 15 yrs of foundation pedagogy" }
+    ] %}
+    {% for p in leaders %}
+    <article class="text-center">
+      <div class="aspect-square rounded-full bg-deep-indigo/10 mx-auto mb-4 max-w-[160px] flex items-center justify-center text-neutral-500 text-caption uppercase tracking-wider">
+        Portrait
+      </div>
+      <div class="font-semibold text-deep-indigo">{{ p.name }}</div>
+      <div class="text-caption text-khalsa-blue uppercase tracking-wider mt-1">{{ p.role }}</div>
+      <div class="text-body-sm text-neutral-600 mt-2">{{ p.credentialEn }}</div>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+
+{# ── Affiliations ──────────────────────────────────────────────────── #}
+<section class="bg-neutral-50">
+  <div class="container px-4 py-16 lg:py-20 max-w-3xl">
+    <h2 class="font-display text-heading-lg text-deep-indigo mb-6">{{ "web.about.affiliationsTitle" | t(lang) }}</h2>
+    <ul class="space-y-3 text-body">
+      <li class="flex gap-3"><span class="text-khalsa-blue font-bold">·</span><span>{{ "common.affiliation" | t(lang) }}</span></li>
+      <li class="flex gap-3"><span class="text-khalsa-blue font-bold">·</span><span>NSDL EduRegistry — verified school record</span></li>
+      <li class="flex gap-3"><span class="text-khalsa-blue font-bold">·</span><span>Department of School Education, Government of Punjab</span></li>
+    </ul>
+  </div>
+</section>
+
+{# ── Admissions CTA reuse ──────────────────────────────────────────── #}
+<section class="band-indigo">
+  <div class="container px-4 py-16 text-center">
+    <h2 class="font-display text-heading-xl mb-4">{{ "web.home.admissionsCtaTitle" | t(lang) }}</h2>
+    <p class="text-body opacity-90 mb-8 max-w-2xl mx-auto">{{ "web.home.admissionsCtaBody" | t(lang) }}</p>
+    <a href="{{ site.basePath }}/{{ lang }}/admissions/" class="btn btn-lg" style="background:var(--color-royal-gold);color:var(--color-deep-indigo);">{{ "web.home.ctaApply" | t(lang) }}</a>
+  </div>
+</section>

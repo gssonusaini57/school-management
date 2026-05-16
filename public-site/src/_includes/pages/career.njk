@@ -1,0 +1,52 @@
+{% set eyebrowKey = "web.career.heroEyebrow" %}
+{% set titleKey = "web.career.heroTitle" %}
+{% set bodyKey = "web.career.heroBody" %}
+{% include "pages/page-hero.njk" %}
+
+<section class="container px-4 py-16 lg:py-24">
+  <h2 class="font-display text-heading-lg text-deep-indigo mb-8">{{ "web.career.openingsTitle" | t(lang) }}</h2>
+  <div class="space-y-4 max-w-3xl">
+    <article class="card">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+        <div>
+          <h3 class="font-display text-heading-md text-deep-indigo mb-2">{{ "web.career.vacancy1Title" | t(lang) }}</h3>
+          <p class="text-body-sm text-neutral-700 max-w-xl">{{ "web.career.vacancy1Body" | t(lang) }}</p>
+        </div>
+        <a href="#apply" class="btn btn-primary shrink-0">{{ "web.nav.applyNow" | t(lang) }}</a>
+      </div>
+    </article>
+  </div>
+</section>
+
+<section id="apply" class="bg-neutral-50 scroll-mt-24">
+  <div class="container px-4 py-16 lg:py-20 max-w-2xl">
+    <h2 class="font-display text-heading-lg text-deep-indigo mb-3">{{ "web.career.applyTitle" | t(lang) }}</h2>
+    <p class="text-body text-neutral-700 mb-8">{{ "web.career.applyBody" | t(lang) }}</p>
+
+    <form action="/api/career/apply" method="POST" enctype="multipart/form-data" class="card space-y-4">
+      <div>
+        <label for="c-name" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldName" | t(lang) }} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+        <input id="c-name" name="name" type="text" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      </div>
+      <div class="grid sm:grid-cols-2 gap-4">
+        <div>
+          <label for="c-phone" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldPhone" | t(lang) }} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+          <input id="c-phone" name="phone" type="tel" pattern="[0-9]{10}" inputmode="numeric" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        </div>
+        <div>
+          <label for="c-email" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldEmail" | t(lang) }}</label>
+          <input id="c-email" name="email" type="email" class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        </div>
+      </div>
+      <div>
+        <label for="c-position" class="block text-body-sm font-semibold mb-1.5">{{ "web.career.fieldPosition" | t(lang) }} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+        <input id="c-position" name="position" type="text" value="{{ 'web.career.vacancy1Title' | t(lang) }}" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      </div>
+      <div>
+        <label for="c-cv" class="block text-body-sm font-semibold mb-1.5">{{ "web.career.fieldCv" | t(lang) }} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+        <input id="c-cv" name="cv" type="file" accept="application/pdf" required class="w-full text-body-sm">
+      </div>
+      <button type="submit" class="btn btn-primary w-full">{{ "common.submit" | t(lang) }}</button>
+    </form>
+  </div>
+</section>

@@ -1,0 +1,61 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+*.swp
+*.swo
+.idea/
+*.iml
+
+# Python (FastAPI backend)
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.pytest_cache/
+backend/.venv/
+backend/__pycache__/
+backend/**/__pycache__/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+backend/.env
+deploy/.env
+
+# Node / Vite (React frontend)
+node_modules/
+frontend/dist/
+frontend/node_modules/
+frontend/.env.local
+
+# Logs
+*.log
+logs/
+
+# Android (Gradle build outputs + secrets)
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/keystore/*.jks
+android/keystore/*.keystore
+android/keystore/keystore.properties
+
+# Generated APK artifact (rebuilt by scripts/build-android.sh)
+frontend/public/downloads/*.apk
+
+# Local log-backup dirs created by scripts/deploy/*/download-logs.sh
+logs_backup_test_*/
+logs_backup_prod_*/
+
+# Claude Code per-user local settings
+.claude/settings.local.json
+
+# Public marketing site (Eleventy + Tailwind CLI)
+public-site/node_modules/
+public-site/dist/

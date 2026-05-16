@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="{{ lang }}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ pageTitle | t(lang) if pageTitle else ("common.schoolName" | t(lang)) }}</title>
+  {% if metaDescription %}<meta name="description" content="{{ metaDescription | t(lang) }}">{% endif %}
+
+  <!-- hreflang pair so search engines know about the other locale -->
+  <link rel="alternate" hreflang="en" href="{{ site.baseUrl }}{{ site.basePath }}{{ page.url | flipLocale if lang == 'pa' else page.url }}">
+  <link rel="alternate" hreflang="pa" href="{{ site.baseUrl }}{{ site.basePath }}{{ page.url | flipLocale if lang == 'en' else page.url }}">
+
+  <link rel="icon" type="image/png" href="{{ site.crestMark }}">
+
+  <!-- Brand fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+Gurmukhi:wght@400;500;600;700&family=Playfair+Display:wght@400;600;700;800&display=swap">
+
+  <link rel="stylesheet" href="{{ site.cssUrl }}">
+</head>
+<body class="font-body bg-background text-foreground">
+  {% include "header.njk" %}
+
+  <main id="main">
+    {{ content | safe }}
+  </main>
+
+  {% include "footer.njk" %}
+</body>
+</html>

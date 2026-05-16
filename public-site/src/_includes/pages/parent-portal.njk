@@ -1,0 +1,33 @@
+{% set eyebrowKey = "web.parentPortal.heroEyebrow" %}
+{% set titleKey = "web.parentPortal.heroTitle" %}
+{% set bodyKey = "web.parentPortal.heroBody" %}
+{% include "pages/page-hero.njk" %}
+
+<section class="container px-4 py-16 lg:py-24">
+  <div class="max-w-3xl mx-auto grid sm:grid-cols-2 gap-5">
+    <div class="card flex flex-col items-start gap-4 opacity-70">
+      <span class="px-2 py-0.5 rounded-full bg-warning/10 text-warning text-caption uppercase tracking-wider font-semibold">
+        {{ "web.parentPortal.comingSoon" | t(lang) }}
+      </span>
+      <h2 class="font-display text-heading-md text-deep-indigo">{{ "web.parentPortal.downloadAndroid" | t(lang) }}</h2>
+      <p class="text-body-sm text-neutral-600">Google Play</p>
+    </div>
+    <div class="card flex flex-col items-start gap-4 opacity-70">
+      <span class="px-2 py-0.5 rounded-full bg-warning/10 text-warning text-caption uppercase tracking-wider font-semibold">
+        {{ "web.parentPortal.comingSoon" | t(lang) }}
+      </span>
+      <h2 class="font-display text-heading-md text-deep-indigo">{{ "web.parentPortal.downloadIos" | t(lang) }}</h2>
+      <p class="text-body-sm text-neutral-600">App Store</p>
+    </div>
+  </div>
+
+  <div class="text-center mt-10">
+    <p class="text-body-sm text-neutral-600 mb-4">
+      {% if lang == 'en' %}Staff and administrators can sign in to the management portal:
+      {% else %}ਸਟਾਫ਼ ਅਤੇ ਪ੍ਰਬੰਧਕ ਪ੍ਰਬੰਧਨ ਪੋਰਟਲ ਵਿੱਚ ਸਾਈਨ-ਇਨ ਕਰ ਸਕਦੇ ਹਨ:{% endif %}
+    </p>
+    <a href="{{ site.basePath }}/admin/login" class="btn btn-secondary">
+      {% if lang == 'en' %}Staff sign-in{% else %}ਸਟਾਫ਼ ਸਾਈਨ-ਇਨ{% endif %} →
+    </a>
+  </div>
+</section>

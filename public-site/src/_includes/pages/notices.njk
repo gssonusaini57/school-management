@@ -1,0 +1,59 @@
+{% set eyebrowKey = "web.notices.heroEyebrow" %}
+{% set titleKey = "web.notices.heroTitle" %}
+{% set bodyKey = "web.notices.heroBody" %}
+{% include "pages/page-hero.njk" %}
+
+<section class="container px-4 py-12 lg:py-16">
+  {# Filter pills (no JS — :target-style filtering would need JS to actually filter; this is the static stub) #}
+  <div role="tablist" aria-label="{{ 'web.notices.heroEyebrow' | t(lang) }}" class="flex flex-wrap gap-2 mb-8">
+    {% for f in [
+      { key: "All",       labelKey: "web.notices.filterAll" },
+      { key: "Exam",      labelKey: "web.notices.filterExam" },
+      { key: "Fee",       labelKey: "web.notices.filterFee" },
+      { key: "Admission", labelKey: "web.notices.filterAdmission" },
+      { key: "Event",     labelKey: "web.notices.filterEvent" },
+      { key: "Result",    labelKey: "web.notices.filterResult" },
+      { key: "Sports",    labelKey: "web.notices.filterSports" }
+    ] %}
+    <button type="button"
+            class="px-3 py-1.5 rounded-full border text-body-sm font-semibold
+                   {% if loop.first %}border-khalsa-blue bg-khalsa-blue text-white{% else %}border-neutral-300 text-neutral-700 hover:bg-neutral-50{% endif %}">
+      {{ f.labelKey | t(lang) }}
+    </button>
+    {% endfor %}
+  </div>
+
+  <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+    {% set notices = [
+      { category: "Exam",       date: "23 Apr 2026", title: "Pre-board examinations begin May 6", summary: "Class X and XII students should report to the hall by 8:45 a.m." },
+      { category: "Fee",        date: "18 Apr 2026", title: "Term-2 fee window closes 10 May",     summary: "Pay online via the portal or at the office. Late fee ₹ 200 per week." },
+      { category: "Event",      date: "15 Apr 2026", title: "Vaisakhi celebrations 14 May",        summary: "Kirtan, langar, and student-led plays. Parents invited." },
+      { category: "Result",     date: "10 Apr 2026", title: "PSEB Class X result — 98% pass",      summary: "Congratulations to our 2025 batch and their teachers." },
+      { category: "Admission",  date: "01 Apr 2026", title: "Counselling Mon–Sat, 9 a.m.–1 p.m.",  summary: "Walk-in or schedule a slot via the contact form." },
+      { category: "Sports",     date: "28 Mar 2026", title: "Annual Sports Day — 15 Mar",          summary: "Track, kabaddi, kho-kho. Inter-house finals all day." },
+      { category: "Exam",       date: "20 Mar 2026", title: "Final exam date sheet released",      summary: "Pinned on the school noticeboard. Also see the parent portal." },
+      { category: "Fee",        date: "15 Mar 2026", title: "Online fee payment is now live",      summary: "Use the portal — confirmation receipt by email + WhatsApp." },
+      { category: "Event",      date: "10 Mar 2026", title: "Annual day rehearsals begin",         summary: "Students participating must report at 3:30 p.m. on weekdays." },
+      { category: "Admission",  date: "05 Mar 2026", title: "Class XI streams — orientation",      summary: "Saturday 9 Mar, 10 a.m. Open to outgoing X students and parents." },
+      { category: "Result",     date: "22 Feb 2026", title: "Class X mock results published",      summary: "Result cards available at the office; counselling on request." },
+      { category: "Sports",     date: "15 Feb 2026", title: "Patiala U-14 inter-school football",  summary: "Our team finished runners-up. Congratulations to coach Sandhu and the squad." }
+    ] %}
+    {% for n in notices %}
+    <article class="card flex flex-col">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-caption uppercase tracking-wider text-khalsa-blue font-semibold">{{ n.category }}</span>
+        <span class="text-caption text-neutral-500">{{ n.date }}</span>
+      </div>
+      <h3 class="font-display text-heading-md text-deep-indigo mb-2">{{ n.title }}</h3>
+      <p class="text-body-sm text-neutral-700 mb-4">{{ n.summary }}</p>
+      <a href="{{ site.basePath }}/{{ lang }}/notices/" class="mt-auto text-khalsa-blue font-semibold hover:underline text-body-sm">{{ "common.readMore" | t(lang) }} →</a>
+    </article>
+    {% endfor %}
+  </div>
+
+  <nav aria-label="Pagination" class="flex items-center justify-center gap-2 mt-12">
+    <button type="button" class="btn btn-secondary" disabled>← {{ "common.back" | t(lang) }}</button>
+    <span class="px-4 py-2 text-body-sm text-neutral-600">1 / 1</span>
+    <button type="button" class="btn btn-secondary" disabled>{{ "common.next" | t(lang) }} →</button>
+  </nav>
+</section>

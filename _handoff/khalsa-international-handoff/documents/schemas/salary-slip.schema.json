@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "salary-slip",
+  "title": "Salary Slip",
+  "type": "object",
+  "required": [
+    "month",
+    "employee",
+    "earnings",
+    "deductions",
+    "netPay"
+  ],
+  "properties": {
+    "month": {
+      "type": "string",
+      "pattern": "^\\\\d{4}-\\\\d{2}$"
+    },
+    "employee": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "designation",
+        "department",
+        "doj"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "designation": {
+          "type": "string"
+        },
+        "department": {
+          "type": "string"
+        },
+        "doj": {
+          "type": "string",
+          "format": "date"
+        },
+        "pan": {
+          "type": "string"
+        }
+      }
+    },
+    "workingDays": {
+      "type": "integer"
+    },
+    "leavesTaken": {
+      "type": "number"
+    },
+    "earnings": {
+      "type": "object",
+      "properties": {
+        "basic": {
+          "type": "number"
+        },
+        "hra": {
+          "type": "number"
+        },
+        "da": {
+          "type": "number"
+        },
+        "conveyance": {
+          "type": "number"
+        },
+        "special": {
+          "type": "number"
+        }
+      }
+    },
+    "deductions": {
+      "type": "object",
+      "properties": {
+        "pf": {
+          "type": "number"
+        },
+        "esi": {
+          "type": "number"
+        },
+        "tds": {
+          "type": "number"
+        },
+        "advance": {
+          "type": "number"
+        }
+      }
+    },
+    "netPay": {
+      "type": "number"
+    },
+    "bank": {
+      "type": "object",
+      "properties": {
+        "accountNo": {
+          "type": "string"
+        },
+        "ifsc": {
+          "type": "string"
+        },
+        "bankName": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

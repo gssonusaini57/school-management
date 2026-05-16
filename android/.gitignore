@@ -1,0 +1,14 @@
+.gradle/
+build/
+app/build/
+local.properties
+.idea/
+*.iml
+.DS_Store
+captures/
+.cxx/
+
+# Keystore — never commit
+keystore/*.jks
+keystore/*.keystore
+keystore/keystore.properties

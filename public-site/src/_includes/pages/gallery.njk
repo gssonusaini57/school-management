@@ -1,0 +1,37 @@
+{% set eyebrowKey = "web.gallery.heroEyebrow" %}
+{% set titleKey = "web.gallery.heroTitle" %}
+{% set bodyKey = "web.gallery.heroBody" %}
+{% include "pages/page-hero.njk" %}
+
+<section class="container px-4 py-12 lg:py-16">
+  {# Year tabs — controlled via :target CSS so JS-free #}
+  <div role="tablist" class="flex gap-2 mb-8 border-b border-neutral-200">
+    {% for year in [2026, 2025, 2024] %}
+    <a href="#year-{{ year }}"
+       role="tab"
+       class="px-4 py-2 -mb-px border-b-2 font-semibold text-body-sm
+              {% if loop.first %}border-khalsa-blue text-khalsa-blue{% else %}border-transparent text-neutral-500 hover:text-deep-indigo{% endif %}">
+      {{ year }}
+    </a>
+    {% endfor %}
+  </div>
+
+  {% for year in [2026, 2025, 2024] %}
+  <div id="year-{{ year }}" {% if not loop.first %}class="hidden"{% endif %}>
+    <h2 class="sr-only">{{ year }}</h2>
+    <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 lg:gap-4">
+      {% for i in range(1, 13) %}
+      <div class="aspect-[4/3] rounded-md bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-400 text-caption uppercase tracking-wider"
+           role="img"
+           aria-label="{% if lang == 'en' %}Sample school photo {{ year }}-{{ i }}{% else %}ਸਕੂਲ ਦੀ ਨਮੂਨਾ ਫ਼ੋਟੋ {{ year }}-{{ i }}{% endif %}">
+        Photo {{ year }}-{{ i }}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <p class="text-caption text-neutral-500 mt-6">
+    {% if lang == 'en' %}Photo placeholders — real photography to be commissioned.{% else %}ਅਸਲ ਤਸਵੀਰਾਂ ਆਉਣ ਤੱਕ ਅਸਥਾਈ ਚਿੱਤਰ।{% endif %}
+  </p>
+</section>

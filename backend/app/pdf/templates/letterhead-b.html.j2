@@ -1,0 +1,73 @@
+{% extends "_base.html.j2" %}
+
+{% block doc_title %}Letterhead · {{ data.ref }}{% endblock %}
+
+{% block page_body %}
+<div class="page">
+  <header class="letterhead-modern">
+    <img class="crest" src="{{ assets_dir }}/crest-512.png" alt="">
+    <div style="flex:1;">
+      <div class="school">Khalsa International</div>
+      <div class="sub">SENIOR &nbsp; SECONDARY &nbsp; SCHOOL</div>
+      <div class="meta">Jalalabad, District Patiala — Punjab · Affiliated to P.S.E.B. · Aff. No. 4906</div>
+      <div class="contact">
+        <span class="tag">CONTACT</span>
+        <span>Mob. <b>93563-31762</b></span>
+        <span>info@khalsainternational.in</span>
+        <span>www.khalsainternational.in</span>
+      </div>
+    </div>
+  </header>
+
+  {# Gold + red ribbon strip — narrower than the tri-band, only on Format B. #}
+  <div style="height:5px; background:linear-gradient(90deg, var(--gold) 0%, var(--gold) 70%, var(--red) 70%);"></div>
+
+  <div style="padding:14px 48px 0; display:flex; justify-content:space-between; font-size:10.5pt;">
+    <div>Ref. No. <span style="border-bottom:1px dotted var(--ink-faint); display:inline-block; min-width:130px; padding:0 4px;">{{ data.ref }}</span></div>
+    <div>Dated <span style="border-bottom:1px dotted var(--ink-faint); display:inline-block; min-width:130px; padding:0 4px;">{{ data.date | dt }}</span></div>
+  </div>
+
+  <main style="padding:18px 48px 0; font-size:10.5pt; line-height:1.6;">
+    <div style="margin-bottom:12px;">
+      <div>To,</div>
+      <div style="font-weight:700; color:var(--ink);">{{ data.recipient.name }}</div>
+      {% for line in data.recipient.lines %}
+      <div style="color:var(--ink-soft);">{{ line }}</div>
+      {% endfor %}
+    </div>
+
+    <div style="margin-bottom:12px; padding-left:10px; border-left:3px solid var(--gold);">
+      <div><span class="ink-soft">Sub: </span><b>{{ data.subject.en }}</b></div>
+      {% if data.subject.pa %}
+      <div class="gurmukhi" style="font-size:10pt; color:var(--ink-soft); margin-top:2px;">{{ data.subject.pa }}</div>
+      {% endif %}
+    </div>
+
+    <div style="margin-bottom:10px;">{{ data.salutation }}</div>
+
+    {% for paragraph in data.body %}
+    <p style="margin:0 0 10px; text-align:justify;">{{ paragraph }}</p>
+    {% endfor %}
+
+    <div style="margin-top:22px;">{{ data.closing }}</div>
+
+    <div style="display:flex; justify-content:flex-end; margin-top:28px;">
+      <div style="text-align:left; min-width:220px;">
+        <div class="signoff-script">{{ data.signatory.name }}</div>
+        <div class="signoff-line">
+          <b>{{ data.signatory.role or "Principal" }}</b><br>
+          Khalsa International Sen. Sec. School
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <img class="watermark" src="{{ assets_dir }}/crest-512.png" alt="" style="right:-80px; left:auto; top:auto; bottom:60px; transform:none; width:420px;">
+
+  <footer class="brand-footer" style="background:#fff; color:var(--ink-soft); border-top:2px solid var(--gold); padding:8px 48px;">
+    <span class="caps" style="color:var(--blue); font-size:9pt;">VIDYA · VICHAR · SEVA</span>
+    <span style="font-family:'Manrope', sans-serif; letter-spacing:0; font-size:9pt;">Aff. No. 4906 · PSEB</span>
+    <span style="font-family:'Manrope', sans-serif; letter-spacing:0; font-size:9pt;">khalsainternational.in</span>
+  </footer>
+</div>
+{% endblock %}

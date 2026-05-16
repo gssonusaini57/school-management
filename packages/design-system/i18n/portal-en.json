@@ -1,0 +1,113 @@
+{
+  "portal": {
+    "common": {
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete",
+      "edit": "Edit",
+      "add": "Add",
+      "close": "Close",
+      "confirm": "Confirm",
+      "search": "Search",
+      "loading": "Loading…",
+      "actions": "Actions",
+      "yes": "Yes",
+      "no": "No",
+      "filter": "Filter",
+      "submit": "Submit",
+      "reset": "Reset",
+      "download": "Download",
+      "upload": "Upload",
+      "view": "View",
+      "details": "Details",
+      "tryAgain": "Try again",
+      "noData": "No data yet"
+    },
+    "layout": {
+      "appName": "KIS Portal",
+      "appTag": "School Management",
+      "roleAdmin": "Administrator",
+      "roleStaff": "Teacher",
+      "changePassword": "Change Password",
+      "logout": "Log Out",
+      "language": "Language",
+      "english": "English",
+      "punjabi": "ਪੰਜਾਬੀ",
+      "menu": "Menu"
+    },
+    "nav": {
+      "sectionMain": "Main",
+      "sectionAcademic": "Academic",
+      "sectionAdministration": "Administration",
+      "sectionStationery": "Stationery",
+      "sectionResources": "Resources",
+      "dashboard": "Dashboard",
+      "newAdmission": "New Admission",
+      "students": "Students",
+      "attendance": "Attendance",
+      "marksEntry": "Marks — Entry",
+      "marksResults": "Marks — Results",
+      "fees": "Fees",
+      "notices": "Notices",
+      "staff": "Staff",
+      "reports": "Reports",
+      "letterheads": "Letterheads",
+      "salarySlips": "Salary Slips",
+      "templates": "Templates",
+      "mobileApps": "Mobile Apps",
+      "deletionRequests": "Pending Deletions"
+    },
+    "login": {
+      "signIn": "Sign in",
+      "identifier": "Email or phone",
+      "identifierPlaceholder": "e.g. admin@direct.com or your phone number",
+      "password": "Password",
+      "rememberMe": "Remember me on this device",
+      "submit": "Sign in",
+      "submittingLabel": "Signing in…",
+      "errorInvalid": "Invalid credentials. Please try again.",
+      "mustChangePassword": "You're using a temporary password. Please change it from your profile.",
+      "footer": "Forgot your password? Contact the office at +91 93563-31762."
+    },
+    "dashboard": {
+      "title": "Dashboard",
+      "subtitle": "Today at a glance",
+      "kpiStudents": "Students",
+      "kpiPresentToday": "Present today",
+      "kpiFeesCollected": "Fees collected (this month)",
+      "kpiNoticesActive": "Active notices",
+      "monthlyCollection": "Monthly fee collection",
+      "attendanceTrend": "Attendance trend",
+      "recentNotices": "Recent notices",
+      "quickActions": "Quick actions"
+    },
+    "pages": {
+      "students":     "Students",
+      "studentDetail":"Student detail",
+      "admitStudent": "New admission",
+      "attendance":   "Attendance",
+      "marksEntry":   "Marks entry",
+      "marksResults": "Marks results",
+      "fees":         "Fees",
+      "notices":      "Notices",
+      "staff":        "Staff",
+      "reports":      "Reports",
+      "mobileApps":   "Mobile apps"
+    },
+    "actions": {
+      "addStudent":   "Add student",
+      "bulkImport":   "Bulk import",
+      "downloadCsv":  "Download CSV",
+      "saveChanges":  "Save changes",
+      "exportPdf":    "Export PDF"
+    },
+    "toasts": {
+      "saved":    "Saved.",
+      "deleted":  "Deleted.",
+      "created":  "Created.",
+      "updated":  "Updated.",
+      "error":    "Something went wrong.",
+      "imported": "{{count}} rows imported."
+    }
+  }
+}

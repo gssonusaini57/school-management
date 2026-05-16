@@ -1,0 +1,97 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "letterhead",
+  "title": "Letterhead",
+  "type": "object",
+  "required": [
+    "format",
+    "recipient",
+    "subject",
+    "body",
+    "date",
+    "ref"
+  ],
+  "properties": {
+    "format": {
+      "enum": [
+        "A",
+        "B"
+      ]
+    },
+    "ref": {
+      "type": "string",
+      "description": "Letter reference number, e.g. KIS/ADM/2026/0142"
+    },
+    "date": {
+      "type": "string",
+      "format": "date",
+      "description": "ISO date; rendered as DD MMM YYYY"
+    },
+    "recipient": {
+      "type": "object",
+      "required": [
+        "name",
+        "lines"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "lines": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "subject": {
+      "type": "object",
+      "required": [
+        "en",
+        "pa"
+      ],
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "pa": {
+          "type": "string"
+        }
+      }
+    },
+    "salutation": {
+      "type": "string",
+      "default": "Respected Sir/Madam,"
+    },
+    "body": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "closing": {
+      "type": "string",
+      "default": "Sincerely,"
+    },
+    "signatory": {
+      "type": "object",
+      "required": [
+        "name",
+        "role"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "role": {
+          "type": "string"
+        },
+        "signatureImage": {
+          "type": "string",
+          "description": "Optional path to signature PNG"
+        }
+      }
+    }
+  }
+}

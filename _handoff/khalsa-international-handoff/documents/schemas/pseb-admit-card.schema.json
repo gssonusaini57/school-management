@@ -1,0 +1,226 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "pseb-admit-card",
+  "title": "PSEB Admit Card",
+  "type": "object",
+  "required": [
+    "schoolCode",
+    "studentId",
+    "centre",
+    "candidate",
+    "dateSheet"
+  ],
+  "properties": {
+    "schoolCode": {
+      "type": "string"
+    },
+    "studentId": {
+      "type": "string"
+    },
+    "centre": {
+      "type": "object",
+      "required": [
+        "code",
+        "schoolCode",
+        "district",
+        "set",
+        "name"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "schoolCode": {
+          "type": "string"
+        },
+        "district": {
+          "type": "string"
+        },
+        "set": {
+          "type": "string"
+        },
+        "name": {
+          "type": "object",
+          "required": [
+            "en",
+            "pa"
+          ],
+          "properties": {
+            "en": {
+              "type": "string"
+            },
+            "pa": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "candidate": {
+      "type": "object",
+      "required": [
+        "rollNo",
+        "regNo",
+        "name",
+        "fatherName",
+        "motherName",
+        "dob",
+        "category"
+      ],
+      "properties": {
+        "rollNo": {
+          "type": "string"
+        },
+        "regNo": {
+          "type": "string"
+        },
+        "name": {
+          "type": "object",
+          "required": [
+            "en",
+            "pa"
+          ],
+          "properties": {
+            "en": {
+              "type": "string"
+            },
+            "pa": {
+              "type": "string"
+            }
+          }
+        },
+        "fatherName": {
+          "type": "object",
+          "required": [
+            "en",
+            "pa"
+          ],
+          "properties": {
+            "en": {
+              "type": "string"
+            },
+            "pa": {
+              "type": "string"
+            }
+          }
+        },
+        "motherName": {
+          "type": "object",
+          "required": [
+            "en",
+            "pa"
+          ],
+          "properties": {
+            "en": {
+              "type": "string"
+            },
+            "pa": {
+              "type": "string"
+            }
+          }
+        },
+        "dob": {
+          "type": "string",
+          "format": "date"
+        },
+        "differentlyAbled": {
+          "type": "string",
+          "default": "N.A."
+        },
+        "category": {
+          "enum": [
+            "Regular",
+            "Open"
+          ]
+        },
+        "photoUrl": {
+          "type": "string"
+        }
+      }
+    },
+    "examTime": {
+      "type": "object",
+      "required": [
+        "en",
+        "pa"
+      ],
+      "properties": {
+        "en": {
+          "type": "string"
+        },
+        "pa": {
+          "type": "string"
+        }
+      }
+    },
+    "practicalDateRange": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        }
+      }
+    },
+    "dateSheet": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "subCode",
+          "subject",
+          "theoryDate"
+        ],
+        "properties": {
+          "subCode": {
+            "type": "string"
+          },
+          "subject": {
+            "type": "object",
+            "required": [
+              "en",
+              "pa"
+            ],
+            "properties": {
+              "en": {
+                "type": "string"
+              },
+              "pa": {
+                "type": "string"
+              }
+            }
+          },
+          "theoryDate": {
+            "type": "string"
+          },
+          "practical": {
+            "enum": [
+              "Yes",
+              "No"
+            ]
+          }
+        }
+      }
+    },
+    "instructions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "en",
+          "pa"
+        ],
+        "properties": {
+          "en": {
+            "type": "string"
+          },
+          "pa": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

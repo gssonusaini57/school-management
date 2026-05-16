@@ -1,0 +1,24 @@
+{
+  "format": "B",
+  "ref": "KIS/CIRC/2026/088",
+  "date": "2026-05-02",
+  "recipient": {
+    "name": "All Parents — Class X",
+    "lines": []
+  },
+  "subject": {
+    "en": "Pre-board examination schedule",
+    "pa": "ਪ੍ਰੀ-ਬੋਰਡ ਪ੍ਰੀਖਿਆ ਸਮਾਂ-ਸਾਰਣੀ"
+  },
+  "salutation": "Dear Parents,",
+  "body": [
+    "The pre-board examinations for Class X will commence on 18 May 2026 and conclude on 30 May 2026. The detailed date sheet has been shared via the parent app.",
+    "Examinations will run from 9:00 AM to 12:00 PM. Students must report by 8:30 AM in full school uniform with their admit cards.",
+    "We request your active cooperation in ensuring regular study hours and adequate rest in the lead-up to the examinations."
+  ],
+  "closing": "Best regards,",
+  "signatory": {
+    "name": "Mr. Rajinder Singh",
+    "role": "Examination Coordinator"
+  }
+}

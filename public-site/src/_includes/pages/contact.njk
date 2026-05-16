@@ -1,0 +1,65 @@
+{% set eyebrowKey = "web.contact.heroEyebrow" %}
+{% set titleKey = "web.contact.heroTitle" %}
+{% set bodyKey = "web.contact.heroBody" %}
+{% include "pages/page-hero.njk" %}
+
+<section class="container px-4 py-16 lg:py-20">
+  <div class="grid lg:grid-cols-2 gap-12 max-w-5xl mx-auto">
+    {# Contact info #}
+    <div class="space-y-6">
+      <div>
+        <h2 class="crest-caps text-khalsa-blue mb-2">{{ "web.contact.addressTitle" | t(lang) }}</h2>
+        <p class="text-body">{{ "common.address" | t(lang) }}</p>
+      </div>
+      <div>
+        <h2 class="crest-caps text-khalsa-blue mb-2">{{ "web.contact.phoneTitle" | t(lang) }}</h2>
+        <a href="tel:+919356331762" class="text-body text-deep-indigo font-semibold hover:underline">{{ "common.phone" | t(lang) }}</a>
+      </div>
+      <div>
+        <h2 class="crest-caps text-khalsa-blue mb-2">{{ "web.contact.emailTitle" | t(lang) }}</h2>
+        <a href="mailto:info@khalsainternational.in" class="text-body text-deep-indigo font-semibold hover:underline">{{ "common.email" | t(lang) }}</a>
+      </div>
+      <div>
+        <h2 class="crest-caps text-khalsa-blue mb-2">{{ "web.contact.officeHoursTitle" | t(lang) }}</h2>
+        <p class="text-body">{{ "web.contact.officeHours" | t(lang) }}</p>
+      </div>
+      <div class="aspect-video rounded-md overflow-hidden bg-neutral-100 mt-6">
+        <iframe
+          loading="lazy"
+          title="{% if lang == 'en' %}KIS School map{% else %}ਸਕੂਲ ਦਾ ਨਕਸ਼ਾ{% endif %}"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=76.30%2C30.30%2C76.50%2C30.40&layer=mapnik"
+          class="w-full h-full border-0"></iframe>
+      </div>
+    </div>
+
+    {# Contact form #}
+    <div>
+      <h2 class="font-display text-heading-md text-deep-indigo mb-4">{{ "web.contact.formTitle" | t(lang) }}</h2>
+      <form action="/api/contact/message" method="POST" class="card space-y-4">
+        <div>
+          <label for="ct-name" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldName" | t(lang) }} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+          <input id="ct-name" name="name" type="text" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        </div>
+        <div class="grid sm:grid-cols-2 gap-4">
+          <div>
+            <label for="ct-phone" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldPhone" | t(lang) }} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+            <input id="ct-phone" name="phone" type="tel" pattern="[0-9]{10}" inputmode="numeric" required class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+          <div>
+            <label for="ct-email" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldEmail" | t(lang) }}</label>
+            <input id="ct-email" name="email" type="email" class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+          </div>
+        </div>
+        <div>
+          <label for="ct-subject" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldSubject" | t(lang) }}</label>
+          <input id="ct-subject" name="subject" type="text" class="w-full h-10 px-3 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+        </div>
+        <div>
+          <label for="ct-message" class="block text-body-sm font-semibold mb-1.5">{{ "web.contact.fieldMessage" | t(lang) }} <span class="text-sangat-red" aria-hidden="true">*</span></label>
+          <textarea id="ct-message" name="message" rows="5" required class="w-full px-3 py-2 rounded-md border border-input focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary w-full">{{ "web.contact.send" | t(lang) }}</button>
+      </form>
+    </div>
+  </div>
+</section>

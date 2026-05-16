@@ -1,0 +1,128 @@
+{
+  "schoolCode": "4906",
+  "studentId": "KIS-2024-0814",
+  "centre": {
+    "code": "C-2148",
+    "schoolCode": "4906",
+    "district": "Patiala",
+    "set": "B",
+    "name": {
+      "en": "Khalsa International Senior Secondary School",
+      "pa": "ਖ਼ਾਲਸਾ ਇੰਟਰਨੈਸ਼ਨਲ ਸੀਨੀਅਰ ਸੈਕੰਡਰੀ ਸਕੂਲ"
+    }
+  },
+  "candidate": {
+    "rollNo": "10241857",
+    "regNo": "PSEB/2026/0241857",
+    "name": {
+      "en": "Harleen Kaur",
+      "pa": "ਹਰਲੀਨ ਕੌਰ"
+    },
+    "fatherName": {
+      "en": "Sh. Jasbir Singh",
+      "pa": "ਸ੍ਰੀ ਜਸਬੀਰ ਸਿੰਘ"
+    },
+    "motherName": {
+      "en": "Smt. Manpreet Kaur",
+      "pa": "ਸ੍ਰੀਮਤੀ ਮਨਪ੍ਰੀਤ ਕੌਰ"
+    },
+    "dob": "2010-08-21",
+    "differentlyAbled": "N.A.",
+    "category": "Regular"
+  },
+  "examTime": {
+    "en": "9:00 AM to 12:15 PM",
+    "pa": "ਸਵੇਰੇ 9:00 ਤੋਂ ਦੁਪਹਿਰ 12:15 ਤੱਕ"
+  },
+  "practicalDateRange": {
+    "from": "01-03-2026",
+    "to": "20-03-2026"
+  },
+  "dateSheet": [
+    {
+      "subCode": "101",
+      "subject": {
+        "en": "Punjabi (Compulsory)",
+        "pa": "ਪੰਜਾਬੀ (ਲਾਜ਼ਮੀ)"
+      },
+      "theoryDate": "10-03-2026",
+      "practical": "No"
+    },
+    {
+      "subCode": "102",
+      "subject": {
+        "en": "English",
+        "pa": "ਅੰਗ੍ਰੇਜ਼ੀ"
+      },
+      "theoryDate": "13-03-2026",
+      "practical": "No"
+    },
+    {
+      "subCode": "103",
+      "subject": {
+        "en": "Hindi",
+        "pa": "ਹਿੰਦੀ"
+      },
+      "theoryDate": "16-03-2026",
+      "practical": "No"
+    },
+    {
+      "subCode": "201",
+      "subject": {
+        "en": "Mathematics",
+        "pa": "ਗਣਿਤ"
+      },
+      "theoryDate": "19-03-2026",
+      "practical": "No"
+    },
+    {
+      "subCode": "202",
+      "subject": {
+        "en": "Science",
+        "pa": "ਵਿਗਿਆਨ"
+      },
+      "theoryDate": "22-03-2026",
+      "practical": "Yes"
+    },
+    {
+      "subCode": "203",
+      "subject": {
+        "en": "Social Science",
+        "pa": "ਸਮਾਜਿਕ ਵਿਗਿਆਨ"
+      },
+      "theoryDate": "25-03-2026",
+      "practical": "No"
+    },
+    {
+      "subCode": "204",
+      "subject": {
+        "en": "Computer Science",
+        "pa": "ਕੰਪਿਊਟਰ ਸਾਇੰਸ"
+      },
+      "theoryDate": "28-03-2026",
+      "practical": "Yes"
+    }
+  ],
+  "instructions": [
+    {
+      "en": "Reach the centre 30 minutes before the examination.",
+      "pa": "ਪ੍ਰੀਖਿਆ ਤੋਂ 30 ਮਿੰਟ ਪਹਿਲਾਂ ਕੇਂਦਰ ਪਹੁੰਚੋ।"
+    },
+    {
+      "en": "Carry this admit card and a valid photo ID.",
+      "pa": "ਇਹ ਪ੍ਰਵੇਸ਼ ਪੱਤਰ ਅਤੇ ਫੋਟੋ ਆਈਡੀ ਨਾਲ ਲਿਆਓ।"
+    },
+    {
+      "en": "Mobile phones and electronic devices are strictly prohibited.",
+      "pa": "ਮੋਬਾਈਲ ਫੋਨ ਅਤੇ ਇਲੈਕਟ੍ਰਾਨਿਕ ਯੰਤਰ ਸਖ਼ਤ ਮਨ੍ਹਾ ਹਨ।"
+    },
+    {
+      "en": "Use only blue or black ball-point pen.",
+      "pa": "ਸਿਰਫ਼ ਨੀਲੇ ਜਾਂ ਕਾਲੇ ਬਾਲ-ਪੁਆਇੰਟ ਪੈੱਨ ਦੀ ਵਰਤੋਂ ਕਰੋ।"
+    },
+    {
+      "en": "Wear school uniform.",
+      "pa": "ਸਕੂਲ ਦੀ ਵਰਦੀ ਪਹਿਨੋ।"
+    }
+  ]
+}

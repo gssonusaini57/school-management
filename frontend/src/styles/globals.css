@@ -1,0 +1,61 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * shadcn-style HSL custom properties remapped onto the KIS palette.
+ * Existing primitives (button.tsx, input.tsx, etc.) reference these by name
+ * via tailwind.config.ts, so keeping the names stable means no rewrites.
+ *
+ * Source palette: packages/design-system/tokens.css (Khalsa Blue / Royal
+ * Gold / Sangat Red / Vasant Cream / Deep Indigo / Ink + neutral scale).
+ */
+@layer base {
+  :root {
+    --background: 0 0% 100%;            /* surface.page */
+    --foreground: 0 0% 10%;             /* color.ink */
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+
+    --primary: 225 82% 31%;             /* khalsaBlue #0E2F8E */
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 240 6% 94%;            /* neutral.100 #EEEEF0 */
+    --secondary-foreground: 0 0% 10%;
+
+    --muted: 240 6% 94%;
+    --muted-foreground: 240 4% 32%;     /* neutral.600 */
+
+    --accent: 50 100% 90%;              /* vasantCream #FFF6CC */
+    --accent-foreground: 223 84% 20%;   /* deepIndigo #08205C */
+
+    --destructive: 355 77% 50%;         /* sangatRed #E11D2C */
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 6% 86%;               /* neutral.200 */
+    --input: 240 6% 86%;
+    --ring: 225 82% 31%;                /* khalsaBlue — focus ring */
+    --radius: 0.5rem;                   /* legacy alias for shadcn rounded-md */
+  }
+}
+
+@layer base {
+  * { @apply border-border; }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: var(--font-body);
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  /* Punjabi text uses Noto Sans Gurmukhi everywhere — never falls back. */
+  :lang(pa), [lang="pa"] {
+    font-family: var(--font-gurmukhi);
+    line-height: 1.5;
+  }
+}
+
+@media print {
+  .no-print, .sidebar, .topbar { display: none !important; }
+  .main-content { margin: 0 !important; padding: 0 !important; }
+}

@@ -1,0 +1,300 @@
+{
+  "letterhead": {
+    "footerLine": {
+      "en": "Jalalabad, District Patiala — Punjab · India · 147001",
+      "pa": "ਜਲਾਲਾਬਾਦ, ਜ਼ਿਲ੍ਹਾ ਪਟਿਆਲਾ — ਪੰਜਾਬ · ਭਾਰਤ · 147001"
+    },
+    "tagline": {
+      "en": "VIDYA · VICHAR · SEVA · EST. 2005",
+      "pa": "ਵਿਦਿਆ · ਵੀਚਾਰ · ਸੇਵਾ · ਸਥਾਪਨਾ ੨੦੦੫"
+    }
+  },
+  "feeReceipt": {
+    "title": {
+      "en": "Fee Receipt",
+      "pa": "ਫੀਸ ਰਸੀਦ"
+    },
+    "receiptNo": {
+      "en": "Receipt No.",
+      "pa": "ਰਸੀਦ ਨੰ."
+    },
+    "date": {
+      "en": "Date",
+      "pa": "ਮਿਤੀ"
+    },
+    "studentName": {
+      "en": "Student name",
+      "pa": "ਵਿਦਿਆਰਥੀ ਦਾ ਨਾਮ"
+    },
+    "class": {
+      "en": "Class & section",
+      "pa": "ਜਮਾਤ ਅਤੇ ਸੈਕਸ਼ਨ"
+    },
+    "rollNo": {
+      "en": "Roll no.",
+      "pa": "ਰੋਲ ਨੰ."
+    },
+    "father": {
+      "en": "Father's name",
+      "pa": "ਪਿਤਾ ਦਾ ਨਾਮ"
+    },
+    "particulars": {
+      "en": "Particulars",
+      "pa": "ਵੇਰਵਾ"
+    },
+    "amount": {
+      "en": "Amount (₹)",
+      "pa": "ਰਕਮ (₹)"
+    },
+    "total": {
+      "en": "Total",
+      "pa": "ਕੁੱਲ"
+    },
+    "amountInWords": {
+      "en": "Amount in words",
+      "pa": "ਅੱਖਰਾਂ ਵਿੱਚ ਰਕਮ"
+    },
+    "modeOfPayment": {
+      "en": "Mode of payment",
+      "pa": "ਭੁਗਤਾਨ ਦਾ ਢੰਗ"
+    },
+    "signature": {
+      "en": "Authorised signatory",
+      "pa": "ਅਧਿਕਾਰਤ ਦਸਤਖ਼ਤ"
+    }
+  },
+  "reportCard": {
+    "title": {
+      "en": "Annual Report Card",
+      "pa": "ਸਾਲਾਨਾ ਰਿਪੋਰਟ ਕਾਰਡ"
+    },
+    "session": {
+      "en": "Session",
+      "pa": "ਸਾਲ"
+    },
+    "studentName": {
+      "en": "Student name",
+      "pa": "ਵਿਦਿਆਰਥੀ ਦਾ ਨਾਮ"
+    },
+    "subjectsHead": {
+      "en": "Subjects",
+      "pa": "ਵਿਸ਼ੇ"
+    },
+    "marksHead": {
+      "en": "Marks obtained / Max",
+      "pa": "ਅੰਕ / ਵੱਧ ਤੋਂ ਵੱਧ"
+    },
+    "gradeHead": {
+      "en": "Grade",
+      "pa": "ਗ੍ਰੇਡ"
+    },
+    "totalHead": {
+      "en": "Total",
+      "pa": "ਕੁੱਲ"
+    },
+    "percentage": {
+      "en": "Percentage",
+      "pa": "ਪ੍ਰਤੀਸ਼ਤ"
+    },
+    "rank": {
+      "en": "Class rank",
+      "pa": "ਕਲਾਸ ਰੈਂਕ"
+    },
+    "attendance": {
+      "en": "Attendance",
+      "pa": "ਹਾਜ਼ਰੀ"
+    },
+    "remarks": {
+      "en": "Class teacher's remarks",
+      "pa": "ਕਲਾਸ ਟੀਚਰ ਦੀ ਟਿੱਪਣੀ"
+    },
+    "promotionStatus": {
+      "en": "Promotion status",
+      "pa": "ਤਰੱਕੀ ਦੀ ਸਥਿਤੀ"
+    },
+    "promoted": {
+      "en": "Promoted to next class",
+      "pa": "ਅਗਲੀ ਜਮਾਤ ਵਿੱਚ ਤਰੱਕੀ"
+    },
+    "principal": {
+      "en": "Principal",
+      "pa": "ਪ੍ਰਿੰਸੀਪਲ"
+    },
+    "parentSign": {
+      "en": "Parent's signature",
+      "pa": "ਮਾਪੇ ਦੇ ਦਸਤਖ਼ਤ"
+    }
+  },
+  "salarySlip": {
+    "title": {
+      "en": "Salary Slip",
+      "pa": "ਤਨਖ਼ਾਹ ਪਰਚੀ"
+    },
+    "month": {
+      "en": "Month",
+      "pa": "ਮਹੀਨਾ"
+    },
+    "employeeId": {
+      "en": "Employee ID",
+      "pa": "ਮੁਲਾਜ਼ਮ ID"
+    },
+    "name": {
+      "en": "Name",
+      "pa": "ਨਾਮ"
+    },
+    "designation": {
+      "en": "Designation",
+      "pa": "ਅਹੁਦਾ"
+    },
+    "department": {
+      "en": "Department",
+      "pa": "ਵਿਭਾਗ"
+    },
+    "earnings": {
+      "en": "Earnings",
+      "pa": "ਆਮਦਨ"
+    },
+    "deductions": {
+      "en": "Deductions",
+      "pa": "ਕਟੌਤੀਆਂ"
+    },
+    "netPay": {
+      "en": "Net pay",
+      "pa": "ਨੈੱਟ ਤਨਖ਼ਾਹ"
+    },
+    "workingDays": {
+      "en": "Working days",
+      "pa": "ਕੰਮਕਾਜੀ ਦਿਨ"
+    },
+    "leavesTaken": {
+      "en": "Leaves taken",
+      "pa": "ਛੁੱਟੀਆਂ"
+    },
+    "bankAccount": {
+      "en": "Bank A/c",
+      "pa": "ਬੈਂਕ ਖਾਤਾ"
+    },
+    "ifsc": {
+      "en": "IFSC",
+      "pa": "IFSC"
+    }
+  },
+  "psebAdmitCard": {
+    "boardName": {
+      "en": "Punjab School Education Board",
+      "pa": "ਪੰਜਾਬ ਸਕੂਲ ਸਿੱਖਿਆ ਬੋਰਡ"
+    },
+    "title": {
+      "en": "Admit Card for Matric (Class X) Examination",
+      "pa": "ਮੈਟ੍ਰਿਕ (ਦਸਵੀਂ) ਪਰੀਖਿਆ ਲਈ ਪ੍ਰਵੇਸ਼ ਪੱਤਰ"
+    },
+    "schoolCode": {
+      "en": "School Code",
+      "pa": "ਸਕੂਲ ਕੋਡ"
+    },
+    "studentId": {
+      "en": "Student ID",
+      "pa": "ਵਿਦਿਆਰਥੀ ID"
+    },
+    "centreCode": {
+      "en": "Exam Centre Code",
+      "pa": "ਪਰੀਖਿਆ ਕੇਂਦਰ ਕੋਡ"
+    },
+    "centreSchoolCode": {
+      "en": "Centre School Code",
+      "pa": "ਕੇਂਦਰ ਸਕੂਲ ਕੋਡ"
+    },
+    "district": {
+      "en": "District Name",
+      "pa": "ਜ਼ਿਲ੍ਹਾ"
+    },
+    "set": {
+      "en": "Set",
+      "pa": "ਸੈੱਟ"
+    },
+    "examCentre": {
+      "en": "Exam Centre",
+      "pa": "ਪਰੀਖਿਆ ਕੇਂਦਰ"
+    },
+    "personalInfo": {
+      "en": "Personal Information",
+      "pa": "ਨਿੱਜੀ ਜਾਣਕਾਰੀ"
+    },
+    "rollNo": {
+      "en": "Roll No.",
+      "pa": "ਰੋਲ ਨੰ."
+    },
+    "regNo": {
+      "en": "Reg. No.",
+      "pa": "ਰਜਿ. ਨੰ."
+    },
+    "candidateName": {
+      "en": "Candidate Name",
+      "pa": "ਉਮੀਦਵਾਰ ਦਾ ਨਾਮ"
+    },
+    "father": {
+      "en": "Father's Name",
+      "pa": "ਪਿਤਾ ਦਾ ਨਾਮ"
+    },
+    "mother": {
+      "en": "Mother's Name",
+      "pa": "ਮਾਤਾ ਦਾ ਨਾਮ"
+    },
+    "differentlyAbled": {
+      "en": "Differently Abled",
+      "pa": "ਵਿਸ਼ੇਸ਼ ਯੋਗਤਾ"
+    },
+    "dob": {
+      "en": "Date of Birth",
+      "pa": "ਜਨਮ ਮਿਤੀ"
+    },
+    "regularOpen": {
+      "en": "Regular / Open",
+      "pa": "ਨਿਯਮਿਤ / ਖੁੱਲ੍ਹਾ"
+    },
+    "examTime": {
+      "en": "Examination Time",
+      "pa": "ਪਰੀਖਿਆ ਦਾ ਸਮਾਂ"
+    },
+    "practicalDate": {
+      "en": "Practical Exam Date",
+      "pa": "ਪ੍ਰੈਕਟੀਕਲ ਮਿਤੀ"
+    },
+    "dateSheet": {
+      "en": "Date Sheet",
+      "pa": "ਡੇਟ ਸ਼ੀਟ"
+    },
+    "subCode": {
+      "en": "Sub Code",
+      "pa": "ਵਿਸ਼ਾ ਕੋਡ"
+    },
+    "subjectName": {
+      "en": "Subject Name",
+      "pa": "ਵਿਸ਼ੇ ਦਾ ਨਾਮ"
+    },
+    "theoryDate": {
+      "en": "Theory Exam Date",
+      "pa": "ਥਿਊਰੀ ਪਰੀਖਿਆ ਮਿਤੀ"
+    },
+    "practical": {
+      "en": "Practical",
+      "pa": "ਪ੍ਰੈਕਟੀਕਲ"
+    },
+    "instructions": {
+      "en": "Instructions",
+      "pa": "ਹਿਦਾਇਤਾਂ"
+    },
+    "candidateSign": {
+      "en": "Signature of the Candidate",
+      "pa": "ਉਮੀਦਵਾਰ ਦੇ ਦਸਤਖ਼ਤ"
+    },
+    "headSign": {
+      "en": "Signature of Head of the School",
+      "pa": "ਸਕੂਲ ਮੁਖੀ ਦੇ ਦਸਤਖ਼ਤ"
+    },
+    "secretarySign": {
+      "en": "Secretary, PSEB",
+      "pa": "ਸਕੱਤਰ, ਪੀ.ਐਸ.ਈ.ਬੀ."
+    }
+  }
+}

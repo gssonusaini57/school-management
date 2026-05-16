@@ -1,0 +1,17 @@
+{# Reusable page-top hero — eyebrow + heading + body. Pass `eyebrowKey`,
+   `titleKey`, `bodyKey` (i18n keys). #}
+<section class="band-cream">
+  <div class="container px-4 py-12 lg:py-16">
+    {% if eyebrowKey %}
+    <div class="crest-caps text-khalsa-blue mb-3">{{ eyebrowKey | t(lang) }}</div>
+    {% endif %}
+    <h1 class="font-display text-heading-xl lg:text-display text-deep-indigo mb-4 max-w-3xl">
+      {{ titleKey | t(lang) }}
+    </h1>
+    {% if bodyKey %}
+    <p class="text-body lg:text-[17px] leading-relaxed max-w-2xl text-neutral-700">
+      {{ bodyKey | t(lang) }}
+    </p>
+    {% endif %}
+  </div>
+</section>

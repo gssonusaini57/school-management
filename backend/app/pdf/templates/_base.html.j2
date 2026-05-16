@@ -1,0 +1,194 @@
+{# Base brand frame for all KIS print docs.
+
+   Subclass with:
+     {% extends "_base.html.j2" %}
+     {% block doc_title %} ... {% endblock %}
+     {% block top_band %}{{ super() }}{% endblock %}     ← optional override
+     {% block page_body %} ... {% endblock %}             ← required
+
+   Color palette mirrors `_handoff/Khalsa Brand Identity.html`:
+     blue   #0E2F8E     gold  #F5C518     red    #E11D2C
+     deep   #08205C     paper #FBFAF6     ink    #1A1A1A
+#}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>{% block doc_title %}KIS Document{% endblock %}</title>
+  {# Brand fonts — WeasyPrint will resolve these via the URL fetcher.
+     If the network is unreachable, fonts gracefully degrade to system
+     serif / sans-serif via the CSS font-family fallback chain below. #}
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=Playfair+Display:wght@500;700;800;900&family=Manrope:wght@300;400;500;600;700;800&family=Noto+Sans+Gurmukhi:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    @page {
+      size: A4;
+      margin: 0;
+    }
+
+    :root {
+      --blue:      #0E2F8E;
+      --blue-deep: #08205C;
+      --blue-soft: #1C4EC0;
+      --gold:      #F5C518;
+      --gold-deep: #D4A410;
+      --red:       #E11D2C;
+      --red-deep:  #B51623;
+      --cream:     #FFF6CC;
+      --paper:     #FBFAF6;
+      --ink:       #1A1A1A;
+      --ink-soft:  #4B4B4B;
+      --ink-faint: #8A8A8A;
+      --rule:      #E5E7EB;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: 'Manrope', system-ui, sans-serif;
+      color: var(--ink);
+      background: #fff;
+      font-size: 11pt;
+      line-height: 1.4;
+    }
+
+    .page {
+      position: relative;
+      page-break-after: always;
+      min-height: 297mm;
+      /* Reserve room at the bottom so body content never overlaps the
+         position:fixed brand-footer (~38pt = footer padding + line). */
+      padding: 0 0 42px 0;
+    }
+    .page:last-child { page-break-after: auto; }
+
+    /* Tri-color top band — blue 60% / gold 20% / red 20% */
+    .tri-band {
+      height: 8px;
+      background: linear-gradient(
+        90deg,
+        var(--blue) 0%, var(--blue) 60%,
+        var(--gold) 60%, var(--gold) 80%,
+        var(--red)  80%, var(--red)  100%
+      );
+    }
+    .tri-band.thin { height: 6px; }
+
+    /* Display + caps + script accents */
+    h1, h2, h3, h4 { font-family: 'Playfair Display', Georgia, serif; color: var(--blue); margin: 0; }
+    .display      { font-family: 'Playfair Display', Georgia, serif; font-weight: 800; }
+    .caps         { font-family: 'Cinzel', serif; font-weight: 600; letter-spacing: 0.32em; text-transform: uppercase; }
+    .script       { font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic; color: var(--blue-soft); }
+    .gurmukhi     { font-family: 'Noto Sans Gurmukhi', sans-serif; }
+    .mono         { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    .label        { font-size: 9pt; letter-spacing: 0.16em; color: var(--ink-faint); font-weight: 700; text-transform: uppercase; }
+    .ink-soft     { color: var(--ink-soft); }
+    .ink-faint    { color: var(--ink-faint); }
+
+    /* Letterhead header — classic centered (Format A) */
+    .letterhead-classic {
+      padding: 26px 56px 18px;
+      text-align: center;
+      border-bottom: 1.5px solid var(--blue);
+    }
+    .letterhead-classic .crest { width: 110px; height: auto; margin: 0 auto; display: block; }
+    .letterhead-classic .school { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 30pt; color: var(--blue); line-height: 1.05; letter-spacing: -0.02em; margin-top: 4px; }
+    .letterhead-classic .gurmukhi { font-family: 'Noto Sans Gurmukhi', sans-serif; font-weight: 600; font-size: 11pt; color: var(--ink-soft); margin-top: 2px; }
+    .letterhead-classic .sub { font-family: 'Cinzel', serif; font-weight: 600; font-size: 11pt; letter-spacing: 0.42em; color: var(--ink); margin-top: 4px; }
+    .letterhead-classic .meta { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 10.5pt; color: var(--ink-soft); margin-top: 6px; }
+    .letterhead-classic .contact { display: flex; justify-content: center; gap: 22px; margin-top: 8px; font-size: 9pt; color: var(--ink-soft); }
+    .letterhead-classic .contact b { color: var(--ink); }
+
+    /* Letterhead header — modern asymmetric (Format B) */
+    .letterhead-modern {
+      padding: 22px 48px 14px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      border-bottom: 2px solid var(--blue);
+    }
+    .letterhead-modern .crest { width: 92px; height: auto; flex-shrink: 0; }
+    .letterhead-modern .school { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 28pt; color: var(--blue); line-height: 1; letter-spacing: -0.015em; }
+    .letterhead-modern .sub { font-family: 'Cinzel', serif; font-weight: 600; font-size: 11pt; letter-spacing: 0.38em; color: var(--ink); margin-top: 5px; }
+    .letterhead-modern .meta { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 10.5pt; color: var(--ink-soft); margin-top: 5px; }
+    .letterhead-modern .contact { font-size: 9pt; color: var(--ink-soft); margin-top: 6px; display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+    .letterhead-modern .contact .tag { color: var(--blue); font-weight: 700; font-size: 8.5pt; letter-spacing: 0.18em; }
+    .letterhead-modern .contact b { color: var(--ink); }
+
+    /* Letterhead header — compact (admit card / report card) */
+    .letterhead-compact {
+      padding: 14px 32px 10px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1.5px solid var(--blue);
+    }
+    .letterhead-compact .crest { width: 70px; height: auto; flex-shrink: 0; }
+    .letterhead-compact .school { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 20pt; color: var(--blue); line-height: 1; letter-spacing: -0.015em; }
+    .letterhead-compact .sub { font-family: 'Cinzel', serif; font-weight: 600; font-size: 9pt; letter-spacing: 0.3em; color: var(--ink); margin-top: 4px; }
+    .letterhead-compact .meta { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 9.5pt; color: var(--ink-soft); margin-top: 3px; }
+    .letterhead-compact .doc-tag {
+      display: inline-block; background: var(--blue); color: #fff; padding: 4px 11px;
+      border-radius: 3px; font-family: 'Cinzel', serif; font-size: 9.5pt; letter-spacing: 0.26em;
+      font-weight: 600;
+    }
+
+    /* Footer band — blue with motto.
+       position:fixed pins it to the bottom of every printed page, regardless
+       of content length. WeasyPrint repeats fixed elements per page; for our
+       single-page docs that means it always appears at the bottom of A4 even
+       for a 3-line letter. The .page padding-bottom reserves space so body
+       content can't slide underneath it. */
+    .brand-footer {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      padding: 10px 48px;
+      background: var(--blue);
+      color: #fff;
+      display: flex; justify-content: space-between;
+      font-family: 'Cinzel', serif;
+      font-size: 9pt; letter-spacing: 0.3em;
+    }
+    .brand-footer .gold { color: var(--gold); }
+
+    /* Watermark crest — centered on page, very faint */
+    .watermark {
+      position: absolute;
+      left: 50%; top: 58%;
+      transform: translate(-50%, -50%);
+      opacity: 0.04;
+      pointer-events: none;
+      width: 480px; height: auto;
+    }
+
+    /* Tables */
+    table.kis { width: 100%; border-collapse: collapse; }
+    table.kis th, table.kis td { padding: 7px 10px; border-bottom: 1px solid var(--rule); font-size: 10.5pt; }
+    table.kis thead th {
+      background: var(--blue); color: #fff;
+      font-family: 'Cinzel', serif; font-weight: 600;
+      font-size: 9.5pt; letter-spacing: 0.16em; text-transform: uppercase;
+      text-align: left;
+    }
+    table.kis tbody tr:nth-child(even) { background: #FBFAF6; }
+    table.kis tbody tr:last-child td { border-bottom: none; }
+
+    /* Bilingual paired text */
+    .bi { line-height: 1.25; }
+    .bi .pa { font-family: 'Noto Sans Gurmukhi', sans-serif; font-size: 9.5pt; color: var(--ink-soft); margin-top: 1px; }
+
+    /* Stat tile */
+    .stat-tile { background: #FBFAF6; border: 1px solid #ECE6C5; border-radius: 8px; padding: 10px 14px; }
+    .stat-tile .v { font-family: 'Playfair Display', serif; font-weight: 800; font-size: 20pt; color: var(--ink); line-height: 1; margin-top: 2px; }
+
+    /* Sign-off block */
+    .signoff-script { font-family: 'Cormorant Garamond', serif; font-style: italic; font-size: 24pt; color: var(--blue-soft); line-height: 1; margin-bottom: 4px; }
+    .signoff-line { border-top: 1px solid var(--ink); padding-top: 4px; font-size: 10pt; }
+    .signoff-line b { color: var(--ink); }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+{% block page_body %}{% endblock %}
+</body>
+</html>
