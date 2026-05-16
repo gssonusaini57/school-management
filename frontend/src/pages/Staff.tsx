@@ -25,6 +25,16 @@ const DESIGNATIONS = ["Class Teacher", "Subject Teacher", "Principal", "Vice Pri
 
 const isPlaceholderEmail = (email: string) => /@kis\.local$/i.test(email);
 
+// Legacy staff rows have inconsistent class-name spellings (e.g. "LKG" vs "L.K.G",
+// lower-case, missing dots). The canonical list is in CLASSES — match a raw value
+// against it by stripping non-alphanumerics and comparing case-insensitively.
+const normKey = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+const canonicalizeClass = (raw: string): string => {
+  const target = normKey(raw);
+  return CLASSES.find((c) => normKey(c) === target) ?? raw;
+};
+const canonicalizeClassList = (raw: string[]): string[] => raw.map(canonicalizeClass);
+
 function CredentialReveal({ password, employeeId, email }: { password: string; employeeId?: string; email?: string }) {
   const [show, setShow] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
@@ -162,7 +172,7 @@ export default function StaffPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-sm">{s.phone || "—"}</TableCell>
-                    <TableCell>{s.assigned_classes.map((c) => <Badge key={c} variant="info" className="mr-1">{c}</Badge>)}</TableCell>
+                    <TableCell>{canonicalizeClassList(s.assigned_classes).map((c) => <Badge key={c} variant="info" className="mr-1">{c}</Badge>)}</TableCell>
                     <TableCell className="text-right whitespace-nowrap">
                       <Button size="icon" variant="ghost" onClick={() => setEditing(s)} aria-label="Edit">
                         <Pencil className="h-4 w-4" />
@@ -396,7 +406,13 @@ function EditStaffDialog({ staff, onClose, onSaved }: { staff: Staff | null; onC
       setPhone(staff.phone || "");
       setEmail(staff.email || "");
       // ALL-classes fix: when assigned_classes=["All"], tick every checkbox (was: empty).
-      setClasses(staff.assigned_classes.includes("All") ? [...CLASSES] : staff.assigned_classes);
+      // Also canonicalize legacy spellings (e.g. "LKG" → "L.K.G") so they match the
+      // checkbox list and pre-tick correctly.
+      setClasses(
+        staff.assigned_classes.includes("All")
+          ? [...CLASSES]
+          : canonicalizeClassList(staff.assigned_classes)
+      );
       setResetPassword(false);
       setNewPassword(null);
     }

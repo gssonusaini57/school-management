@@ -17,8 +17,8 @@ log = get_logger("app.auth")
 
 # Hardcoded identifiers for the singleton admin / super-admin accounts.
 # Staff log in by their own email or phone (server-managed).
-ADMIN_EMAIL = "admin@direct.com"
-SUPER_ADMIN_EMAIL = "superadmin@direct.com"
+ADMIN_EMAIL = "admin@kis.com"
+SUPER_ADMIN_EMAIL = "superadmin@kis.com"
 
 _DIGIT_RE = re.compile(r"^\d+$")
 

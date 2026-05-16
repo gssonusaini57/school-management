@@ -9,6 +9,7 @@ pymysql==1.1.1
 cryptography==44.0.0
 pydantic==2.10.3
 pydantic-settings==2.7.0
+email-validator==2.2.0
 python-multipart==0.0.19
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1

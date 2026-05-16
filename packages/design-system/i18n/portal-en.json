@@ -60,7 +60,7 @@
     "login": {
       "signIn": "Sign in",
       "identifier": "Email or phone",
-      "identifierPlaceholder": "e.g. admin@direct.com or your phone number",
+      "identifierPlaceholder": "e.g. admin@kis.com or your phone number",
       "password": "Password",
       "rememberMe": "Remember me on this device",
       "submit": "Sign in",

@@ -25,7 +25,7 @@ struct LoginView: View {
 
                 VStack(alignment: .leading, spacing: 12) {
                     Text("Email or phone").font(.caption).foregroundStyle(.secondary)
-                    TextField("admin@direct.com or your phone number", text: $identifier)
+                    TextField("admin@kis.com or your phone number", text: $identifier)
                         .textFieldStyle(.roundedBorder)
                         .textInputAutocapitalization(.never)
                         .autocorrectionDisabled()

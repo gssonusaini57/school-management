@@ -5,8 +5,8 @@ class LoginRequest(BaseModel):
     """Unified login.
 
     `identifier` may be:
-      - the literal admin email   `admin@direct.com`
-      - the literal super-admin email `superadmin@direct.com`
+      - the literal admin email   `admin@kis.com`
+      - the literal super-admin email `superadmin@kis.com`
       - a staff `email`
       - a staff `phone` (digits only)
     """

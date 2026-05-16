@@ -60,7 +60,7 @@
     "login": {
       "signIn": "ਸਾਈਨ-ਇਨ",
       "identifier": "ਈ-ਮੇਲ ਜਾਂ ਫ਼ੋਨ",
-      "identifierPlaceholder": "ਉਦਾਹਰਨ: admin@direct.com ਜਾਂ ਤੁਹਾਡਾ ਫ਼ੋਨ ਨੰਬਰ",
+      "identifierPlaceholder": "ਉਦਾਹਰਨ: admin@kis.com ਜਾਂ ਤੁਹਾਡਾ ਫ਼ੋਨ ਨੰਬਰ",
       "password": "ਪਾਸਵਰਡ",
       "rememberMe": "ਇਸ ਡਿਵਾਈਸ ਉੱਤੇ ਯਾਦ ਰੱਖੋ",
       "submit": "ਸਾਈਨ-ਇਨ",
