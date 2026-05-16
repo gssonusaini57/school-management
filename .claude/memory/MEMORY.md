@@ -1,0 +1,23 @@
+- [User profile](user_profile.md) — Indian-market software builder; runs `uploadmytds` (Java/Spring + Angular, NSDL TIN-FC) and `school-management` (FastAPI + React for KIS) on a shared VPS.
+- [Stack preferences](feedback_stack_preferences.md) — Modern frontend stack (React+Vite+TS+Tailwind+shadcn+TanStack); FastAPI for new Python backends; bcrypt for credentials always.
+- [Reusable infra preference](feedback_reusable_infra.md) — Mirror uploadmytds's deploy framework patterns (slash commands + numbered shell scripts) when building new infra in this project.
+- [Authorization for shared credentials](feedback_credential_authorization.md) — Never auto-use credentials harvested from another project's repo without asking the user first.
+- [School-management deployed](project_school_management_deployed.md) — Live: public site /school/, admin portal /school/admin/ on test VPS 104.237.5.113. Unified login: admin@kis.com/admin123, superadmin@kis.com/super123, staff by email-or-phone+pw.
+- [Staff auth revamp](project_staff_auth_revamp.md) — Session 10. access_code → email/phone+password across web/Android/iOS; auto-gen Employee IDs; force_password_change flag; ChangePassword screens; admin emails hardcoded in auth.py.
+- [Class-templated bulk PDF flow](project_pdf_templates_flow.md) — Per-class template + per-student data + cached blobs for Report Cards & PSEB Admit Cards. Routes at /admin/templates. Tables: pdf_templates, pdf_student_data, pdf_cache.
+- [Soft-delete + super-admin workflow](project_soft_delete_workflow.md) — Session 9. 3-state (active/pending_delete/deleted) on students+staff; new super_admin singleton (`superadmin/super123`); approval queue at /deletion-requests; admin/staff request → super-admin approve/restore/purge.
+- [Test VPS shared with uploadmytds](project_shared_vps.md) — 104.237.5.113 hosts both uploadmytds (Tomcat 8080) and school-management (gunicorn 8000) under nginx; MySQL shared.
+- [GitHub repo](reference_github_repo.md) — `gssonusaini57/school-management`.
+- [uploadmytds project location](reference_uploadmytds_project.md) — `/Users/manjeetsaini/Documents/GitHub/uploadmytds` is the sister project whose deploy patterns we mirror.
+- [Plan file location](reference_plan_file.md) — Active plan at `/Users/manjeetsaini/.claude/plans/reactive-chasing-crab.md` (overwritten across sessions; never fork to new paths).
+- [Slash commands inventory](reference_slash_commands.md) — `.claude/commands/` has 8 deploy/provision commands mirroring uploadmytds.
+- [Form UX patterns](feedback_form_ux_patterns.md) — Indian-school forms: digits-only phone/aadhaar with exact-length, Title-Case names, dropdowns over free-text, inline errors that don't auto-dismiss.
+- [CSV bulk-import pattern](feedback_csv_import_pattern.md) — Template download + per-row validation + sticky error table; never abort on first bad row. Shared `_bulk.py` helper + `BulkImportDialog` component.
+- [SPA subpath routing](feedback_spa_subpath_routing.md) — `/school/` prefix lives in `import.meta.env.BASE_URL`; vite/React Router/api redirect/nginx `try_files` all read from it. Never hardcode `/`.
+- [No native HTML date input](feedback_no_native_date_input.md) — Always use `<DatePicker>` from `@/components/ui/date-picker`; `<Input type="date">` is banned across this repo.
+- [Android teacher app shipped](project_android_teacher_app.md) — Native Kotlin/Compose APK at `/school/downloads/kis-attendance.apk` (linked from web Login). Source in `android/`; release keystore is irreplaceable.
+- [iOS app scaffolded](project_ios_app_scaffold.md) — SwiftUI source in `ios/` mirrors `android/`. XcodeGen-driven (`.xcodeproj` not committed). Distribution requires Apple Dev account ($99/yr).
+- [XcodeGen pattern](feedback_xcodegen_pattern.md) — `ios/project.yml` is source of truth; never commit `.xcodeproj` or edit it directly. New Swift files are auto-included; just drop them in `ios/KisAttendance/`.
+- [WeasyPrint footer/header pinning](feedback_weasyprint_pdf_pinning.md) — Use `position: fixed` (not absolute) for any pinned PDF chrome; absolute collapses on short content. Add `padding-bottom` to `.page` so body content can't slide under.
+- [LogRecord `extra` reserved keys](feedback_logrecord_extra_reserved.md) — Python `log.info(..., extra={"name": ...})` crashes with KeyError because `name` is a built-in LogRecord attribute. Same applies to `msg/args/levelname/...` Use domain prefixes (`student_name`, `actor`, `request_id`).
+- [No Claude co-author trailer](feedback_no_claude_coauthor.md) — Do not append `Co-Authored-By: Claude ...` to commit messages on this user's projects.
