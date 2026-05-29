@@ -25,7 +25,8 @@ export default function ForgotPassword() {
     try {
       // Endpoint always returns a generic success — never reveals whether the
       // email exists, so we just flip to the "check your email" state.
-      await api.post("/auth/forgot-password", { email: email.trim() });
+      // Backend field is `identifier` (same email/phone accepted by /auth/login).
+      await api.post("/auth/forgot-password", { identifier: email.trim() });
       setSent(true);
     } catch (e) {
       toast(apiError(e), "error");
