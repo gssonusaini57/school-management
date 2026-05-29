@@ -13,8 +13,8 @@
 const basePath = process.env.SITE_BASE_PATH ?? "/school";
 
 module.exports = {
-  domain: "khalsainternational.in",
-  baseUrl: "https://www.khalsainternational.in",
+  domain: "kisschool.in",
+  baseUrl: "https://www.kisschool.in",
   basePath,
   // Pages in the order they appear in the site header. Each entry has a slug
   // (used to compute /<lang>/<slug>/) and an i18n key for its label.
