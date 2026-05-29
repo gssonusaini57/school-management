@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.config import settings
 from app.db import Base
-from app.models import admin, staff, student, document, attendance, marks, fee, notice, pdf_template  # noqa
+from app.models import admin, staff, student, document, attendance, marks, fee, notice, pdf_template, student_edit_request, class_subject, marks_batch, password_reset  # noqa
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.DATABASE_URL)

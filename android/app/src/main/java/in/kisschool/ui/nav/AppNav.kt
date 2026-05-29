@@ -1,0 +1,192 @@
+package `in`.kisschool.ui.nav
+
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
+import `in`.kisschool.di.AppContainer
+import `in`.kisschool.ui.screens.attendance.AttendanceScreen
+import `in`.kisschool.ui.screens.attendance.AttendanceViewModel
+import `in`.kisschool.ui.screens.history.HistoryScreen
+import `in`.kisschool.ui.screens.history.HistoryViewModel
+import `in`.kisschool.ui.screens.home.HomeScreen
+import `in`.kisschool.ui.screens.login.ChangePasswordScreen
+import `in`.kisschool.ui.screens.login.ChangePasswordViewModel
+import `in`.kisschool.ui.screens.login.LoginScreen
+import `in`.kisschool.ui.screens.login.LoginViewModel
+import `in`.kisschool.ui.screens.marks.MarksEntryScreen
+import `in`.kisschool.ui.screens.marks.MarksEntryViewModel
+import `in`.kisschool.ui.screens.studentdetail.StudentDetailScreen
+import `in`.kisschool.ui.screens.studentdetail.StudentDetailViewModel
+import `in`.kisschool.ui.screens.studentedit.EditStudentScreen
+import `in`.kisschool.ui.screens.studentedit.EditStudentViewModel
+import `in`.kisschool.ui.screens.students.StudentsScreen
+import `in`.kisschool.ui.screens.students.StudentsViewModel
+
+object Routes {
+    const val LOGIN = "login"
+    const val CHANGE_PASSWORD = "change-password"
+    const val HOME = "home"
+    const val ATTENDANCE = "attendance"
+    const val HISTORY = "history"
+    const val STUDENTS = "students"
+    const val STUDENT_DETAIL = "student/{id}"
+    const val STUDENT_EDIT = "student/{id}/edit"
+    const val MARKS = "marks"
+    fun studentDetail(id: Long) = "student/$id"
+    fun studentEdit(id: Long) = "student/$id/edit"
+}
+
+@Composable
+fun AppNav(navController: NavHostController, startRoute: String, container: AppContainer) {
+    NavHost(navController = navController, startDestination = startRoute) {
+
+        composable(Routes.LOGIN) {
+            val vm = viewModel { LoginViewModel(container.authRepo) }
+            LoginScreen(
+                vm = vm,
+                onLoggedIn = { mustChange ->
+                    val target = if (mustChange) Routes.CHANGE_PASSWORD else Routes.HOME
+                    navController.navigate(target) {
+                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.CHANGE_PASSWORD) {
+            val vm = viewModel { ChangePasswordViewModel(container.authRepo) }
+            ChangePasswordScreen(
+                vm = vm,
+                onDone = {
+                    navController.navigate(Routes.HOME) {
+                        popUpTo(Routes.CHANGE_PASSWORD) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.HOME) {
+            HomeScreen(
+                userName = container.authRepo.displayName ?: "Teacher",
+                onTakeAttendance = { navController.navigate(Routes.ATTENDANCE) },
+                onViewHistory = { navController.navigate(Routes.HISTORY) },
+                onViewStudents = { navController.navigate(Routes.STUDENTS) },
+                onMarksEntry = { navController.navigate(Routes.MARKS) },
+                onLogout = {
+                    container.authRepo.logout()
+                    navController.navigate(Routes.LOGIN) {
+                        popUpTo(0) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Routes.MARKS) {
+            val vm = viewModel {
+                MarksEntryViewModel(
+                    studentRepo = container.studentRepo,
+                    marksRepo = container.marksRepo,
+                    allowedClasses = container.authRepo.allowedClasses
+                )
+            }
+            MarksEntryScreen(vm = vm, onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.ATTENDANCE) {
+            val vm = viewModel {
+                AttendanceViewModel(
+                    studentRepo = container.studentRepo,
+                    attendanceRepo = container.attendanceRepo,
+                    allowedClasses = container.authRepo.allowedClasses
+                )
+            }
+            AttendanceScreen(vm = vm, onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.HISTORY) {
+            val vm = viewModel {
+                HistoryViewModel(
+                    studentRepo = container.studentRepo,
+                    attendanceRepo = container.attendanceRepo,
+                    allowedClasses = container.authRepo.allowedClasses
+                )
+            }
+            HistoryScreen(vm = vm, onBack = { navController.popBackStack() })
+        }
+
+        composable(Routes.STUDENTS) {
+            val vm = viewModel {
+                StudentsViewModel(
+                    studentRepo = container.studentRepo,
+                    allowedClasses = container.authRepo.allowedClasses
+                )
+            }
+            StudentsScreen(
+                vm = vm,
+                onOpenStudent = { id -> navController.navigate(Routes.studentDetail(id)) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.STUDENT_DETAIL,
+            arguments = listOf(navArgument("id") { type = NavType.LongType })
+        ) { entry ->
+            val id = entry.arguments?.getLong("id") ?: 0L
+            val vm = viewModel {
+                StudentDetailViewModel(
+                    studentRepo = container.studentRepo,
+                    studentId = id,
+                    allowedClasses = container.authRepo.allowedClasses
+                )
+            }
+            // When the edit screen pops back with a success result, refresh so the
+            // pending-approval lock reflects the just-submitted edit.
+            val edited by entry.savedStateHandle
+                .getStateFlow("student_edited", false)
+                .collectAsStateWithLifecycle()
+            LaunchedEffect(edited) {
+                if (edited) {
+                    vm.reload()
+                    entry.savedStateHandle["student_edited"] = false
+                }
+            }
+            StudentDetailScreen(
+                vm = vm,
+                onEdit = { navController.navigate(Routes.studentEdit(id)) },
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        composable(
+            route = Routes.STUDENT_EDIT,
+            arguments = listOf(navArgument("id") { type = NavType.LongType })
+        ) { entry ->
+            val id = entry.arguments?.getLong("id") ?: 0L
+            val vm = viewModel {
+                EditStudentViewModel(
+                    studentRepo = container.studentRepo,
+                    studentId = id,
+                    allowedClasses = container.authRepo.allowedClasses,
+                    authToken = container.tokenStore.token
+                )
+            }
+            EditStudentScreen(
+                vm = vm,
+                onSaved = {
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle?.set("student_edited", true)
+                    navController.popBackStack()
+                },
+                onBack = { navController.popBackStack() }
+            )
+        }
+    }
+}

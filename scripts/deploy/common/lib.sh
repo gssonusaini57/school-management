@@ -95,8 +95,9 @@ EOF
 
 # ── Build frontend locally ─────────────────────────────────────────────────
 local_frontend_build() {
-  log_info "Building frontend (Vite)…"
-  ( cd "$REPO_ROOT/frontend" && npm ci --silent --no-audit --no-fund && npm run build )
+  log_info "Building frontend (Vite, base=${VITE_BASE:-/school/admin/})…"
+  ( cd "$REPO_ROOT/frontend" && npm ci --silent --no-audit --no-fund \
+      && VITE_BASE="${VITE_BASE:-/school/admin/}" VITE_API_URL="${VITE_API_URL:-/school/api}" npm run build )
   [ -f "$REPO_ROOT/frontend/dist/index.html" ] || die "Vite build missing dist/index.html"
   log_ok "Frontend built ($(du -sh "$REPO_ROOT/frontend/dist" | awk '{print $1}'))"
 }
@@ -167,14 +168,14 @@ deploy_full() {
   fi
 
   log_step "Health check"
-  local HEALTH_URL="https://${DOMAIN}/school/api/health"
+  local HEALTH_URL="https://${DOMAIN}${HEALTH_PATH:-/school/api/health}"
   if ! health_wait "$HEALTH_URL"; then
     log_err "Health check failed — rolling back"
     remote_rollback "$SNAP_TS"
     return 1
   fi
 
-  log_ok "Deployed at $(date '+%Y-%m-%d %H:%M:%S') · URL: https://${DOMAIN}/school/"
+  log_ok "Deployed at $(date '+%Y-%m-%d %H:%M:%S') · URL: https://${DOMAIN}${SITE_URL_PATH:-/school/}"
   log_info "Snapshot retained: app_${SNAP_TS}.tgz · db_${SNAP_TS}.sql.gz"
 }
 
@@ -197,13 +198,13 @@ deploy_backend_only() {
   fi
 
   log_step "Health check"
-  local HEALTH_URL="https://${DOMAIN}/school/api/health"
+  local HEALTH_URL="https://${DOMAIN}${HEALTH_PATH:-/school/api/health}"
   if ! health_wait "$HEALTH_URL"; then
     log_err "Health check failed — rolling back"
     remote_rollback "$SNAP_TS"
     return 1
   fi
-  log_ok "Backend deployed · URL: https://${DOMAIN}/school/api/health"
+  log_ok "Backend deployed · URL: ${HEALTH_URL}"
 }
 
 deploy_frontend_only() {
@@ -214,13 +215,15 @@ deploy_frontend_only() {
   push_frontend
 
   ssh_run "chown -R school:school /opt/school-management/frontend"
-  log_ok "Frontend deployed · URL: https://${DOMAIN}/school/"
+  log_ok "Frontend deployed · URL: https://${DOMAIN}${SITE_URL_PATH:-/school/}"
 }
 
 # ── Public marketing site (Eleventy + Tailwind CLI) ────────────────────────
 local_public_site_build() {
-  log_info "Building public-site (Eleventy + Tailwind)…"
-  ( cd "$REPO_ROOT/public-site" && npm ci --silent --no-audit --no-fund && npm run build )
+  log_info "Building public-site (Eleventy + Tailwind, basePath='${SITE_BASE_PATH-/school}')…"
+  # Note: `-` (not `:-`) so an explicit empty SITE_BASE_PATH (prod, apex root) is honoured.
+  ( cd "$REPO_ROOT/public-site" && npm ci --silent --no-audit --no-fund \
+      && SITE_BASE_PATH="${SITE_BASE_PATH-/school}" npm run build )
   [ -f "$REPO_ROOT/public-site/dist/index.html" ] || die "Public-site build missing dist/index.html"
   [ -f "$REPO_ROOT/public-site/dist/en/index.html" ] || die "Public-site build missing dist/en/index.html"
   [ -f "$REPO_ROOT/public-site/dist/pa/index.html" ] || die "Public-site build missing dist/pa/index.html"

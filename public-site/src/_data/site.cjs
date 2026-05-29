@@ -7,8 +7,10 @@
 
 // URL prefix the static site is mounted under in nginx. Keep the trailing
 // slash off — templates concatenate it as `{{ site.basePath }}/{{ lang }}/...`.
-// Set to "" if the site is served at the apex domain root.
-const basePath = "/school";
+// Build-time configurable via SITE_BASE_PATH (set by scripts/deploy/<env>/env.sh):
+// TEST serves under "/school", PROD serves at the apex root (empty string "").
+// `??` keeps the default only for null/undefined, so an explicit "" is honoured.
+const basePath = process.env.SITE_BASE_PATH ?? "/school";
 
 module.exports = {
   domain: "khalsainternational.in",

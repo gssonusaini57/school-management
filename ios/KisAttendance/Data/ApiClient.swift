@@ -16,13 +16,13 @@ enum ApiError: LocalizedError {
     }
 }
 
-/// HTTP client that mounts every call under `https://expressonly.in/school/api/`,
+/// HTTP client that mounts every call under `https://kisschool.in/api/`,
 /// attaches the JWT, and broadcasts a logout request on 401.
 final class ApiClient {
 
     static let shared = ApiClient()
 
-    private let baseURL = URL(string: "https://expressonly.in/school/api/")!
+    private let baseURL = URL(string: "https://kisschool.in/api/")!
     private let session: URLSession
 
     /// SwiftUI views observe this stream to react to forced logouts (mirrors the

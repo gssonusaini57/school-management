@@ -10,6 +10,7 @@ from ..schemas.student import (
 from ..models.student import Student
 from ..models.document import StudentDocument, DocumentKind
 from ..models.record_status import RecordStatus
+from ..models.student_edit_request import StudentEditRequest, EditRequestStatus, EditRequestRole
 from ..events import broker
 from ..logging_config import get_logger
 from ._bulk import read_csv, title_case, parse_date_field, must_str, opt_str, FieldError, error_dict
@@ -32,6 +33,62 @@ def _to_out(db: Session, s: Student) -> StudentOut:
     out.has_dob_cert = _has(db, s.id, DocumentKind.dob_cert)
     out.has_aadhar = _has(db, s.id, DocumentKind.aadhar)
     return out
+
+
+def _decorate_pending_edit(db: Session, out: StudentOut, sid: int) -> StudentOut:
+    """Single-row decoration: surface the full pending-edit metadata."""
+    req = db.execute(
+        select(StudentEditRequest)
+        .where(
+            StudentEditRequest.student_id == sid,
+            StudentEditRequest.status == EditRequestStatus.pending,
+        )
+        .order_by(StudentEditRequest.requested_at.desc())
+        .limit(1)
+    ).scalars().first()
+    if req:
+        out.has_pending_edit = True
+        out.pending_edit_request_id = req.id
+        out.pending_edit_requested_by = req.requested_by
+        out.pending_edit_requested_at = req.requested_at
+    return out
+
+
+def _decorate_list_pending_edits(db: Session, items: list[StudentOut]) -> None:
+    """Batch-decorate `has_pending_edit` on a list response with one query.
+
+    Avoids N+1 by collecting all student ids on the page and looking up the
+    set of those with a pending edit. The full requester/timestamp fields stay
+    null on list rows (only the single-row reader populates them).
+    """
+    ids = [i.id for i in items]
+    if not ids:
+        return
+    rows = db.execute(
+        select(StudentEditRequest.student_id)
+        .where(
+            StudentEditRequest.student_id.in_(ids),
+            StudentEditRequest.status == EditRequestStatus.pending,
+        )
+        .distinct()
+    ).scalars().all()
+    pending_ids = set(rows)
+    for it in items:
+        if it.id in pending_ids:
+            it.has_pending_edit = True
+
+
+def _jsonify(v):
+    """Coerce DB / Pydantic values to JSON-safe primitives for the diff blob."""
+    if v is None or isinstance(v, (str, int, float, bool)):
+        return v
+    if isinstance(v, Decimal):
+        return str(v)
+    # date / datetime
+    iso = getattr(v, "isoformat", None)
+    if callable(iso):
+        return iso()
+    return str(v)
 
 
 def _compute_admission_id(year: int, admission_no: int | None) -> str | None:
@@ -82,6 +139,7 @@ def list_students(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=1000),
     include_deleted: bool = Query(default=False),
+    status: str | None = Query(default=None, description="Filter by record status (e.g. pending_delete)"),
     user: CurrentUser = Depends(current_user),
     db: Session = Depends(db_dep),
 ):
@@ -91,8 +149,14 @@ def list_students(
         stmt = stmt.where(Student.class_name == class_name)
     elif user.role == "staff" and user.allowed_classes:
         stmt = stmt.where(Student.class_name.in_(user.allowed_classes))
-    # Hide fully-deleted rows from everyone except super-admin, who can opt in.
-    if not (include_deleted and user.role == "super_admin"):
+    # Status filter takes precedence over the default "hide deleted" rule
+    # so the UI can ask explicitly for the pending_delete subset.
+    if status == "pending_delete":
+        stmt = stmt.where(Student.status == RecordStatus.pending_delete)
+    elif status == "active":
+        stmt = stmt.where(Student.status == RecordStatus.active)
+    elif not (include_deleted and user.role == "super_admin"):
+        # Default: hide fully-deleted rows from everyone except super-admin opt-in.
         stmt = stmt.where(Student.status != RecordStatus.deleted)
     if q:
         needle = f"%{q.strip()}%"
@@ -117,8 +181,10 @@ def list_students(
             .limit(page_size)
     ).scalars().all()
 
+    items = [_to_out(db, s) for s in rows]
+    _decorate_list_pending_edits(db, items)
     return StudentPage(
-        items=[_to_out(db, s) for s in rows],
+        items=items,
         total=int(total),
         page=page,
         page_size=page_size,
@@ -133,7 +199,7 @@ def get_student(sid: int, user: CurrentUser = Depends(current_user), db: Session
     if s.status == RecordStatus.deleted and user.role != "super_admin":
         raise HTTPException(status_code=404, detail="Not found")
     assert_class_allowed(user, s.class_name)
-    return _to_out(db, s)
+    return _decorate_pending_edit(db, _to_out(db, s), s.id)
 
 
 @router.post("", response_model=StudentOut, status_code=201)
@@ -176,39 +242,117 @@ def update_student(
     user: CurrentUser = Depends(current_user),
     db: Session = Depends(db_dep),
 ):
+    """Edit a student.
+
+    - Super-admin: applies immediately (legacy behaviour).
+    - Admin / Staff: queued to `student_edit_requests` for super-admin review.
+      One pending request per student at a time; a second submitter gets 409.
+      Uniqueness collisions on admission_no/class_name/roll_no surface as 409
+      at queue time, not later.
+    """
     s = db.get(Student, sid)
     if not s:
         raise HTTPException(status_code=404, detail="Not found")
     if s.status == RecordStatus.deleted and user.role != "super_admin":
         raise HTTPException(status_code=404, detail="Not found")
     assert_class_allowed(user, s.class_name)
+
     updates = payload.model_dump(exclude_unset=True)
-    changed = list(updates.keys())
-    for k, v in updates.items():
-        setattr(s, k, v)
-    # Recompute admission_id whenever admission_no is set/changed. Year stays
-    # anchored to the row's original admission year (created_at).
-    if "admission_no" in updates:
+    # Skip no-ops: only keep fields whose values actually differ from the row.
+    diff_fields = {k: v for k, v in updates.items() if getattr(s, k) != v}
+    if not diff_fields:
+        return _decorate_pending_edit(db, _to_out(db, s), s.id)
+
+    if user.role == "super_admin":
+        for k, v in diff_fields.items():
+            setattr(s, k, v)
+        if "admission_no" in diff_fields:
+            year = (s.created_at or datetime.utcnow()).year
+            s.admission_id = _compute_admission_id(year, s.admission_no)
+        if any(k in diff_fields for k in ("admission_no", "class_name", "roll_no")):
+            _check_uniqueness(
+                db,
+                admission_id=s.admission_id,
+                class_name=s.class_name,
+                roll_no=s.roll_no or None,
+                exclude_id=s.id,
+            )
+        s.updated_by = user.name
+        db.commit()
+        db.refresh(s)
+        broker.publish("students", "upsert", id=s.id, class_name=s.class_name)
+        log.info(
+            "student updated",
+            extra={
+                "event": "student_updated",
+                "student_id": s.id,
+                "class_name": s.class_name,
+                "fields": list(diff_fields.keys()),
+                "actor": user.name,
+            },
+        )
+        return _decorate_pending_edit(db, _to_out(db, s), s.id)
+
+    # Staff / admin → queue for super-admin approval.
+    existing_pending = db.execute(
+        select(StudentEditRequest).where(
+            StudentEditRequest.student_id == sid,
+            StudentEditRequest.status == EditRequestStatus.pending,
+        )
+    ).scalar_one_or_none()
+    if existing_pending:
+        raise HTTPException(
+            status_code=409,
+            detail="An edit request is already pending super-admin review for this student.",
+        )
+
+    # Surface uniqueness collisions now (apply the change in-memory to compute
+    # the would-be admission_id, then rollback any in-memory mutations).
+    if any(k in diff_fields for k in ("admission_no", "class_name", "roll_no")):
+        prospective_admission_no = diff_fields.get("admission_no", s.admission_no)
+        prospective_class = diff_fields.get("class_name", s.class_name)
+        prospective_roll = diff_fields.get("roll_no", s.roll_no)
         year = (s.created_at or datetime.utcnow()).year
-        s.admission_id = _compute_admission_id(year, s.admission_no)
-    # Pre-check uniqueness if anything that affects a unique index changed.
-    if "admission_no" in updates or "class_name" in updates or "roll_no" in updates:
+        prospective_admission_id = _compute_admission_id(year, prospective_admission_no)
         _check_uniqueness(
             db,
-            admission_id=s.admission_id,
-            class_name=s.class_name,
-            roll_no=s.roll_no or None,
+            admission_id=prospective_admission_id,
+            class_name=prospective_class,
+            roll_no=prospective_roll or None,
             exclude_id=s.id,
         )
-    s.updated_by = user.name
-    db.commit()
-    db.refresh(s)
-    broker.publish("students", "upsert", id=s.id, class_name=s.class_name)
-    log.info(
-        "student updated",
-        extra={"event": "student_updated", "student_id": s.id, "class_name": s.class_name, "fields": changed},
+
+    changes_blob = {
+        k: {"old": _jsonify(getattr(s, k)), "new": _jsonify(v)}
+        for k, v in diff_fields.items()
+    }
+    req = StudentEditRequest(
+        student_id=sid,
+        requested_at=datetime.utcnow(),
+        requested_by=user.name,
+        requested_by_role=EditRequestRole.admin if user.role == "admin" else EditRequestRole.staff,
+        changes=changes_blob,
+        status=EditRequestStatus.pending,
     )
-    return _to_out(db, s)
+    db.add(req)
+    db.commit()
+    db.refresh(req)
+    broker.publish("edit_requests", "upsert", id=req.id)
+    broker.publish("students", "upsert", id=s.id, class_name=s.class_name)
+    notify_student_edit_request(db, req, s)
+    log.warning(
+        "student_edit_requested",
+        extra={
+            "event": "student_edit_requested",
+            "edit_request_id": req.id,
+            "student_id": s.id,
+            "class_name": s.class_name,
+            "fields": list(diff_fields.keys()),
+            "actor": user.name,
+        },
+    )
+    # Return the unchanged student decorated with the new pending-edit marker.
+    return _decorate_pending_edit(db, _to_out(db, s), s.id)
 
 
 @router.delete("/{sid}", response_model=StudentOut)

@@ -21,6 +21,17 @@ export const ATTENDANCE_TEMPLATE = [
   "5th,2026-05-07,3,L",
 ].join("\n");
 
+export const CLASS_SUBJECTS_TEMPLATE = [
+  "class_name,subject_name,subject_name_pa,category,order_index",
+  "5th,Mathematics,ਗਣਿਤ,academic,1",
+  "5th,English,ਅੰਗਰੇਜ਼ੀ,academic,2",
+  "5th,Punjabi,ਪੰਜਾਬੀ,academic,3",
+  "5th,Hindi,ਹਿੰਦੀ,academic,4",
+  "5th,E.V.S.,ਵਾਤਾਵਰਣ,academic,5",
+  "5th,Drawing,ਚਿੱਤਰਕਾਰੀ,co_curricular,10",
+  "5th,Computer,ਕੰਪਿਊਟਰ,grading,11",
+].join("\n");
+
 export const MARKS_TEMPLATE = [
   "class_name,exam_type,subject,max_marks,session,student_id,marks",
   "5th,Final / Annual,Mathematics,100,2025-26,1,85",

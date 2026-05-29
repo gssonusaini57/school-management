@@ -1,18 +1,30 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { setToken, getToken } from "./api";
 import type { Role } from "@/types/api";
+import type { MenuKey } from "@/lib/menus";
 
 export interface AuthUser {
   role: Role;
   name: string;
   allowed_classes: string[];
+  allowed_menus?: string[];
+}
+
+// Admin + super-admin bypass menu grants — they always see everything.
+export function canAccessMenu(
+  user: { role?: Role; allowed_menus?: string[] } | null | undefined,
+  key: MenuKey | string,
+): boolean {
+  if (!user) return false;
+  if (user.role === "admin" || user.role === "super_admin") return true;
+  return Array.isArray(user.allowed_menus) && user.allowed_menus.includes(key);
 }
 
 const USER_KEY = "kis_user";
 const REMEMBER_KEY = "kis_remember";
 
 export function loadUser(): AuthUser | null {
-  const raw = localStorage.getItem(USER_KEY);
+  const raw = sessionStorage.getItem(USER_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as AuthUser;
@@ -23,12 +35,12 @@ export function loadUser(): AuthUser | null {
 
 export function saveAuth(token: string, user: AuthUser) {
   setToken(token);
-  localStorage.setItem(USER_KEY, JSON.stringify(user));
+  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
 }
 
 export function clearAuth() {
   setToken("");
-  localStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(USER_KEY);
 }
 
 export function saveRemember(payload: object | null) {
@@ -48,12 +60,6 @@ export function loadRemember(): { identifier?: string } | null {
 
 export function useAuth() {
   const [user, setUser] = useState<AuthUser | null>(loadUser());
-
-  useEffect(() => {
-    const onStorage = () => setUser(loadUser());
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
 
   return {
     user,

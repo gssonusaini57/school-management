@@ -9,6 +9,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       type={type}
       className={cn(
         "flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        // Suppress the native spinner arrows on type=number across the app.
+        // The spin buttons confuse data-entry: a stray click increments the
+        // value, then typing appends — yielding bugs like "100 → 31" reported
+        // by teachers. We rely on direct typing + min/max attrs for bounds.
+        "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-outer-spin-button]:m-0 [&::-webkit-inner-spin-button]:m-0",
         className
       )}
       ref={ref}

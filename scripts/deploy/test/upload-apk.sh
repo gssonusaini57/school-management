@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# Upload ONLY the freshly-built Android APK to the test server.
-# Skips the npm/Vite rebuild — the SPA + download link are already deployed
-# (Session 6); only the APK file changes between releases.
+# Upload ONLY the freshly-built Android APK to the TEST server.
+# Skips the npm/Vite rebuild — the SPA + download link are already deployed;
+# only the APK file changes between releases.
 #
-# Pre-condition: scripts/build-android.sh has produced
-#   frontend/public/downloads/kis-attendance.apk
+# TEST serves the *staging* flavor (applicationId in.kisschool.test, API
+# https://expressonly.in/school/api/) but publishes it under the stable filename
+# kis-attendance.apk so the existing /school/downloads link keeps working.
+#
+# Pre-condition: scripts/build-android.sh test has produced
+#   frontend/public/downloads/kis-attendance-test.apk
 
 set -euo pipefail
 
@@ -13,13 +17,13 @@ REPO_ROOT="$(cd "$HERE/../../.." && pwd)"
 # shellcheck disable=SC1091
 source "$HERE/env.sh"
 
-APK_LOCAL="$REPO_ROOT/frontend/public/downloads/kis-attendance.apk"
+APK_LOCAL="$REPO_ROOT/frontend/public/downloads/kis-attendance-test.apk"
 APK_REMOTE_DIR="/opt/school-management/frontend/dist/downloads"
 APK_REMOTE="$APK_REMOTE_DIR/kis-attendance.apk"
 
 if [[ ! -f "$APK_LOCAL" ]]; then
-    echo "ERROR: APK not found at $APK_LOCAL" >&2
-    echo "       Run 'bash scripts/build-android.sh' first." >&2
+    echo "ERROR: staging APK not found at $APK_LOCAL" >&2
+    echo "       Run 'bash scripts/build-android.sh test' first." >&2
     exit 1
 fi
 

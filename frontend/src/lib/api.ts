@@ -6,13 +6,15 @@ export const api = axios.create({ baseURL, timeout: 30000 });
 
 export const TOKEN_KEY = "kis_token";
 
+// sessionStorage so the JWT dies with the tab/window — closing the browser
+// logs the user out. Persistent autofill (identifier) still uses localStorage.
 export function getToken(): string {
-  return localStorage.getItem(TOKEN_KEY) ?? "";
+  return sessionStorage.getItem(TOKEN_KEY) ?? "";
 }
 
 export function setToken(t: string) {
-  if (t) localStorage.setItem(TOKEN_KEY, t);
-  else localStorage.removeItem(TOKEN_KEY);
+  if (t) sessionStorage.setItem(TOKEN_KEY, t);
+  else sessionStorage.removeItem(TOKEN_KEY);
 }
 
 api.interceptors.request.use((cfg) => {

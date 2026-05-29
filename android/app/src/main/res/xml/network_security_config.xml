@@ -6,6 +6,6 @@
         </trust-anchors>
     </base-config>
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">expressonly.in</domain>
+        <domain includeSubdomains="true">kisschool.in</domain>
     </domain-config>
 </network-security-config>

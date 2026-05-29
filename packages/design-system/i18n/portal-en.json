@@ -55,7 +55,9 @@
       "salarySlips": "Salary Slips",
       "templates": "Templates",
       "mobileApps": "Mobile Apps",
-      "deletionRequests": "Pending Deletions"
+      "deletionRequests": "Pending Deletions",
+      "editRequests": "Edit Requests",
+      "classSubjects": "Class Subjects"
     },
     "login": {
       "signIn": "Sign in",
@@ -67,7 +69,34 @@
       "submittingLabel": "Signing in…",
       "errorInvalid": "Invalid credentials. Please try again.",
       "mustChangePassword": "You're using a temporary password. Please change it from your profile.",
-      "footer": "Forgot your password? Contact the office at +91 93563-31762."
+      "forgotLink": "Forgot password?",
+      "footer": "Need help signing in? Contact the office at +91 93563-31762."
+    },
+    "forgot": {
+      "title": "Forgot password",
+      "subtitle": "Enter your account email and we'll send you a reset link.",
+      "email": "Email address",
+      "emailPlaceholder": "you@example.com",
+      "submit": "Send reset link",
+      "submitting": "Sending…",
+      "sentTitle": "Check your email",
+      "sentBody": "If that email is registered, a password reset link is on its way. The link expires in {{minutes}} minutes.",
+      "backToLogin": "Back to sign in"
+    },
+    "reset": {
+      "title": "Set a new password",
+      "subtitle": "Choose a new password for your account.",
+      "newPassword": "New password",
+      "confirmPassword": "Confirm new password",
+      "submit": "Reset password",
+      "submitting": "Saving…",
+      "mismatch": "Passwords do not match.",
+      "tooShort": "Password must be at least 6 characters.",
+      "invalidLink": "This reset link is invalid or has expired. Please request a new one.",
+      "successTitle": "Password updated",
+      "successBody": "Your password has been changed. You can now sign in with your new password.",
+      "goToLogin": "Go to sign in",
+      "missingToken": "No reset token found in the link."
     },
     "dashboard": {
       "title": "Dashboard",

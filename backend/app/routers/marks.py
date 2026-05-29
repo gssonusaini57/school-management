@@ -18,6 +18,21 @@ def save_bulk(
     db: Session = Depends(db_dep),
 ):
     assert_class_allowed(user, payload.class_name)
+    if payload.max_marks <= 0:
+        raise HTTPException(status_code=400, detail="max_marks must be positive")
+    over_max = [
+        {"student_id": it.student_id, "marks": it.marks, "max_marks": payload.max_marks}
+        for it in payload.items
+        if it.marks > payload.max_marks or it.marks < 0
+    ]
+    if over_max:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": f"{len(over_max)} entries are out of range (0–{payload.max_marks})",
+                "rows": over_max[:10],
+            },
+        )
     for it in payload.items:
         db.add(Marks(
             student_id=it.student_id,
@@ -67,13 +82,19 @@ async def bulk_import_marks(
                 assert_class_allowed(user, cls)
             except HTTPException as he:
                 raise FieldError("class_name", cls, str(he.detail)) from None
+            marks_v = opt_int(row, "marks", 0)
+            max_v = opt_int(row, "max_marks", 100)
+            if max_v <= 0:
+                raise FieldError("max_marks", str(max_v), "must be positive")
+            if marks_v < 0 or marks_v > max_v:
+                raise FieldError("marks", str(marks_v), f"must be between 0 and {max_v}")
             prepared.append(Marks(
                 student_id=must_int(row, "student_id"),
                 class_name=cls,
                 exam_type=must_str(row, "exam_type"),
                 subject=must_str(row, "subject"),
-                marks=opt_int(row, "marks", 0),
-                max_marks=opt_int(row, "max_marks", 100),
+                marks=marks_v,
+                max_marks=max_v,
                 session=opt_str(row, "session"),
                 saved_by=user.name,
             ))

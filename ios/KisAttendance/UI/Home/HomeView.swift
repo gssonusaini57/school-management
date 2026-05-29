@@ -118,7 +118,7 @@ private struct AboutSheet: View {
                 LabeledContent("Build", value: Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?")
                 LabeledContent("Bundle ID", value: Bundle.main.bundleIdentifier ?? "?")
                 Section("Server") {
-                    Text("expressonly.in/school")
+                    Text("kisschool.in")
                         .font(.callout.monospaced())
                         .foregroundStyle(.secondary)
                 }

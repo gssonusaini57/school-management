@@ -94,7 +94,7 @@ export default function MobileApps() {
       </div>
 
       <div className="text-xs text-muted-foreground">
-        Both apps connect to <code className="bg-muted px-1 py-0.5 rounded">expressonly.in/school</code>.
+        Both apps connect to <code className="bg-muted px-1 py-0.5 rounded">{window.location.host}</code>.
         Teachers sign in with the same email/phone and password they use on the website.
       </div>
     </div>

@@ -7,9 +7,10 @@ description: Build and deploy frontend to PROD. Requires "DEPLOY PROD" confirmat
 
 ## Pre-conditions
 
-- `scripts/deploy/prod/env.sh` configured (no CHANGE_ME placeholders).
-- `~/.ssh/school-management_prod` available.
-- Provisioning has been run on prod server.
+- PROD is provisioned and live; `scripts/deploy/prod/env.sh` is configured
+  (DOMAIN=kisschool.in, SSH_KEY=`~/.ssh/enamfoss_prod`, VITE_BASE=`/admin/`,
+  VITE_API_URL=`/api`). The build uses these to produce a root-mounted SPA.
+- `~/.ssh/enamfoss_prod` available.
 - `git status` clean.
 
 ## Action
@@ -22,5 +23,9 @@ User must type **`DEPLOY PROD`** at the prompt.
 
 ## After running
 
-- `curl -sI <DOMAIN>/school/` → expect 200.
-- Visually confirm the SPA loads.
+- `curl -sI https://kisschool.in/admin/` → expect 200 (the staff portal SPA;
+  prod serves it at `/admin/`, not `/school/admin/`).
+- Visually confirm the SPA loads and `https://kisschool.in/admin/version.json`
+  returns a fresh build id.
+- This also republishes the prod-flavor APK from `frontend/public/downloads/` to
+  `/downloads/` (the rsync includes it).

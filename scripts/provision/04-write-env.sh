@@ -32,7 +32,7 @@ JWT_SECRET=$(python3 -c "import secrets;print(secrets.token_urlsafe(64))")
 cat > "$ENV_FILE" <<EOF
 DATABASE_URL=mysql+pymysql://school:${DB_PWD}@localhost:3306/school_management
 JWT_SECRET=${JWT_SECRET}
-JWT_EXPIRY_HOURS=8
+JWT_EXPIRY_HOURS=1
 ADMIN_DEFAULT_PASSWORD=admin123
 CORS_ORIGINS=https://${DOMAIN}
 LOG_DIR=/opt/school-management/logs

@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">KIS Attendance</string>
+    <!-- app_name is provided per build flavor via resValue() in app/build.gradle.kts
+         (prod: "KIS Attendance", test: "KIS Attendance (Test)"). -->
 </resources>

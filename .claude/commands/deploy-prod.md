@@ -7,9 +7,9 @@ description: Deploy backend to PROD. Requires explicit "DEPLOY PROD" confirmatio
 
 ## Pre-conditions (verify before invoking)
 
-- `scripts/deploy/prod/env.sh` has been edited (no `CHANGE_ME_*` placeholders).
-- `~/.ssh/school-management_prod` exists and is in the prod server's `authorized_keys`.
-- `scripts/provision/provision.sh` has been run against the prod server (`SERVER=… SSH_KEY=… DOMAIN=… bash scripts/provision/provision.sh`).
+- PROD is already provisioned and live: `scripts/deploy/prod/env.sh` is configured
+  (SERVER=69.62.72.137, DOMAIN=kisschool.in, SSH_KEY=`~/.ssh/enamfoss_prod`).
+- `~/.ssh/enamfoss_prod` exists and is in the prod server's `authorized_keys`.
 - `git status` is clean. Warn loudly if not — do **not** silently proceed.
 - Confirm we are on `master` (or whatever release branch).
 
@@ -28,7 +28,8 @@ Identical code path to `deploy-test`: snapshot → rsync → pip → alembic →
 ## After running
 
 If exit 0:
-- Print `<DOMAIN>/school/api/health` response.
+- Print `https://kisschool.in/api/health` response (prod serves the API at the root,
+  not under `/school/`; the deploy script's own health check already covers this).
 - Print `journalctl -u school-management -n 20`.
 
 If exit non-zero:

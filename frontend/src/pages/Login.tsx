@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Navigate, useNavigate } from "react-router-dom";
+import { Navigate, useNavigate, Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,8 +41,14 @@ export default function Login() {
         password,
       });
       setToken(data.token);
-      saveAuth(data.token, { role: data.role, name: data.name, allowed_classes: data.allowed_classes });
-      setUser({ role: data.role, name: data.name, allowed_classes: data.allowed_classes });
+      const user = {
+        role: data.role,
+        name: data.name,
+        allowed_classes: data.allowed_classes,
+        allowed_menus: data.allowed_menus ?? [],
+      };
+      saveAuth(data.token, user);
+      setUser(user);
       saveRemember(remember ? { identifier: identifier.trim() } : null);
       if (data.force_password_change) {
         toast(t("portal.login.mustChangePassword"), "warning");
@@ -88,9 +94,14 @@ export default function Login() {
               required
             />
           </div>
-          <div className="flex items-center gap-2">
-            <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(!!v)} />
-            <Label htmlFor="remember" className="cursor-pointer">{t("portal.login.rememberMe")}</Label>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <Checkbox id="remember" checked={remember} onCheckedChange={(v) => setRemember(!!v)} />
+              <Label htmlFor="remember" className="cursor-pointer">{t("portal.login.rememberMe")}</Label>
+            </div>
+            <Link to="/forgot-password" className="text-sm font-medium text-khalsa-blue hover:underline">
+              {t("portal.login.forgotLink")}
+            </Link>
           </div>
           <Button type="submit" className="w-full" disabled={busy}>
             {busy ? t("portal.login.submittingLabel") : t("portal.login.submit")}

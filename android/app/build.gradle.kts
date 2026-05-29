@@ -19,16 +19,37 @@ val appVersionCode = (versionProps.getProperty("versionCode") ?: "1").toInt()
 val appVersionName = versionProps.getProperty("versionName") ?: "1.0.0"
 
 android {
-    namespace = "com.expressonly.kisattendance"
+    namespace = "in.kisschool"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.expressonly.kisattendance"
+        applicationId = "in.kisschool"
         minSdk = 26
         targetSdk = 34
         versionCode = appVersionCode
         versionName = appVersionName
         vectorDrawables { useSupportLibrary = true }
+    }
+
+    // Two build flavors so one codebase ships a PROD APK (talks to kisschool.in)
+    // and a TEST APK (talks to the expressonly.in/school test box). The .test
+    // applicationId suffix lets both be installed on the same phone at once.
+    flavorDimensions += "env"
+    productFlavors {
+        create("prod") {
+            dimension = "env"
+            buildConfigField("String", "API_BASE_URL", "\"https://kisschool.in/api/\"")
+            resValue("string", "app_name", "KIS Attendance")
+        }
+        // Internal name "staging" (AGP reserves flavor names starting with "test"),
+        // but it carries the .test applicationId suffix + "(Test)" label.
+        create("staging") {
+            dimension = "env"
+            applicationIdSuffix = ".test"
+            versionNameSuffix = "-test"
+            buildConfigField("String", "API_BASE_URL", "\"https://expressonly.in/school/api/\"")
+            resValue("string", "app_name", "KIS Attendance (Test)")
+        }
     }
 
     signingConfigs {
@@ -105,6 +126,9 @@ dependencies {
     implementation("com.squareup.retrofit2:converter-gson:2.11.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+
+    // Image loading for student-document previews (authenticated inline URLs).
+    implementation("io.coil-kt:coil-compose:2.7.0")
 
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 

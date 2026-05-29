@@ -18,6 +18,7 @@ import { CLASSES } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
 import { STAFF_TEMPLATE } from "@/lib/templates";
+import { ALL_MENU_KEYS, MENU_KEYS, DEFAULT_STAFF_MENUS, type MenuKey } from "@/lib/menus";
 import type { Staff, StaffCreateResponse, StaffUpdateResponse } from "@/types/api";
 import { useTranslation } from "react-i18next";
 
@@ -145,18 +146,21 @@ export default function StaffPage() {
                 const pending = s.status === "pending_delete";
                 const placeholder = isPlaceholderEmail(s.email);
                 return (
-                  <TableRow key={s.id} className={pending ? "bg-amber-50/60" : undefined}>
+                  <TableRow
+                    key={s.id}
+                    className={pending ? "bg-amber-100/80 border-l-4 border-l-amber-500" : undefined}
+                  >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>{s.name}</span>
                         {pending && (
-                          <Badge variant="warning" className="gap-1">
-                            <Clock className="h-3 w-3" /> Deletion requested
+                          <Badge variant="warning" className="gap-1 border border-amber-500 bg-amber-200 text-amber-900">
+                            <Clock className="h-3 w-3" /> Awaiting super-admin approval
                           </Badge>
                         )}
                       </div>
                       {pending && s.delete_reason && (
-                        <div className="text-xs text-muted-foreground mt-0.5">Reason: {s.delete_reason}</div>
+                        <div className="text-xs text-amber-900 mt-0.5">Reason: {s.delete_reason}</div>
                       )}
                     </TableCell>
                     <TableCell><code className="text-xs">{s.employee_id}</code></TableCell>
@@ -294,15 +298,19 @@ function AddStaffDialog({ open, onClose, onSaved }: { open: boolean; onClose: ()
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [classes, setClasses] = useState<string[]>([]);
+  const [menus, setMenus] = useState<MenuKey[]>(DEFAULT_STAFF_MENUS);
   const [created, setCreated] = useState<StaffCreateResponse | null>(null);
 
   useEffect(() => {
     if (open) {
-      setName(""); setDesignation(DESIGNATIONS[0]); setPhone(""); setEmail(""); setClasses([]); setCreated(null);
+      setName(""); setDesignation(DESIGNATIONS[0]); setPhone(""); setEmail(""); setClasses([]);
+      setMenus([...DEFAULT_STAFF_MENUS]); setCreated(null);
     }
   }, [open]);
 
   const toggleClass = (c: string) => setClasses((s) => s.includes(c) ? s.filter((x) => x !== c) : [...s, c]);
+  const toggleMenu = (k: MenuKey) =>
+    setMenus((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
 
   const create = useMutation({
     mutationFn: async () => {
@@ -313,6 +321,7 @@ function AddStaffDialog({ open, onClose, onSaved }: { open: boolean; onClose: ()
         email: email.trim().toLowerCase(),
         // Collapse "every class ticked" to "All" for storage parity.
         assigned_classes: classes.length === 0 || classes.length === CLASSES.length ? ["All"] : classes,
+        allowed_menus: menus,
       };
       const { data } = await api.post<StaffCreateResponse>("/staff", payload);
       return data;
@@ -378,6 +387,7 @@ function AddStaffDialog({ open, onClose, onSaved }: { open: boolean; onClose: ()
               </div>
               <p className="text-xs text-muted-foreground">Selecting every class is equivalent to All.</p>
             </div>
+            <MenuPermissionsGrid value={menus} onToggle={toggleMenu} />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
               <Button type="submit" disabled={create.isPending}>{create.isPending ? "Adding…" : "Add staff"}</Button>
@@ -389,6 +399,36 @@ function AddStaffDialog({ open, onClose, onSaved }: { open: boolean; onClose: ()
   );
 }
 
+function MenuPermissionsGrid({
+  value,
+  onToggle,
+}: {
+  value: MenuKey[];
+  onToggle: (k: MenuKey) => void;
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label>Menu permissions</Label>
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 border rounded-md p-3 bg-muted/30">
+        {ALL_MENU_KEYS.map((k) => (
+          <label key={k} className="flex items-start gap-1.5 text-sm">
+            <Checkbox
+              className="mt-0.5"
+              checked={value.includes(k)}
+              onCheckedChange={() => onToggle(k)}
+            />
+            <span>{MENU_KEYS[k].label}</span>
+          </label>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Tick which sidebar entries this staff member can access. Admin and super-admin always
+        see every menu — these grants only apply to the staff role.
+      </p>
+    </div>
+  );
+}
+
 function EditStaffDialog({ staff, onClose, onSaved }: { staff: Staff | null; onClose: () => void; onSaved: () => void }) {
   const open = !!staff;
   const [name, setName] = useState("");
@@ -396,8 +436,11 @@ function EditStaffDialog({ staff, onClose, onSaved }: { staff: Staff | null; onC
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [classes, setClasses] = useState<string[]>([]);
+  const [menus, setMenus] = useState<MenuKey[]>(DEFAULT_STAFF_MENUS);
   const [resetPassword, setResetPassword] = useState(false);
   const [newPassword, setNewPassword] = useState<string | null>(null);
+  const [tempPwd, setTempPwd] = useState("");
+  const [hasTemp, setHasTemp] = useState(false);
 
   useEffect(() => {
     if (staff) {
@@ -413,12 +456,21 @@ function EditStaffDialog({ staff, onClose, onSaved }: { staff: Staff | null; onC
           ? [...CLASSES]
           : canonicalizeClassList(staff.assigned_classes)
       );
+      // Server normalizes unknown keys, but tolerate empties from old rows.
+      const known = (staff.allowed_menus ?? []).filter((k): k is MenuKey =>
+        (ALL_MENU_KEYS as readonly string[]).includes(k),
+      );
+      setMenus(known.length ? known : [...DEFAULT_STAFF_MENUS]);
       setResetPassword(false);
       setNewPassword(null);
+      setTempPwd("");
+      setHasTemp(!!staff.has_temp_password);
     }
   }, [staff]);
 
   const toggleClass = (c: string) => setClasses((s) => s.includes(c) ? s.filter((x) => x !== c) : [...s, c]);
+  const toggleMenu = (k: MenuKey) =>
+    setMenus((s) => (s.includes(k) ? s.filter((x) => x !== k) : [...s, k]));
 
   const save = useMutation({
     mutationFn: async () => {
@@ -431,6 +483,7 @@ function EditStaffDialog({ staff, onClose, onSaved }: { staff: Staff | null; onC
         phone: phone.trim(),
         email: email.trim().toLowerCase(),
         assigned_classes: assigned,
+        allowed_menus: menus,
         reset_password: resetPassword,
       };
       const { data } = await api.patch<StaffUpdateResponse>(`/staff/${staff.id}`, body);
@@ -444,6 +497,35 @@ function EditStaffDialog({ staff, onClose, onSaved }: { staff: Staff | null; onC
       } else {
         onClose();
       }
+    },
+    onError: (e) => toast(apiError(e), "error"),
+  });
+
+  // Temporary password = a SECOND credential the teacher's own password is unaffected by.
+  const setTemp = useMutation({
+    mutationFn: async () => {
+      if (!staff) throw new Error("No staff");
+      await api.post(`/staff/${staff.id}/temp-password`, { password: tempPwd });
+    },
+    onSuccess: () => {
+      toast("Temporary password set", "success");
+      setHasTemp(true);
+      setTempPwd("");
+      onSaved();
+    },
+    onError: (e) => toast(apiError(e), "error"),
+  });
+
+  const clearTemp = useMutation({
+    mutationFn: async () => {
+      if (!staff) throw new Error("No staff");
+      await api.delete(`/staff/${staff.id}/temp-password`);
+    },
+    onSuccess: () => {
+      toast("Temporary password cleared", "success");
+      setHasTemp(false);
+      setTempPwd("");
+      onSaved();
     },
     onError: (e) => toast(apiError(e), "error"),
   });
@@ -501,6 +583,8 @@ function EditStaffDialog({ staff, onClose, onSaved }: { staff: Staff | null; onC
               <p className="text-xs text-muted-foreground">Selecting every class is equivalent to All.</p>
             </div>
 
+            <MenuPermissionsGrid value={menus} onToggle={toggleMenu} />
+
             <div className="space-y-2 rounded-md border p-3">
               <label className="flex items-center gap-2 text-sm font-medium">
                 <Checkbox checked={resetPassword} onCheckedChange={(v) => setResetPassword(!!v)} />
@@ -511,6 +595,45 @@ function EditStaffDialog({ staff, onClose, onSaved }: { staff: Staff | null; onC
                   ? "A new 6-digit password will be generated on save. Share it with the staff member from the next screen."
                   : "Tick to issue a new password. Leave unchecked to keep the existing one."}
               </p>
+            </div>
+
+            <div className="space-y-2 rounded-md border p-3">
+              <Label className="text-sm font-medium">Temporary password (admin override)</Label>
+              <p className="text-xs text-muted-foreground">
+                A second password you can use to log in as this staff member (e.g. while
+                they're absent). It does <strong>not</strong> change their own password —
+                they keep logging in normally. Stays active until you clear it.
+              </p>
+              {hasTemp && (
+                <div className="flex items-center justify-between rounded bg-amber-50 border border-amber-200 px-3 py-2 text-sm">
+                  <span className="text-amber-800">
+                    Temporary password is <strong>active</strong>
+                    {staff?.temp_password_set_by ? ` (set by ${staff.temp_password_set_by})` : ""}.
+                  </span>
+                  <Button type="button" size="sm" variant="outline"
+                    disabled={clearTemp.isPending}
+                    onClick={() => clearTemp.mutate()}>
+                    {clearTemp.isPending ? "Clearing…" : "Clear"}
+                  </Button>
+                </div>
+              )}
+              <div className="flex items-end gap-2">
+                <div className="flex-1 space-y-1.5">
+                  <Label className="text-xs">{hasTemp ? "Replace with new temp password" : "Set a temp password"}</Label>
+                  <Input
+                    type="text"
+                    value={tempPwd}
+                    onChange={(e) => setTempPwd(e.target.value)}
+                    placeholder="min 4 characters"
+                    autoComplete="off"
+                  />
+                </div>
+                <Button type="button" variant="secondary"
+                  disabled={tempPwd.trim().length < 4 || setTemp.isPending}
+                  onClick={() => setTemp.mutate()}>
+                  {setTemp.isPending ? "Setting…" : (hasTemp ? "Replace" : "Set")}
+                </Button>
+              </div>
             </div>
 
             <DialogFooter>

@@ -67,6 +67,15 @@ class StudentOut(StudentBase):
     delete_reason: str | None = None
     deleted_at: datetime | None = None
     deleted_by: str | None = None
+    # Edit-approval workflow:
+    # - `has_pending_edit` is decorated on BOTH list and single-row reads so the
+    #   Students table can hide the pencil icon + show a badge.
+    # - The other three fields are populated only on single-row reads so the
+    #   StudentDetail banner can show who requested it and when.
+    has_pending_edit: bool = False
+    pending_edit_request_id: int | None = None
+    pending_edit_requested_by: str | None = None
+    pending_edit_requested_at: datetime | None = None
 
 
 class StudentPage(BaseModel):

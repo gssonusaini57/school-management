@@ -16,6 +16,7 @@ export interface LoginResponse {
   role: Role;
   name: string;
   allowed_classes: string[];
+  allowed_menus?: string[];
   force_password_change?: boolean;
 }
 
@@ -47,6 +48,35 @@ export interface Student extends SoftDeleteFields {
   has_photo: boolean;
   has_dob_cert: boolean;
   has_aadhar: boolean;
+  // Edit-approval workflow:
+  // - `has_pending_edit` is set on BOTH list + single-row reads (used by the
+  //   Students table to hide the pencil + show a badge).
+  // - The other three are only populated on single-row GET /students/:id.
+  has_pending_edit?: boolean;
+  pending_edit_request_id?: number | null;
+  pending_edit_requested_by?: string | null;
+  pending_edit_requested_at?: string | null;
+}
+
+export interface StudentEditDiffEntry {
+  old: unknown;
+  new: unknown;
+}
+export type StudentEditDiff = Record<string, StudentEditDiffEntry>;
+
+export interface EditRequestItem {
+  id: number;
+  student_id: number;
+  student_name: string;
+  class_name: string | null;
+  requested_at: string;
+  requested_by: string;
+  requested_by_role: "admin" | "staff";
+  changes: StudentEditDiff;
+  status: "pending" | "approved" | "rejected";
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  reject_reason: string | null;
 }
 
 export interface StudentPage {
@@ -116,7 +146,11 @@ export interface Staff extends SoftDeleteFields {
   email: string;
   employee_id: string;
   assigned_classes: string[];
+  allowed_menus: string[];
   force_password_change: boolean;
+  has_temp_password?: boolean;
+  temp_password_set_at?: string | null;
+  temp_password_set_by?: string | null;
   created_at: string;
 }
 
@@ -178,4 +212,81 @@ export interface PdfRenderResultRow {
   status: "cached" | "rendered" | "error";
   pdf_id: number | null;
   error: string | null;
+}
+
+// ── Class-subjects master ─────────────────────────────────────────
+export type SubjectCategory = "academic" | "co_curricular" | "grading";
+
+export interface ExamComponent {
+  id: number;
+  class_subject_id: number;
+  component_name: string;
+  max_marks: number;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClassSubject {
+  id: number;
+  class_name: string;
+  subject_name: string;
+  subject_name_pa: string | null;
+  category: SubjectCategory;
+  order_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ClassSubjectDetail extends ClassSubject {
+  components: ExamComponent[];
+}
+
+// ── Marks batch + edit-request workflow ──────────────────────────
+export type MarksBatchStatus = "draft" | "submitted";
+export type MarksEditRequestStatus = "pending" | "approved" | "rejected";
+
+export interface MarksBatchItem {
+  id: number;
+  student_id: number;
+  marks: number;
+}
+
+export interface MarksBatch {
+  id: number;
+  class_name: string;
+  subject: string;
+  exam_type: string;
+  session: string;
+  max_marks: number;
+  status: MarksBatchStatus;
+  created_at: string;
+  created_by: string;
+  submitted_at: string | null;
+  submitted_by: string | null;
+  updated_at: string;
+}
+
+export interface MarksBatchDetail extends MarksBatch {
+  items: MarksBatchItem[];
+  pending_edit_request_id: number | null;
+  last_rejection: string | null;
+}
+
+export interface MarksEditRequestItem {
+  id: number;
+  batch_id: number;
+  class_name: string;
+  subject: string;
+  exam_type: string;
+  session: string;
+  student_count: number;
+  requested_at: string;
+  requested_by: string;
+  requested_by_role: "admin" | "staff";
+  reason: string;
+  status: MarksEditRequestStatus;
+  reviewed_at: string | null;
+  reviewed_by: string | null;
+  reject_reason: string | null;
 }

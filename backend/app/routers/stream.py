@@ -41,3 +41,23 @@ def stream_dashboard(user: CurrentUser = Depends(current_user_sse)):
 @router.get("/deletion-requests")
 def stream_deletion_requests(user: CurrentUser = Depends(current_user_sse)):
     return _stream("deletion_requests")
+
+
+@router.get("/edit-requests")
+def stream_edit_requests(user: CurrentUser = Depends(current_user_sse)):
+    return _stream("edit_requests")
+
+
+@router.get("/class-subjects")
+def stream_class_subjects(user: CurrentUser = Depends(current_user_sse)):
+    return _stream("class_subjects")
+
+
+@router.get("/marks-batches")
+def stream_marks_batches(user: CurrentUser = Depends(current_user_sse)):
+    return _stream("marks_batches")
+
+
+@router.get("/marks-edit-requests")
+def stream_marks_edit_requests(user: CurrentUser = Depends(current_user_sse)):
+    return _stream("marks_edit_requests")

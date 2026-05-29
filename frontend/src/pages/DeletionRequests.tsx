@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, RotateCcw, Trash2, ShieldAlert } from "lucide-react";
+import { CheckCircle2, RotateCcw, Trash2, ShieldAlert, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -53,10 +53,10 @@ export default function DeletionRequests() {
   });
 
   const restore = useMutation({
-    mutationFn: ({ kind, id }: { kind: "student" | "staff"; id: number }) =>
-      api.post(`/admin/deletion-requests/${kind}/${id}/restore`),
-    onSuccess: () => {
-      toast("Restored", "success");
+    mutationFn: ({ kind, id, mode }: { kind: "student" | "staff"; id: number; mode: "reject" | "restore" }) =>
+      api.post(`/admin/deletion-requests/${kind}/${id}/restore`).then((r) => ({ res: r, mode })),
+    onSuccess: ({ mode }) => {
+      toast(mode === "reject" ? "Deletion request rejected" : "Restored", "success");
       qc.invalidateQueries({ queryKey: ["deletion-requests"] });
       qc.invalidateQueries({ queryKey: ["students"] });
       qc.invalidateQueries({ queryKey: ["staff"] });
@@ -131,10 +131,11 @@ export default function DeletionRequests() {
                       <Button
                         size="sm"
                         variant="outline"
+                        className="text-red-700 border-red-300 hover:bg-red-50"
                         disabled={restore.isPending}
-                        onClick={() => restore.mutate({ kind: r.kind, id: r.id })}
+                        onClick={() => restore.mutate({ kind: r.kind, id: r.id, mode: "reject" })}
                       >
-                        <RotateCcw className="h-4 w-4" /> Restore
+                        <XCircle className="h-4 w-4" /> Reject request
                       </Button>
                     </div>
                   </TableCell>
@@ -190,7 +191,7 @@ export default function DeletionRequests() {
                         size="sm"
                         variant="outline"
                         disabled={restore.isPending}
-                        onClick={() => restore.mutate({ kind: r.kind, id: r.id })}
+                        onClick={() => restore.mutate({ kind: r.kind, id: r.id, mode: "restore" })}
                       >
                         <RotateCcw className="h-4 w-4" /> Restore
                       </Button>

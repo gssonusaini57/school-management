@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, Boolean, String, DateTime, ForeignKey, Enum, func
+from sqlalchemy import BigInteger, Boolean, String, DateTime, ForeignKey, Enum, JSON, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from ..db import Base
@@ -16,6 +16,13 @@ class Staff(Base):
     employee_id: Mapped[str] = mapped_column(String(32), nullable=False, unique=True)
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     force_password_change: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="1")
+    # Optional admin-set temporary password — a SECOND valid credential that does NOT
+    # replace `password_hash`. Lets an admin/super-admin log in as this staff member
+    # (e.g. to cover an absence) while the teacher keeps their own password. Cleared
+    # by an admin from the web portal; no auto-expiry.
+    temp_password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    temp_password_set_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    temp_password_set_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
@@ -35,6 +42,11 @@ class Staff(Base):
     delete_reason: Mapped[str | None] = mapped_column(String(500), nullable=True)
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     deleted_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+    # Per-staff sidebar/route permission grants. List of MENU_KEYS keys
+    # (see backend/app/permissions.py). Admin and super-admin ignore this
+    # field — they always have full access.
+    allowed_menus: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
 
     classes: Mapped[list["StaffClass"]] = relationship(
         "StaffClass", cascade="all, delete-orphan", back_populates="staff", lazy="selectin"

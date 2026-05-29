@@ -11,6 +11,7 @@ class CurrentUser:
     role: str
     name: str
     allowed_classes: list[str]
+    allowed_menus: list[str]
 
 
 def _parse(token: str) -> CurrentUser:
@@ -23,6 +24,7 @@ def _parse(token: str) -> CurrentUser:
         role=payload.get("role", ""),
         name=payload.get("name", ""),
         allowed_classes=payload.get("allowed_classes", []) or [],
+        allowed_menus=payload.get("allowed_menus", []) or [],
     )
 
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
-import { Eye, Pencil, Trash2, Search, Download, FileSpreadsheet, Clock, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
+import { Eye, Pencil, Trash2, Search, Download, FileSpreadsheet, Clock, FileEdit, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,7 +15,7 @@ import { toast } from "@/components/ui/toaster";
 import { api, apiError } from "@/lib/api";
 import { useSSE } from "@/lib/sse";
 import { CLASSES } from "@/lib/utils";
-import { useAuth } from "@/lib/auth";
+import { useAuth, canAccessMenu } from "@/lib/auth";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
 import { STUDENTS_TEMPLATE } from "@/lib/templates";
 import type { Student, StudentPage } from "@/types/api";
@@ -35,6 +35,7 @@ export default function Students() {
   const [sp, setSp] = useSearchParams();
   const filter = sp.get("class") ?? "";
   const urlSearch = sp.get("q") ?? "";
+  const statusFilter = sp.get("status") ?? "";  // "" | "pending_delete"
   const page = Math.max(1, Number(sp.get("page") ?? "1") || 1);
   const pageSize = (() => {
     const n = Number(sp.get("size") ?? DEFAULT_PAGE_SIZE);
@@ -70,7 +71,7 @@ export default function Students() {
   const [importOpen, setImportOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Student | null>(null);
 
-  const queryKey = ["students", { filter, q: urlSearch, page, pageSize }] as const;
+  const queryKey = ["students", { filter, q: urlSearch, page, pageSize, statusFilter }] as const;
   const { data, isFetching, isPlaceholderData } = useQuery<StudentPage>({
     queryKey,
     queryFn: () =>
@@ -79,6 +80,7 @@ export default function Students() {
           params: {
             ...(filter && { class: filter }),
             ...(urlSearch && { q: urlSearch }),
+            ...(statusFilter && { status: statusFilter }),
             page,
             page_size: pageSize,
           },
@@ -86,6 +88,24 @@ export default function Students() {
         .then((r) => r.data),
     placeholderData: keepPreviousData,
   });
+
+  // Side query: count of pending-deletion rows in this user's scope, used by the
+  // filter chip badge. Lightweight (page_size=1) — we only need `total`.
+  const { data: pendingCount } = useQuery<StudentPage>({
+    queryKey: ["students-pending-count", { filter }],
+    queryFn: () =>
+      api
+        .get<StudentPage>("/students", {
+          params: {
+            ...(filter && { class: filter }),
+            status: "pending_delete",
+            page: 1,
+            page_size: 1,
+          },
+        })
+        .then((r) => r.data),
+  });
+  const pendingTotal = pendingCount?.total ?? 0;
 
   // Re-fetch on any students-channel SSE event regardless of pagination state.
   useSSE("students", [["students"]]);
@@ -123,13 +143,36 @@ export default function Students() {
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="font-display text-heading-lg text-deep-indigo">{t("portal.nav.students")}</h1>
         <div className="flex gap-2">
-          {isAdmin && (
+          {canAccessMenu(user, "students.bulk") && (
             <Button variant="outline" onClick={() => setImportOpen(true)}>
               <FileSpreadsheet className="h-4 w-4" /> Bulk import
             </Button>
           )}
           <Button variant="outline" onClick={exportCsv}><Download className="h-4 w-4" /> Export CSV</Button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <Button
+          size="sm"
+          variant={statusFilter === "" ? "default" : "outline"}
+          onClick={() => setParam("status", null)}
+        >
+          All students
+        </Button>
+        <Button
+          size="sm"
+          variant={statusFilter === "pending_delete" ? "default" : "outline"}
+          className="gap-2"
+          onClick={() => setParam("status", "pending_delete")}
+        >
+          <Clock className="h-3.5 w-3.5" /> Pending deletion
+          {pendingTotal > 0 && (
+            <span className="ml-1 inline-flex items-center rounded-full bg-amber-500 text-white text-xs px-1.5">
+              {pendingTotal}
+            </span>
+          )}
+        </Button>
       </div>
 
       <BulkImportDialog
@@ -195,23 +238,36 @@ export default function Students() {
             </TableHeader>
             <TableBody>
               {items.map((s, i) => {
-                const pending = s.status === "pending_delete";
+                const pendingDelete = s.status === "pending_delete";
+                const pendingEdit = !!s.has_pending_edit;
+                // Row rail: red for pending_delete (stronger signal), blue for
+                // pending_edit only. Both visible together via badges in the cell.
+                const rowClass = pendingDelete
+                  ? "bg-amber-100/80 border-l-4 border-l-amber-500"
+                  : pendingEdit
+                  ? "bg-sky-50 border-l-4 border-l-sky-500"
+                  : undefined;
                 return (
-                  <TableRow key={s.id} className={pending ? "bg-amber-50/60" : undefined}>
+                  <TableRow key={s.id} className={rowClass}>
                     <TableCell>{startRow + i}</TableCell>
                     <TableCell className="font-mono text-xs">{s.admission_id ?? "—"}</TableCell>
                     <TableCell>{s.roll_no ?? "—"}</TableCell>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>{s.name}</span>
-                        {pending && (
-                          <Badge variant="warning" className="gap-1">
-                            <Clock className="h-3 w-3" /> Deletion requested
+                        {pendingDelete && (
+                          <Badge variant="warning" className="gap-1 border border-amber-500 bg-amber-200 text-amber-900">
+                            <Clock className="h-3 w-3" /> Awaiting super-admin approval
+                          </Badge>
+                        )}
+                        {pendingEdit && !pendingDelete && (
+                          <Badge variant="info" className="gap-1 border border-sky-500 bg-sky-100 text-sky-900">
+                            <FileEdit className="h-3 w-3" /> Edit pending approval
                           </Badge>
                         )}
                       </div>
-                      {pending && s.delete_reason && (
-                        <div className="text-xs text-muted-foreground mt-0.5">Reason: {s.delete_reason}</div>
+                      {pendingDelete && s.delete_reason && (
+                        <div className="text-xs text-amber-900 mt-0.5">Reason: {s.delete_reason}</div>
                       )}
                     </TableCell>
                     <TableCell>{s.father}</TableCell>
@@ -221,8 +277,15 @@ export default function Students() {
                     <TableCell className="text-right">
                       <div className="flex gap-1 justify-end">
                         <Button asChild size="icon" variant="outline"><Link to={`/students/${s.id}`}><Eye className="h-4 w-4" /></Link></Button>
-                        <Button asChild size="icon" variant="outline"><Link to={`/students/${s.id}?edit=1`}><Pencil className="h-4 w-4" /></Link></Button>
-                        {!pending && (
+                        {/* Hide pencil if a previous edit is still awaiting
+                            super-admin review (super-admin can still override
+                            from the detail page itself). */}
+                        {!(pendingEdit && !isSuperAdmin) && (
+                          <Button asChild size="icon" variant="outline">
+                            <Link to={`/students/${s.id}?edit=1`}><Pencil className="h-4 w-4" /></Link>
+                          </Button>
+                        )}
+                        {!pendingDelete && (
                           <Button
                             size="icon"
                             variant="outline"
