@@ -8,6 +8,8 @@ function:
 
 Call these AFTER the DB commit + broker.publish in each router.
 """
+from __future__ import annotations
+
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 

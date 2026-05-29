@@ -2,6 +2,7 @@ package `in`.kisschool.data.repo
 
 import `in`.kisschool.data.api.ApiService
 import `in`.kisschool.data.api.dto.ChangePasswordRequest
+import `in`.kisschool.data.api.dto.ForgotPasswordRequest
 import `in`.kisschool.data.api.dto.LoginRequest
 import `in`.kisschool.data.auth.TokenStore
 
@@ -38,6 +39,10 @@ class AuthRepository(
             throw RuntimeException(resp.errorBody()?.string() ?: "Password change failed (${resp.code()})")
         }
         tokenStore.setForcePasswordChange(false)
+    }
+
+    suspend fun forgotPassword(identifier: String) {
+        api.forgotPassword(ForgotPasswordRequest(identifier.trim()))
     }
 
     fun logout() = tokenStore.clear()

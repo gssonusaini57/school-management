@@ -297,6 +297,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(db_dep
         recipient_name=name,
         reset_url=reset_url,
         ttl_minutes=settings.RESET_TOKEN_TTL_MINUTES,
+        logo_url=settings.email_logo_url,
     )
     try:
         send_email(to=email, subject=subject, html=html, text=text)

@@ -18,6 +18,8 @@ import `in`.kisschool.ui.screens.history.HistoryViewModel
 import `in`.kisschool.ui.screens.home.HomeScreen
 import `in`.kisschool.ui.screens.login.ChangePasswordScreen
 import `in`.kisschool.ui.screens.login.ChangePasswordViewModel
+import `in`.kisschool.ui.screens.login.ForgotPasswordScreen
+import `in`.kisschool.ui.screens.login.ForgotPasswordViewModel
 import `in`.kisschool.ui.screens.login.LoginScreen
 import `in`.kisschool.ui.screens.login.LoginViewModel
 import `in`.kisschool.ui.screens.marks.MarksEntryScreen
@@ -39,6 +41,7 @@ object Routes {
     const val STUDENT_DETAIL = "student/{id}"
     const val STUDENT_EDIT = "student/{id}/edit"
     const val MARKS = "marks"
+    const val FORGOT_PASSWORD = "forgot-password"
     fun studentDetail(id: Long) = "student/$id"
     fun studentEdit(id: Long) = "student/$id/edit"
 }
@@ -56,7 +59,16 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                     navController.navigate(target) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
-                }
+                },
+                onForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) }
+            )
+        }
+
+        composable(Routes.FORGOT_PASSWORD) {
+            val vm = viewModel { ForgotPasswordViewModel(container.authRepo) }
+            ForgotPasswordScreen(
+                vm = vm,
+                onBack = { navController.popBackStack() }
             )
         }
 

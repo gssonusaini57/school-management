@@ -8,6 +8,8 @@ Every template returns a `(subject, html, text)` tuple and accepts a `logo_url`.
 The shared `_email_shell` renders the tri-band header (with crest), the white
 card body, and the footer — so each template only supplies its heading + body.
 """
+from __future__ import annotations
+
 from html import escape
 
 # Brand palette (mirrors packages/design-system/tokens.css; inlined for email).

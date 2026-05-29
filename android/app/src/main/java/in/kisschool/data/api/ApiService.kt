@@ -2,8 +2,10 @@ package `in`.kisschool.data.api
 
 import `in`.kisschool.data.api.dto.AttendanceDto
 import `in`.kisschool.data.api.dto.ChangePasswordRequest
+import `in`.kisschool.data.api.dto.ForgotPasswordRequest
 import `in`.kisschool.data.api.dto.LoginRequest
 import `in`.kisschool.data.api.dto.LoginResponse
+import `in`.kisschool.data.api.dto.MessageResponse
 import `in`.kisschool.data.api.dto.BatchDetailDto
 import `in`.kisschool.data.api.dto.BatchSaveBody
 import `in`.kisschool.data.api.dto.ClassSubjectDetailDto
@@ -93,4 +95,7 @@ interface ApiService {
 
     @POST("staff/change-password")
     suspend fun changeStaffPassword(@Body body: ChangePasswordRequest): Response<Unit>
+
+    @POST("auth/forgot-password")
+    suspend fun forgotPassword(@Body body: ForgotPasswordRequest): MessageResponse
 }

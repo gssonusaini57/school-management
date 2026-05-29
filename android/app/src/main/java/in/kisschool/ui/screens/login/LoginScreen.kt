@@ -48,7 +48,11 @@ private val DeepIndigo = Color(0xFF08205C)
 private val KhalsaBlue = Color(0xFF0E2F8E)
 
 @Composable
-fun LoginScreen(vm: LoginViewModel, onLoggedIn: (mustChange: Boolean) -> Unit) {
+fun LoginScreen(
+    vm: LoginViewModel,
+    onLoggedIn: (mustChange: Boolean) -> Unit,
+    onForgotPassword: () -> Unit = {},
+) {
     val state by vm.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(state.success) {
@@ -148,12 +152,13 @@ fun LoginScreen(vm: LoginViewModel, onLoggedIn: (mustChange: Boolean) -> Unit) {
                     ) else Text("Sign in")
                 }
 
-                Text(
-                    "Forgot your password? Contact the office at +91 93563-31762.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center
-                )
+                androidx.compose.material3.TextButton(
+                    onClick = onForgotPassword,
+                    enabled = !state.busy,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Forgot password?")
+                }
                 Text(
                     "v${BuildConfig.VERSION_NAME} · build ${BuildConfig.VERSION_CODE}",
                     style = MaterialTheme.typography.labelSmall,

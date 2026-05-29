@@ -50,6 +50,19 @@ final class ApiClient {
         )
     }
 
+    func forgotPassword(identifier: String) async throws {
+        // Unauthed. Backend accepts the same email-or-phone identifier as login and
+        // always returns a generic 200 {message: "..."} — never reveals whether the
+        // account exists. The response body is ignored.
+        struct Body: Encodable { let identifier: String }
+        struct Resp: Decodable { let message: String? }
+        let _: Resp = try await post(
+            path: "auth/forgot-password",
+            body: Body(identifier: identifier),
+            authed: false
+        )
+    }
+
     func me() async throws -> MeResponse {
         try await get(path: "auth/me")
     }
