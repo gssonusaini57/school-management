@@ -3,6 +3,7 @@ package `in`.kisschool.di
 import android.content.Context
 import `in`.kisschool.data.api.ApiService
 import `in`.kisschool.data.auth.TokenStore
+import `in`.kisschool.data.repo.AppUpdateRepository
 import `in`.kisschool.data.repo.AttendanceRepository
 import `in`.kisschool.data.repo.AuthRepository
 import `in`.kisschool.data.repo.MarksRepository
@@ -58,6 +59,7 @@ class AppContainer(context: Context) {
     val studentRepo = StudentRepository(api)
     val attendanceRepo = AttendanceRepository(api)
     val marksRepo = MarksRepository(api)
+    val appUpdateRepo = AppUpdateRepository(api)
 }
 
 /** Tiny indirection so we can read BuildConfig.DEBUG without importing it everywhere. */

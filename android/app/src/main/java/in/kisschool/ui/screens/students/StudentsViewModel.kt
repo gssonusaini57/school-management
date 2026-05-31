@@ -39,6 +39,10 @@ class StudentsViewModel(
         reload()
     }
 
+    /** Re-fetch the current class — used after returning from a detail-screen
+     *  action (e.g. a deletion request) so the list reflects the new status. */
+    fun refresh() = reload()
+
     private fun reload() {
         val cls = _state.value.selectedClass ?: return
         _state.value = _state.value.copy(loading = true, error = null)

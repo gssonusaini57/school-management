@@ -39,6 +39,8 @@ android {
         create("prod") {
             dimension = "env"
             buildConfigField("String", "API_BASE_URL", "\"https://kisschool.in/api/\"")
+            // Version manifest the app polls on launch to force-update old builds.
+            buildConfigField("String", "APP_VERSION_URL", "\"https://kisschool.in/downloads/app-version.json\"")
             resValue("string", "app_name", "KIS Attendance")
         }
         // Internal name "staging" (AGP reserves flavor names starting with "test"),
@@ -48,6 +50,7 @@ android {
             applicationIdSuffix = ".test"
             versionNameSuffix = "-test"
             buildConfigField("String", "API_BASE_URL", "\"https://expressonly.in/school/api/\"")
+            buildConfigField("String", "APP_VERSION_URL", "\"https://expressonly.in/school/downloads/app-version-test.json\"")
             resValue("string", "app_name", "KIS Attendance (Test)")
         }
     }
@@ -129,6 +132,10 @@ dependencies {
 
     // Image loading for student-document previews (authenticated inline URLs).
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // EXIF orientation read so camera captures aren't uploaded sideways
+    // (used by util/ImagePick before JPEG re-encode).
+    implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
 

@@ -10,6 +10,8 @@ Call these AFTER the DB commit + broker.publish in each router.
 """
 from __future__ import annotations
 
+import functools
+
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 
@@ -21,6 +23,31 @@ from . import email_templates as tpl
 from .logging_config import get_logger
 
 log = get_logger("app.notifications")
+
+
+def _never_raises(fn):
+    """Guarantee a notification helper can never break its caller.
+
+    Notifications are best-effort side-effects fired AFTER the DB commit. A bug
+    anywhere in the helper (template rendering, a missing import, a bad lookup)
+    must surface as a logged error — never as a 500 on the request that already
+    succeeded. This wraps the WHOLE body, not just the SMTP send, so failures
+    before `_send` (e.g. building the email) are caught too.
+
+    Root-caused exactly this in prod: a missing import made the call raise
+    NameError, turning every staff/admin edit-save into a 500 (see students.py).
+    """
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except Exception:
+            log.exception(
+                "notification helper failed",
+                extra={"event": "notify_failed", "helper": fn.__name__},
+            )
+            return None
+    return wrapper
 
 
 def _send(to: str, built: tuple[str, str, str], event: str) -> None:
@@ -64,6 +91,7 @@ def _url(path: str) -> str:
 
 
 # ── Approval-needed (→ approver inbox) ──────────────────────────────────────
+@_never_raises
 def notify_student_edit_request(db: Session, req, student) -> None:
     fields = list((req.changes or {}).keys())
     built = tpl.student_edit_request_email(
@@ -77,6 +105,7 @@ def notify_student_edit_request(db: Session, req, student) -> None:
     _send(settings.approver_notify_email, built, "notify_student_edit_request")
 
 
+@_never_raises
 def notify_marks_edit_request(db: Session, req, batch) -> None:
     built = tpl.marks_edit_request_email(
         requester=req.requested_by,
@@ -91,6 +120,7 @@ def notify_marks_edit_request(db: Session, req, batch) -> None:
     _send(settings.approver_notify_email, built, "notify_marks_edit_request")
 
 
+@_never_raises
 def notify_marks_submitted(db: Session, batch, student_count: int) -> None:
     built = tpl.marks_batch_submitted_email(
         submitter=batch.submitted_by or batch.created_by or "A teacher",
@@ -106,6 +136,7 @@ def notify_marks_submitted(db: Session, batch, student_count: int) -> None:
 
 
 # ── Outcomes (→ original requester, fallback approver inbox) ─────────────────
+@_never_raises
 def notify_request_outcome(
     db: Session, *, kind: str, outcome: str, requester: str,
     detail: str, reason: str | None = None,

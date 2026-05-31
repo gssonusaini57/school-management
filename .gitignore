@@ -46,8 +46,9 @@ android/keystore/*.jks
 android/keystore/*.keystore
 android/keystore/keystore.properties
 
-# Generated APK artifact (rebuilt by scripts/build-android.sh)
+# Generated APK + version-manifest artifacts (rebuilt by scripts/build-android.sh)
 frontend/public/downloads/*.apk
+frontend/public/downloads/app-version*.json
 
 # Local log-backup dirs created by scripts/deploy/*/download-logs.sh
 logs_backup_test_*/

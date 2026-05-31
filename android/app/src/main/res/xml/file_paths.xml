@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FileProvider roots. The camera capture flow writes a temp JPEG into
+     cacheDir/captures/ and shares a content:// uri for it with the system
+     camera app (see ImagePick.newCaptureTarget + AndroidManifest provider). -->
+<paths>
+    <cache-path name="captures" path="captures/" />
+</paths>

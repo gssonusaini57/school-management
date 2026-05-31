@@ -12,19 +12,27 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -38,12 +46,35 @@ import `in`.kisschool.ui.components.LoadingRow
 fun StudentDetailScreen(
     vm: StudentDetailViewModel,
     onEdit: () -> Unit,
+    onDeleted: () -> Unit,
     onBack: () -> Unit,
 ) {
     val s by vm.state.collectAsStateWithLifecycle()
     val scroll = rememberScrollState()
     val student = s.student
-    val pending = student?.pendingEditRequestId != null
+    val pendingEdit = student?.pendingEditRequestId != null
+    val pendingDelete = student?.status == "pending_delete"
+    var showDeleteDialog by remember { mutableStateOf(false) }
+    var navigatedAway by remember { mutableStateOf(false) }
+
+    // On a successful delete request, leave the screen (back to the refreshed
+    // list). Guard so a recomposition can't fire onDeleted() twice.
+    LaunchedEffect(s.deleteRequested) {
+        if (s.deleteRequested && !navigatedAway) {
+            navigatedAway = true
+            onDeleted()
+        }
+    }
+
+    if (showDeleteDialog && student != null) {
+        DeleteStudentDialog(
+            studentName = student.name,
+            submitting = s.deleting,
+            errorText = s.deleteError,
+            onDismiss = { if (!s.deleting) { showDeleteDialog = false; vm.clearDeleteError() } },
+            onConfirm = { reason -> vm.requestDelete(reason) },
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -55,10 +86,16 @@ fun StudentDetailScreen(
                     }
                 },
                 actions = {
-                    // Edit is disabled while an edit request is awaiting super-admin approval.
                     if (student != null) {
-                        IconButton(onClick = onEdit, enabled = !pending) {
+                        // Edit is disabled while an edit request is awaiting super-admin approval.
+                        IconButton(onClick = onEdit, enabled = !pendingEdit) {
                             Icon(Icons.Default.Edit, contentDescription = "Edit student")
+                        }
+                        // Request deletion — hidden once a deletion is already pending.
+                        if (!pendingDelete) {
+                            IconButton(onClick = { showDeleteDialog = true }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Request student deletion")
+                            }
                         }
                     }
                 },
@@ -83,11 +120,80 @@ fun StudentDetailScreen(
                 s.loading -> LoadingRow()
                 s.error != null -> ErrorBanner(s.error)
                 student != null -> {
-                    if (pending) PendingBanner(student.pendingEditRequestedAt)
+                    if (pendingDelete) {
+                        DeletePendingBanner(student.deleteReason)
+                    }
+                    if (pendingEdit) PendingBanner(student.pendingEditRequestedAt)
                     StudentBody(student)
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun DeleteStudentDialog(
+    studentName: String,
+    submitting: Boolean,
+    errorText: String?,
+    onDismiss: () -> Unit,
+    onConfirm: (reason: String?) -> Unit,
+) {
+    var reason by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Request student deletion") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(
+                    "Submit \"$studentName\" for super-admin approval. The record stays " +
+                        "visible with a \"Deletion requested\" badge until it's approved.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = { if (it.length <= 500) reason = it },
+                    label = { Text("Reason (optional)") },
+                    placeholder = { Text("e.g. duplicate record, left school") },
+                    minLines = 2,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                ErrorBanner(errorText)
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onConfirm(reason.ifBlank { null }) },
+                enabled = !submitting,
+            ) {
+                Text(if (submitting) "Submitting…" else "Submit request")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !submitting) { Text("Cancel") }
+        },
+    )
+}
+
+@Composable
+private fun DeletePendingBanner(reason: String?) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .background(
+                MaterialTheme.colorScheme.errorContainer,
+                RoundedCornerShape(8.dp)
+            )
+            .padding(12.dp)
+    ) {
+        Text(
+            buildString {
+                append("Deletion requested — awaiting super-admin approval.")
+                if (!reason.isNullOrBlank()) append(" Reason: $reason")
+            },
+            color = MaterialTheme.colorScheme.onErrorContainer,
+            style = MaterialTheme.typography.bodySmall
+        )
     }
 }
 

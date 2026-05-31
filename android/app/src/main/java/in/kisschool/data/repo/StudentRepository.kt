@@ -1,6 +1,7 @@
 package `in`.kisschool.data.repo
 
 import `in`.kisschool.data.api.ApiService
+import `in`.kisschool.data.api.dto.DeleteStudentBody
 import `in`.kisschool.data.api.dto.StudentDto
 import `in`.kisschool.data.api.dto.StudentUpdateDto
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -31,6 +32,23 @@ class StudentRepository(private val api: ApiService) {
             }
         }
         throw RuntimeException(detail ?: "Update failed (HTTP ${resp.code()})")
+    }
+
+    /**
+     * Request soft-deletion of a student. For a staff/admin user the server marks
+     * the row `pending_delete` (queued for super-admin approval) and returns it
+     * with the new status; the FastAPI `detail` is surfaced verbatim on failure
+     * (e.g. the 409 "already pending deletion or deleted").
+     */
+    suspend fun requestDelete(id: Long, reason: String?): StudentDto {
+        val resp = api.deleteStudent(id, DeleteStudentBody(reason?.trim()?.ifBlank { null }))
+        if (resp.isSuccessful) {
+            return resp.body() ?: throw RuntimeException("Empty response from server")
+        }
+        val detail = resp.errorBody()?.string()?.let { raw ->
+            try { JSONObject(raw).optString("detail").ifBlank { null } } catch (_: Exception) { null }
+        }
+        throw RuntimeException(detail ?: "Delete request failed (HTTP ${resp.code()})")
     }
 
     /** Upload (or replace) a student document. kind ∈ {photo, dob_cert, aadhar}. */

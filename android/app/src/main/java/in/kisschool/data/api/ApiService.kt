@@ -6,10 +6,12 @@ import `in`.kisschool.data.api.dto.ForgotPasswordRequest
 import `in`.kisschool.data.api.dto.LoginRequest
 import `in`.kisschool.data.api.dto.LoginResponse
 import `in`.kisschool.data.api.dto.MessageResponse
+import `in`.kisschool.data.api.dto.AppVersionDto
 import `in`.kisschool.data.api.dto.BatchDetailDto
 import `in`.kisschool.data.api.dto.BatchSaveBody
 import `in`.kisschool.data.api.dto.ClassSubjectDetailDto
 import `in`.kisschool.data.api.dto.ClassSubjectDto
+import `in`.kisschool.data.api.dto.DeleteStudentBody
 import `in`.kisschool.data.api.dto.MeResponse
 import `in`.kisschool.data.api.dto.RequestEditBody
 import `in`.kisschool.data.api.dto.StudentDto
@@ -19,6 +21,7 @@ import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.HTTP
 import retrofit2.http.Multipart
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -26,6 +29,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Url
 
 interface ApiService {
 
@@ -45,6 +49,15 @@ interface ApiService {
     suspend fun updateStudent(
         @Path("id") id: Long,
         @Body body: StudentUpdateDto
+    ): Response<StudentDto>
+
+    // Soft-delete request. Staff/admin → server flips status to `pending_delete`
+    // for super-admin approval and echoes back the updated row. DELETE-with-body
+    // needs @HTTP(hasBody=true); a plain @DELETE can't carry the reason payload.
+    @HTTP(method = "DELETE", path = "students/{id}", hasBody = true)
+    suspend fun deleteStudent(
+        @Path("id") id: Long,
+        @Body body: DeleteStudentBody
     ): Response<StudentDto>
 
     // Student documents — kind ∈ {photo, dob_cert, aadhar}. Multipart field name "file".
@@ -98,4 +111,9 @@ interface ApiService {
 
     @POST("auth/forgot-password")
     suspend fun forgotPassword(@Body body: ForgotPasswordRequest): MessageResponse
+
+    // Force-update manifest. Absolute @Url (it lives under /downloads/, not /api/);
+    // unauthenticated + cheap so it can run before login.
+    @GET
+    suspend fun appVersion(@Url url: String): AppVersionDto
 }

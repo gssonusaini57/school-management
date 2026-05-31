@@ -133,12 +133,23 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
             HistoryScreen(vm = vm, onBack = { navController.popBackStack() })
         }
 
-        composable(Routes.STUDENTS) {
+        composable(Routes.STUDENTS) { entry ->
             val vm = viewModel {
                 StudentsViewModel(
                     studentRepo = container.studentRepo,
                     allowedClasses = container.authRepo.allowedClasses
                 )
+            }
+            // The detail screen flags this when a deletion is requested, so the
+            // list re-fetches and shows the new pending-delete status on return.
+            val changed by entry.savedStateHandle
+                .getStateFlow("students_changed", false)
+                .collectAsStateWithLifecycle()
+            LaunchedEffect(changed) {
+                if (changed) {
+                    vm.refresh()
+                    entry.savedStateHandle["students_changed"] = false
+                }
             }
             StudentsScreen(
                 vm = vm,
@@ -173,6 +184,13 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
             StudentDetailScreen(
                 vm = vm,
                 onEdit = { navController.navigate(Routes.studentEdit(id)) },
+                onDeleted = {
+                    // Tell the students list to refresh so the new pending-delete
+                    // status shows, then return to it.
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle?.set("students_changed", true)
+                    navController.popBackStack()
+                },
                 onBack = { navController.popBackStack() }
             )
         }

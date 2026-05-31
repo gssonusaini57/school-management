@@ -12,6 +12,7 @@ from ..models.document import StudentDocument, DocumentKind
 from ..models.record_status import RecordStatus
 from ..models.student_edit_request import StudentEditRequest, EditRequestStatus, EditRequestRole
 from ..events import broker
+from ..notifications import notify_student_edit_request
 from ..logging_config import get_logger
 from ._bulk import read_csv, title_case, parse_date_field, must_str, opt_str, FieldError, error_dict
 
@@ -339,6 +340,10 @@ def update_student(
     db.refresh(req)
     broker.publish("edit_requests", "upsert", id=req.id)
     broker.publish("students", "upsert", id=s.id, class_name=s.class_name)
+    # Best-effort notification. The @_never_raises decorator on this helper logs
+    # and swallows ANY failure (missing import, template bug, SMTP error) so it
+    # can never turn the already-committed edit request into a 500. (Root-caused
+    # exactly this in prod — see notifications.py.)
     notify_student_edit_request(db, req, s)
     log.warning(
         "student_edit_requested",

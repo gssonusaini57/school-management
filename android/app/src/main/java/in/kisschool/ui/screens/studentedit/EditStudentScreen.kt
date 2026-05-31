@@ -16,11 +16,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import android.net.Uri
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Image
+import androidx.compose.material.icons.filled.PhotoCamera
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,6 +39,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -48,6 +57,7 @@ import `in`.kisschool.ui.components.ClassDropdown
 import `in`.kisschool.ui.components.DateField
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
+import `in`.kisschool.util.ImagePick
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -282,13 +292,35 @@ private fun DocSlot(
     onUpload: (kind: String, bytes: ByteArray, mime: String) -> Unit,
 ) {
     val ctx = LocalContext.current
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
-        if (uri != null) {
-            val mime = ctx.contentResolver.getType(uri) ?: "image/jpeg"
-            val bytes = runCatching { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
-            if (bytes != null && bytes.isNotEmpty()) onUpload(kind, bytes, mime)
+    var menuOpen by remember { mutableStateOf(false) }
+    // The camera contract reports only success/failure, so we keep the uri we
+    // asked it to write to and read it back here. rememberSaveable so a rotation
+    // (or process death) mid-capture doesn't drop the just-taken photo — Uri is
+    // Parcelable, so the default saver handles it.
+    var pendingCaptureUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+
+    // Downscale + EXIF-correct + JPEG re-encode; fall back to raw bytes for a
+    // non-image (e.g. a PDF picked for a certificate).
+    fun handlePicked(uri: Uri?) {
+        if (uri == null) return
+        val jpeg = ImagePick.compressToJpeg(ctx, uri)
+        if (jpeg != null && jpeg.isNotEmpty()) {
+            onUpload(kind, jpeg, "image/jpeg")
+            return
         }
+        val mime = ctx.contentResolver.getType(uri) ?: "image/jpeg"
+        val raw = runCatching { ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } }.getOrNull()
+        if (raw != null && raw.isNotEmpty()) onUpload(kind, raw, mime)
     }
+
+    val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        handlePicked(uri)
+    }
+    val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+        if (success && pendingCaptureUri != null) handlePicked(pendingCaptureUri)
+        pendingCaptureUri = null
+    }
+
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         // Thumbnail (photo) or a status box for cert/aadhar.
         if (imageUrl != null) {
@@ -318,11 +350,33 @@ private fun DocSlot(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        OutlinedButton(onClick = { picker.launch("image/*") }, enabled = !uploading) {
-            if (uploading) {
-                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-            } else {
-                Text(if (present) "Replace" else "Upload")
+        Box {
+            OutlinedButton(onClick = { menuOpen = true }, enabled = !uploading) {
+                if (uploading) {
+                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                } else {
+                    Text(if (present) "Replace" else "Upload")
+                }
+            }
+            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DropdownMenuItem(
+                    text = { Text("Take photo") },
+                    leadingIcon = { Icon(Icons.Default.PhotoCamera, contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        val uri = ImagePick.newCaptureTarget(ctx)
+                        pendingCaptureUri = uri
+                        cameraLauncher.launch(uri)
+                    }
+                )
+                DropdownMenuItem(
+                    text = { Text("Choose from gallery") },
+                    leadingIcon = { Icon(Icons.Default.Image, contentDescription = null) },
+                    onClick = {
+                        menuOpen = false
+                        galleryLauncher.launch("image/*")
+                    }
+                )
             }
         }
     }

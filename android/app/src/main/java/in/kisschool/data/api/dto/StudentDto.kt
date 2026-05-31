@@ -30,7 +30,12 @@ data class StudentDto(
     @SerializedName("has_photo") val hasPhoto: Boolean = false,
     @SerializedName("has_dob_cert") val hasDobCert: Boolean = false,
     @SerializedName("has_aadhar") val hasAadhar: Boolean = false,
+    // Soft-delete workflow: `status` is "active" | "pending_delete" | "deleted".
+    // The reason/requester surface in the detail-screen "Deletion requested" banner.
     val status: String = "active",
+    @SerializedName("delete_reason") val deleteReason: String? = null,
+    @SerializedName("delete_requested_at") val deleteRequestedAt: String? = null,
+    @SerializedName("delete_requested_by") val deleteRequestedBy: String? = null,
     // Edit-approval workflow: when a staff/admin edit is queued, the server returns the
     // pending request id. Non-super-admin users (the only kind in this app) must wait for
     // super-admin approval, so a non-null value here locks further edits.

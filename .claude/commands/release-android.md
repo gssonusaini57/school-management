@@ -33,8 +33,34 @@ If the user didn't say, ask: **prod** (default, → prod server) or **test** (�
      || { echo "ERROR: keystore missing — see android/README.md"; exit 1; }
    ```
 2. `git status` for `android/` and `frontend/` — warn if dirty (don't block).
-3. `versionCode` auto-bumps in `scripts/build-android.sh`; `versionName` is manual in
-   `android/version.properties`. Ask if they want a `versionName` bump before building.
+3. **Every build auto-bumps the version** in `scripts/build-android.sh`: `versionCode +1`
+   **and** the `versionName` patch (e.g. `1.2.0 → 1.2.1`). For a feature release, edit
+   `android/version.properties` by hand first to bump the major/minor (e.g. `1.2.x → 1.3.0`);
+   the patch auto-increments from there. You don't need to bump anything manually for a
+   routine release — just build.
+
+## Force-update gate (every release locks out older installs)
+
+The app polls a published manifest on launch and **force-updates** any build older than it:
+
+| | Path |
+|---|---|
+| prod manifest | `https://kisschool.in/downloads/app-version.json` |
+| test manifest | `https://expressonly.in/school/downloads/app-version-test.json` |
+
+`scripts/build-android.sh` writes this manifest next to the APK with
+`min_version_code == latest_version_code == <this build>`, so **every release forces all
+older (gated) installs to update** — a non-dismissable "Update required" screen whose only
+action downloads the new APK. The Android side ([ui/update/UpdateGate.kt](../../android/app/src/main/java/in/kisschool/ui/update/UpdateGate.kt))
+**fails open**: any fetch/parse error leaves the app usable, so a server hiccup can't lock anyone out.
+
+- **To make a release OPTIONAL** (soft "Update available" prompt the teacher can dismiss):
+  after building, hand-edit the published `app-version.json` so `min_version_code` is **below**
+  `latest_version_code`, then re-upload it.
+- The gate only affects builds that already SHIP the gate (v1.2.x+). Pre-gate installs keep
+  working and must be updated manually once.
+- The `upload-apk.sh` scripts verify the APK serves **HTTP 200 before** publishing the
+  manifest — so a failed APK upload can never arm the gate behind a dead download link.
 
 ## Action
 

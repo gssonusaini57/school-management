@@ -31,17 +31,25 @@ if [[ ! -f "$ANDROID_DIR/keystore/keystore.properties" ]]; then
     exit 1
 fi
 
-# Auto-bump versionCode so every release APK has a unique, monotonic build number.
-# versionName stays manual — edit android/version.properties when you want a
-# user-visible version bump (e.g. 1.0.0 → 1.1.0).
+# Auto-bump EVERY release so each APK is a new, forceable version:
+#   - versionCode +1   → unique monotonic build number (the force-update gate keys on this)
+#   - versionName patch +1 (e.g. 1.2.0 → 1.2.1) → a fresh user-visible version too
+# For a major/minor feature bump, edit version.properties by hand first (e.g. set
+# 1.2.0 → 1.3.0); the patch then auto-increments from there on the next build.
 VERSION_FILE="$ANDROID_DIR/version.properties"
 if [[ -f "$VERSION_FILE" ]]; then
     OLD_VC=$(grep -E '^versionCode=' "$VERSION_FILE" | cut -d= -f2)
     NEW_VC=$((OLD_VC + 1))
-    VN=$(grep -E '^versionName=' "$VERSION_FILE" | cut -d= -f2)
-    # Use a portable in-place sed (works on macOS + Linux)
-    sed -i.bak "s/^versionCode=.*/versionCode=$NEW_VC/" "$VERSION_FILE" && rm -f "$VERSION_FILE.bak"
-    echo "==> Version bump: ${VN} build ${OLD_VC} → ${VN} build ${NEW_VC}"
+    OLD_VN=$(grep -E '^versionName=' "$VERSION_FILE" | cut -d= -f2)
+    IFS='.' read -r VN_MAJ VN_MIN VN_PATCH <<< "$OLD_VN"
+    VN_MAJ="${VN_MAJ:-1}"; VN_MIN="${VN_MIN:-0}"; VN_PATCH="${VN_PATCH:-0}"
+    VN="${VN_MAJ}.${VN_MIN}.$((VN_PATCH + 1))"
+    # Portable in-place sed (works on macOS + Linux)
+    sed -i.bak \
+        -e "s/^versionCode=.*/versionCode=$NEW_VC/" \
+        -e "s/^versionName=.*/versionName=$VN/" \
+        "$VERSION_FILE" && rm -f "$VERSION_FILE.bak"
+    echo "==> Version bump: ${OLD_VN} (build ${OLD_VC}) → ${VN} (build ${NEW_VC})"
 else
     echo "WARN: $VERSION_FILE missing — using whatever's in build.gradle.kts" >&2
 fi
@@ -59,6 +67,31 @@ fi
 
 mkdir -p "$DOWNLOAD_DIR"
 cp -f "$BUILT_APK" "$TARGET_APK"
+
+# ── Publish the force-update manifest next to the APK ────────────────────────
+# The installed app polls this on launch (downloads/app-version.json). Setting
+# min_version_code == this build forces every older (gated) install to update.
+# To make a release an *optional* update instead, lower min_version_code by hand
+# in the published JSON (or here) so it stays below latest_version_code.
+if [[ "$FLAVOR" == "prod" ]]; then
+    MANIFEST="$DOWNLOAD_DIR/app-version.json"
+    MANIFEST_APK_URL="https://kisschool.in/downloads/kis-attendance.apk"
+else
+    MANIFEST="$DOWNLOAD_DIR/app-version-test.json"
+    # The test box serves the staging APK under the stable kis-attendance.apk name
+    # (see scripts/deploy/test/upload-apk.sh), so point the manifest there.
+    MANIFEST_APK_URL="https://expressonly.in/school/downloads/kis-attendance.apk"
+fi
+cat > "$MANIFEST" <<JSON
+{
+  "latest_version_code": ${NEW_VC:-0},
+  "min_version_code": ${NEW_VC:-0},
+  "latest_version_name": "${VN:-1.0.0}",
+  "apk_url": "$MANIFEST_APK_URL",
+  "notes": "Please update to the latest version to continue."
+}
+JSON
+echo "==> Wrote version manifest: $MANIFEST (min = latest = ${NEW_VC:-0})"
 
 SIZE=$(du -h "$TARGET_APK" | awk '{print $1}')
 echo

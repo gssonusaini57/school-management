@@ -28,6 +28,20 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Shares the temp camera-capture JPEG with the system camera app.
+             Authority is per-flavor (${applicationId} carries the .test/.debug
+             suffixes) so multiple variants can coexist on one device. No CAMERA
+             permission is declared, so ACTION_IMAGE_CAPTURE needs no runtime grant. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
     </application>
 
 </manifest>
