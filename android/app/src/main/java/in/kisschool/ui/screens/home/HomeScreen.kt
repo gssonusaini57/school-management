@@ -1,5 +1,7 @@
 package `in`.kisschool.ui.screens.home
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,9 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Info
@@ -39,13 +45,26 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import `in`.kisschool.ui.components.ClassDropdown
+import `in`.kisschool.ui.components.ErrorBanner
+import `in`.kisschool.ui.screens.dashboard.DashboardViewModel
+import `in`.kisschool.ui.screens.dashboard.MonthCalendar
+import java.time.LocalDate
+import java.time.YearMonth
+
+private val MarkedGreen = Color(0xFF16A34A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     userName: String,
+    dashVm: DashboardViewModel,
+    onOpenAttendanceFor: (className: String, iso: String) -> Unit,
     onTakeAttendance: () -> Unit,
     onViewHistory: () -> Unit,
     onViewStudents: () -> Unit,
@@ -54,13 +73,14 @@ fun HomeScreen(
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    val s by dashVm.state.collectAsStateWithLifecycle()
 
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("KIS Attendance") },
+                title = { Text("KIS School Portal") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -96,6 +116,7 @@ fun HomeScreen(
             Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -103,12 +124,55 @@ fun HomeScreen(
                 "Hello, $userName",
                 style = MaterialTheme.typography.headlineSmall
             )
-            Text(
-                "What would you like to do today?",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
+            // ── Attendance coverage dashboard ───────────────────────────────
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(
+                    Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Text("Attendance coverage", style = MaterialTheme.typography.titleMedium)
+
+                    ClassDropdown(
+                        classes = s.allowedClasses,
+                        selected = s.selectedClass,
+                        onSelect = dashVm::selectClass,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    val cls = s.selectedClass
+                    if (cls == null) {
+                        Text(
+                            "No classes assigned yet.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    } else {
+                        val todayIsoStr = LocalDate.now().toString()
+                        val todayMarked = s.month == YearMonth.now() && todayIsoStr in s.markedDates
+                        TodayStatusChip(
+                            marked = todayMarked,
+                            onClick = { onOpenAttendanceFor(cls, todayIsoStr) }
+                        )
+
+                        MonthCalendar(
+                            month = s.month,
+                            markedDates = s.markedDates,
+                            today = LocalDate.now(),
+                            onPrevMonth = dashVm::prevMonth,
+                            onNextMonth = dashVm::nextMonth,
+                            onDayClick = { iso -> onOpenAttendanceFor(cls, iso) },
+                        )
+                    }
+
+                    ErrorBanner(s.error)
+                }
+            }
+
+            // ── Quick actions ──────────────────────────────────────────────
             ActionTile(
                 title = "Take attendance",
                 subtitle = "Mark today's class attendance",
@@ -132,6 +196,39 @@ fun HomeScreen(
                 subtitle = "Enter marks · save draft · submit for lock",
                 icon = Icons.Default.EditNote,
                 onClick = onMarksEntry
+            )
+        }
+    }
+}
+
+@Composable
+private fun TodayStatusChip(marked: Boolean, onClick: () -> Unit) {
+    val bg = if (marked) MarkedGreen.copy(alpha = 0.14f) else MaterialTheme.colorScheme.secondaryContainer
+    val fg = if (marked) MarkedGreen else MaterialTheme.colorScheme.onSecondaryContainer
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        if (marked) {
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = fg)
+            Text(
+                "Today's attendance is marked",
+                color = fg,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        } else {
+            Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = fg)
+            Text(
+                "Mark today's attendance →",
+                color = fg,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(start = 8.dp)
             )
         }
     }
@@ -182,7 +279,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
         confirmButton = {
             TextButton(onClick = onDismiss) { Text("Close") }
         },
-        title = { Text("KIS Attendance") },
+        title = { Text("KIS School Portal") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(Modifier.fillMaxWidth()) {
@@ -199,7 +296,7 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                 }
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text(
-                    "Teacher attendance for KIS School. Built for the staff at kisschool.in.",
+                    "Staff portal for KIS School. Built for the staff at kisschool.in.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

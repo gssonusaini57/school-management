@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import `in`.kisschool.ui.components.ClassDropdown
+import `in`.kisschool.ui.components.DateField
 import `in`.kisschool.ui.components.EmptyState
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
@@ -44,17 +45,19 @@ import `in`.kisschool.ui.components.todayIso
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AttendanceScreen(vm: AttendanceViewModel, onBack: () -> Unit) {
+fun AttendanceScreen(
+    vm: AttendanceViewModel,
+    onBack: () -> Unit,
+    onSaved: () -> Unit = {},
+) {
     val s by vm.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(s.savedAt) {
-        if (s.savedAt > 0L) snackbar.showSnackbar("Attendance saved")
-    }
-
-    LaunchedEffect(Unit) {
-        val today = todayIso()
-        if (s.date != today) vm.selectDate(today)
+        if (s.savedAt > 0L) {
+            snackbar.showSnackbar("Attendance saved")
+            onSaved()
+        }
     }
 
     Scaffold(
@@ -93,17 +96,13 @@ fun AttendanceScreen(vm: AttendanceViewModel, onBack: () -> Unit) {
                     onSelect = vm::selectClass,
                     modifier = Modifier.weight(1f)
                 )
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        "Date",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        "Today (${s.date})",
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
+                // Back-dating allowed; future dates disabled (can't mark ahead).
+                DateField(
+                    isoDate = s.date,
+                    onDateChange = vm::selectDate,
+                    maxIso = todayIso(),
+                    modifier = Modifier.weight(1f)
+                )
             }
 
             ErrorBanner(s.error)

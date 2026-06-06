@@ -12,6 +12,7 @@ import `in`.kisschool.data.api.dto.BatchSaveBody
 import `in`.kisschool.data.api.dto.ClassSubjectDetailDto
 import `in`.kisschool.data.api.dto.ClassSubjectDto
 import `in`.kisschool.data.api.dto.DeleteStudentBody
+import `in`.kisschool.data.api.dto.MarkedDatesDto
 import `in`.kisschool.data.api.dto.MeResponse
 import `in`.kisschool.data.api.dto.RequestEditBody
 import `in`.kisschool.data.api.dto.StudentDto
@@ -44,6 +45,12 @@ interface ApiService {
         @Query("class") className: String,
         @Query("page_size") pageSize: Int = 500
     ): StudentPageDto
+
+    // Single student — returns FULL pending-edit metadata (pendingEditRequestId +
+    // requester/timestamp) that the list endpoint omits. Staff-callable (scoped
+    // by class on the server). Used by the detail + edit screens.
+    @GET("students/{id}")
+    suspend fun getStudent(@Path("id") id: Long): StudentDto
 
     @PATCH("students/{id}")
     suspend fun updateStudent(
@@ -105,6 +112,15 @@ interface ApiService {
 
     @PUT("attendance")
     suspend fun saveAttendance(@Body body: AttendanceDto): Response<Unit>
+
+    // Dates in [from,to] that have an attendance record for this class — powers the
+    // dashboard coverage calendar (one request per month vs one GET per day).
+    @GET("attendance/marked-dates")
+    suspend fun markedDates(
+        @Query("class") className: String,
+        @Query("from") from: String,
+        @Query("to") to: String,
+    ): MarkedDatesDto
 
     @POST("staff/change-password")
     suspend fun changeStaffPassword(@Body body: ChangePasswordRequest): Response<Unit>

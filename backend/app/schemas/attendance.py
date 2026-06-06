@@ -21,3 +21,9 @@ class AttendanceSummary(BaseModel):
     absent: int
     leave: int
     percent: float
+
+
+class MarkedDatesOut(BaseModel):
+    """Dates in a range that have an attendance record for a given class.
+    Powers the mobile coverage calendar (marked vs missed)."""
+    dates: list[date]

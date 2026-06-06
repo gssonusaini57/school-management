@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from datetime import date as date_t
 from ..deps import db_dep, current_user, CurrentUser, assert_class_allowed
-from ..schemas.attendance import AttendanceSave, AttendanceOut, AttendanceSummary
+from ..schemas.attendance import AttendanceSave, AttendanceOut, AttendanceSummary, MarkedDatesOut
 from ..models.attendance import Attendance, AttendanceRecord, AttendanceStatus
 from ..events import broker
 from ..logging_config import get_logger
@@ -84,6 +84,31 @@ def today_summary(user: CurrentUser = Depends(current_user), db: Session = Depen
         date=today, total=total, present=p, absent=a, leave=l,
         percent=round((p / total * 100), 2) if total else 0.0,
     )
+
+
+@router.get("/marked-dates", response_model=MarkedDatesOut)
+def marked_dates(
+    class_name: str = Query(alias="class"),
+    from_: date_t = Query(alias="from"),
+    to: date_t = Query(alias="to"),
+    user: CurrentUser = Depends(current_user),
+    db: Session = Depends(db_dep),
+):
+    """Which dates in [from, to] have an attendance record for this class.
+    Staff-scoped (assert_class_allowed). Powers the mobile coverage calendar so
+    one request covers a whole month instead of one GET per day."""
+    assert_class_allowed(user, class_name)
+    rows = db.execute(
+        select(Attendance.date)
+        .where(
+            Attendance.class_name == class_name,
+            Attendance.date >= from_,
+            Attendance.date <= to,
+        )
+        .distinct()
+        .order_by(Attendance.date)
+    ).scalars().all()
+    return MarkedDatesOut(dates=rows)
 
 
 @router.post("/bulk-import", status_code=201)

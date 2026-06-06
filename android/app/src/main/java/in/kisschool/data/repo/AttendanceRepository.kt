@@ -22,4 +22,9 @@ class AttendanceRepository(private val api: ApiService) {
         val resp = api.saveAttendance(body)
         if (!resp.isSuccessful) error("HTTP ${resp.code()}")
     }
+
+    /** ISO dates in [from,to] that already have attendance for this class.
+     *  Returned as a Set for O(1) per-day lookups in the coverage calendar. */
+    suspend fun markedDates(className: String, from: String, to: String): Set<String> =
+        api.markedDates(className, from, to).dates.toSet()
 }

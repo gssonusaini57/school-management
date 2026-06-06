@@ -27,13 +27,17 @@ data class AttendanceUiState(
 class AttendanceViewModel(
     private val studentRepo: StudentRepository,
     private val attendanceRepo: AttendanceRepository,
-    allowedClasses: List<String>
+    allowedClasses: List<String>,
+    initialClass: String? = null,
+    initialDate: String? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
         AttendanceUiState(
             allowedClasses = allowedClasses,
-            selectedClass = allowedClasses.firstOrNull()
+            // Seed from the dashboard tap-through when provided, else first class + today.
+            selectedClass = initialClass?.takeIf { it.isNotBlank() } ?: allowedClasses.firstOrNull(),
+            date = initialDate?.takeIf { it.isNotBlank() } ?: todayIso(),
         )
     )
     val state: StateFlow<AttendanceUiState> = _state.asStateFlow()

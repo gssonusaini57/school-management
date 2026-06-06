@@ -24,6 +24,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -125,7 +126,9 @@ fun DateField(
     isoDate: String,
     onDateChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Date"
+    label: String = "Date",
+    minIso: String? = null,
+    maxIso: String? = null,
 ) {
     var show by remember { mutableStateOf(false) }
     PickerField(
@@ -137,7 +140,25 @@ fun DateField(
     )
     if (show) {
         val initialMillis = parseIso(isoDate)
-        val state = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        // The Material3 picker compares UTC-midnight millis — matches our
+        // UTC-pinned parseIso, so bounds line up exactly.
+        val minMillis = minIso?.let { parseIso(it) }
+        val maxMillis = maxIso?.let { parseIso(it) }
+        val selectable = remember(minMillis, maxMillis) {
+            object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean =
+                    (minMillis == null || utcTimeMillis >= minMillis) &&
+                    (maxMillis == null || utcTimeMillis <= maxMillis)
+
+                override fun isSelectableYear(year: Int): Boolean =
+                    (minMillis == null || year >= utcYear(minMillis)) &&
+                    (maxMillis == null || year <= utcYear(maxMillis))
+            }
+        }
+        val state = rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis,
+            selectableDates = selectable,
+        )
         DatePickerDialog(
             onDismissRequest = { show = false },
             confirmButton = {
@@ -235,4 +256,10 @@ private fun parseIso(iso: String): Long {
 private fun formatIso(millis: Long): String {
     val fmt = SimpleDateFormat("yyyy-MM-dd", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") }
     return fmt.format(Date(millis))
+}
+
+private fun utcYear(millis: Long): Int {
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"))
+    cal.timeInMillis = millis
+    return cal.get(Calendar.YEAR)
 }

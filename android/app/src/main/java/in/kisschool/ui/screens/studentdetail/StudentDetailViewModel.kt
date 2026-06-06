@@ -66,26 +66,20 @@ class StudentDetailViewModel(
     }
 
     /**
-     * The backend doesn't expose `GET /students/{id}` to staff (admins only); for staff we
-     * fetch by class and find the student. Iterating only over the teacher's allowed classes
-     * keeps the call count small (typically 1–3 classes).
+     * Fetch the single student via GET /students/{id} (staff-callable, class-scoped
+     * server-side). This returns the full pending-edit metadata — crucially
+     * `pendingEditRequestId` — which the list endpoint omits; without it the detail
+     * screen never showed the "pending approval" banner / never disabled Edit.
      */
     private fun load() {
         viewModelScope.launch {
             try {
-                for (cls in allowedClasses) {
-                    val list = studentRepo.byClass(cls)
-                    val match = list.firstOrNull { it.id == studentId }
-                    if (match != null) {
-                        _state.value = StudentDetailUiState(loading = false, student = match)
-                        return@launch
-                    }
-                }
-                _state.value = StudentDetailUiState(loading = false, error = "Student not found")
+                val student = studentRepo.getStudent(studentId)
+                _state.value = StudentDetailUiState(loading = false, student = student)
             } catch (e: Exception) {
                 _state.value = StudentDetailUiState(
                     loading = false,
-                    error = e.message ?: "Failed to load student"
+                    error = e.message ?: "Student not found"
                 )
             }
         }

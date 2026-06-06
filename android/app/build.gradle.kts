@@ -41,7 +41,7 @@ android {
             buildConfigField("String", "API_BASE_URL", "\"https://kisschool.in/api/\"")
             // Version manifest the app polls on launch to force-update old builds.
             buildConfigField("String", "APP_VERSION_URL", "\"https://kisschool.in/downloads/app-version.json\"")
-            resValue("string", "app_name", "KIS Attendance")
+            resValue("string", "app_name", "KIS School Portal")
         }
         // Internal name "staging" (AGP reserves flavor names starting with "test"),
         // but it carries the .test applicationId suffix + "(Test)" label.
@@ -51,7 +51,7 @@ android {
             versionNameSuffix = "-test"
             buildConfigField("String", "API_BASE_URL", "\"https://expressonly.in/school/api/\"")
             buildConfigField("String", "APP_VERSION_URL", "\"https://expressonly.in/school/downloads/app-version-test.json\"")
-            resValue("string", "app_name", "KIS Attendance (Test)")
+            resValue("string", "app_name", "KIS School Portal (Test)")
         }
     }
 

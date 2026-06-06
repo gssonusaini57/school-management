@@ -13,6 +13,10 @@ class StudentRepository(private val api: ApiService) {
     suspend fun byClass(className: String): List<StudentDto> =
         api.students(className).items.sortedBy { it.name.lowercase() }
 
+    /** Fetch a single student — returns the full pending-edit metadata (used by the
+     *  detail + edit screens so the "pending approval" banner + Edit lock work). */
+    suspend fun getStudent(id: Long): StudentDto = api.getStudent(id)
+
     /**
      * PATCH a student. For a staff user the server queues an edit request instead of
      * applying directly; the returned [StudentDto] then carries a non-null

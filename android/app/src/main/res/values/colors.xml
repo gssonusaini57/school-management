@@ -4,7 +4,7 @@
     <color name="kis_primary_dark">#08203E</color>
     <color name="kis_secondary">#16C172</color>
     <color name="kis_background">#F8FAFC</color>
-    <color name="ic_launcher_background">#0F3460</color>
+    <color name="ic_launcher_background">#FFFFFF</color>
     <color name="white">#FFFFFFFF</color>
     <color name="black">#FF000000</color>
 </resources>

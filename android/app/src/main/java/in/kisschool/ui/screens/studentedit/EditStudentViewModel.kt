@@ -48,29 +48,22 @@ class EditStudentViewModel(
         load()
     }
 
-    /** Staff have no GET /students/{id}; fetch by their allowed classes and match. */
+    /** Fetch the single student via GET /students/{id} (staff-callable, class-scoped). */
     private fun load() {
         viewModelScope.launch {
             try {
-                val classes = allowedClasses.ifEmpty { CLASSES }
-                for (cls in classes) {
-                    val match = studentRepo.byClass(cls).firstOrNull { it.id == studentId }
-                    if (match != null) {
-                        _state.value = _state.value.copy(
-                            loading = false,
-                            form = match.toForm(),
-                            hasPhoto = match.hasPhoto,
-                            hasDobCert = match.hasDobCert,
-                            hasAadhar = match.hasAadhar,
-                        )
-                        return@launch
-                    }
-                }
-                _state.value = _state.value.copy(loading = false, loadError = "Student not found")
+                val match = studentRepo.getStudent(studentId)
+                _state.value = _state.value.copy(
+                    loading = false,
+                    form = match.toForm(),
+                    hasPhoto = match.hasPhoto,
+                    hasDobCert = match.hasDobCert,
+                    hasAadhar = match.hasAadhar,
+                )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     loading = false,
-                    loadError = e.message ?: "Failed to load student"
+                    loadError = e.message ?: "Student not found"
                 )
             }
         }

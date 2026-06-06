@@ -117,7 +117,7 @@ private fun ForcedUpdateOverlay(latestName: String?, onUpdate: () -> Unit) {
                 )
                 Text(
                     buildString {
-                        append("A newer version of KIS Attendance is available")
+                        append("A newer version of KIS School Portal is available")
                         if (!latestName.isNullOrBlank()) append(" (v$latestName)")
                         append(". Please update to continue using the app.")
                     },

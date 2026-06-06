@@ -1,5 +1,6 @@
 package `in`.kisschool.ui.nav
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -13,6 +14,7 @@ import androidx.navigation.navArgument
 import `in`.kisschool.di.AppContainer
 import `in`.kisschool.ui.screens.attendance.AttendanceScreen
 import `in`.kisschool.ui.screens.attendance.AttendanceViewModel
+import `in`.kisschool.ui.screens.dashboard.DashboardViewModel
 import `in`.kisschool.ui.screens.history.HistoryScreen
 import `in`.kisschool.ui.screens.history.HistoryViewModel
 import `in`.kisschool.ui.screens.home.HomeScreen
@@ -44,6 +46,9 @@ object Routes {
     const val FORGOT_PASSWORD = "forgot-password"
     fun studentDetail(id: Long) = "student/$id"
     fun studentEdit(id: Long) = "student/$id/edit"
+    // Attendance pre-set to a (class, date) — used by the dashboard calendar tap-through.
+    fun attendanceFor(className: String, iso: String) =
+        "$ATTENDANCE?class=${Uri.encode(className)}&date=$iso"
 }
 
 @Composable
@@ -84,9 +89,28 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
             )
         }
 
-        composable(Routes.HOME) {
+        composable(Routes.HOME) { entry ->
+            val dashVm = viewModel {
+                DashboardViewModel(
+                    attendanceRepo = container.attendanceRepo,
+                    allowedClasses = container.authRepo.allowedClasses
+                )
+            }
+            // Refresh the coverage calendar when returning from a save on the
+            // Attendance screen (same savedStateHandle pattern as students_changed).
+            val attChanged by entry.savedStateHandle
+                .getStateFlow("attendance_changed", false)
+                .collectAsStateWithLifecycle()
+            LaunchedEffect(attChanged) {
+                if (attChanged) {
+                    dashVm.reloadCurrentMonth()
+                    entry.savedStateHandle["attendance_changed"] = false
+                }
+            }
             HomeScreen(
                 userName = container.authRepo.displayName ?: "Teacher",
+                dashVm = dashVm,
+                onOpenAttendanceFor = { c, iso -> navController.navigate(Routes.attendanceFor(c, iso)) },
                 onTakeAttendance = { navController.navigate(Routes.ATTENDANCE) },
                 onViewHistory = { navController.navigate(Routes.HISTORY) },
                 onViewStudents = { navController.navigate(Routes.STUDENTS) },
@@ -111,15 +135,34 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
             MarksEntryScreen(vm = vm, onBack = { navController.popBackStack() })
         }
 
-        composable(Routes.ATTENDANCE) {
+        composable(
+            route = "${Routes.ATTENDANCE}?class={class}&date={date}",
+            arguments = listOf(
+                navArgument("class") { type = NavType.StringType; defaultValue = "" },
+                navArgument("date") { type = NavType.StringType; defaultValue = "" },
+            )
+        ) { entry ->
+            // Optional args (default "") → the plain "attendance" tile route still matches
+            // and falls back to first class + today.
+            val initClass = entry.arguments?.getString("class")?.ifBlank { null }
+            val initDate = entry.arguments?.getString("date")?.ifBlank { null }
             val vm = viewModel {
                 AttendanceViewModel(
                     studentRepo = container.studentRepo,
                     attendanceRepo = container.attendanceRepo,
-                    allowedClasses = container.authRepo.allowedClasses
+                    allowedClasses = container.authRepo.allowedClasses,
+                    initialClass = initClass,
+                    initialDate = initDate,
                 )
             }
-            AttendanceScreen(vm = vm, onBack = { navController.popBackStack() })
+            AttendanceScreen(
+                vm = vm,
+                onBack = { navController.popBackStack() },
+                onSaved = {
+                    navController.previousBackStackEntry
+                        ?.savedStateHandle?.set("attendance_changed", true)
+                },
+            )
         }
 
         composable(Routes.HISTORY) {
