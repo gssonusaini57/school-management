@@ -31,6 +31,7 @@ def get_attendance(
         class_name=a.class_name,
         date=a.date,
         records={r.student_id: r.status.value for r in a.records},
+        is_holiday=a.is_holiday,
     )
 
 
@@ -55,12 +56,34 @@ def save_attendance(
         for r in list(a.records):
             db.delete(r)
         db.flush()
-    for sid, status in payload.records.items():
-        if status not in ("P", "A", "L"):
-            raise HTTPException(status_code=400, detail=f"Bad status: {status}")
-        db.add(AttendanceRecord(attendance_id=a.id, student_id=int(sid), status=AttendanceStatus(status)))
+    a.is_holiday = payload.is_holiday
+    # A holiday is a day-level marker with no per-student records.
+    if not payload.is_holiday:
+        for sid, status in payload.records.items():
+            if status not in ("P", "A", "L", "H"):
+                raise HTTPException(status_code=400, detail=f"Bad status: {status}")
+            db.add(AttendanceRecord(attendance_id=a.id, student_id=int(sid), status=AttendanceStatus(status)))
     db.commit()
     broker.publish("dashboard", "attendance_changed", date=str(payload.date))
+
+
+@router.delete("", status_code=204)
+def clear_attendance(
+    class_name: str = Query(alias="class"),
+    date: date_t = Query(...),
+    user: CurrentUser = Depends(current_user),
+    db: Session = Depends(db_dep),
+):
+    """Clear a wrongly-marked day — remove the attendance row (records cascade)
+    so the day is fully un-marked (also clears a holiday). Idempotent if absent."""
+    assert_class_allowed(user, class_name)
+    a = db.execute(
+        select(Attendance).where(Attendance.class_name == class_name, Attendance.date == date)
+    ).scalar_one_or_none()
+    if a:
+        db.delete(a)
+        db.commit()
+        broker.publish("dashboard", "attendance_changed", date=str(date))
 
 
 @router.get("/today-summary", response_model=AttendanceSummary)
@@ -70,18 +93,20 @@ def today_summary(user: CurrentUser = Depends(current_user), db: Session = Depen
     if user.role == "staff" and user.allowed_classes:
         stmt = stmt.where(Attendance.class_name.in_(user.allowed_classes))
     rows = db.execute(stmt).scalars().all()
-    p = a = l = 0
+    p = a = l = h = 0
     for att in rows:
         for r in att.records:
             if r.status == AttendanceStatus.P:
                 p += 1
             elif r.status == AttendanceStatus.A:
                 a += 1
-            else:
+            elif r.status == AttendanceStatus.L:
                 l += 1
-    total = p + a + l
+            else:
+                h += 1
+    total = p + a + l + h
     return AttendanceSummary(
-        date=today, total=total, present=p, absent=a, leave=l,
+        date=today, total=total, present=p, absent=a, leave=l, half_day=h,
         percent=round((p / total * 100), 2) if total else 0.0,
     )
 
@@ -98,17 +123,20 @@ def marked_dates(
     Staff-scoped (assert_class_allowed). Powers the mobile coverage calendar so
     one request covers a whole month instead of one GET per day."""
     assert_class_allowed(user, class_name)
-    rows = db.execute(
-        select(Attendance.date)
-        .where(
-            Attendance.class_name == class_name,
-            Attendance.date >= from_,
-            Attendance.date <= to,
-        )
-        .distinct()
-        .order_by(Attendance.date)
+    base = select(Attendance.date).where(
+        Attendance.class_name == class_name,
+        Attendance.date >= from_,
+        Attendance.date <= to,
+    )
+    # Holidays have an attendance row too, so split them out — else they'd show
+    # as "marked" on the calendar.
+    marked = db.execute(
+        base.where(~Attendance.is_holiday).distinct().order_by(Attendance.date)
     ).scalars().all()
-    return MarkedDatesOut(dates=rows)
+    holidays = db.execute(
+        base.where(Attendance.is_holiday).distinct().order_by(Attendance.date)
+    ).scalars().all()
+    return MarkedDatesOut(dates=marked, holidays=holidays)
 
 
 @router.post("/bulk-import", status_code=201)

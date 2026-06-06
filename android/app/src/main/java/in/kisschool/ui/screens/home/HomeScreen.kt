@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.Logout
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EditNote
@@ -69,7 +70,9 @@ fun HomeScreen(
     onViewHistory: () -> Unit,
     onViewStudents: () -> Unit,
     onMarksEntry: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    isSuperAdmin: Boolean = false,
+    onApprovals: () -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
@@ -161,6 +164,7 @@ fun HomeScreen(
                         MonthCalendar(
                             month = s.month,
                             markedDates = s.markedDates,
+                            holidays = s.holidays,
                             today = LocalDate.now(),
                             onPrevMonth = dashVm::prevMonth,
                             onNextMonth = dashVm::nextMonth,
@@ -173,6 +177,14 @@ fun HomeScreen(
             }
 
             // ── Quick actions ──────────────────────────────────────────────
+            if (isSuperAdmin) {
+                ActionTile(
+                    title = "Approvals",
+                    subtitle = "Review student & marks edits, deletions",
+                    icon = Icons.AutoMirrored.Filled.FactCheck,
+                    onClick = onApprovals
+                )
+            }
             ActionTile(
                 title = "Take attendance",
                 subtitle = "Mark today's class attendance",

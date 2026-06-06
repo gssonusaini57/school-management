@@ -37,8 +37,9 @@ import java.util.Locale
 
 private val MarkedColor = Color(0xFF16A34A)
 private val MissedColor = Color(0xFFD97706)
+private val HolidayColor = Color(0xFF2563EB)
 
-private enum class DayKind { MARKED, MISSED, OFF, FUTURE }
+private enum class DayKind { MARKED, MISSED, HOLIDAY, OFF, FUTURE }
 
 /**
  * Month grid showing attendance coverage for a class. Pure Compose (≤42 fixed
@@ -49,6 +50,7 @@ private enum class DayKind { MARKED, MISSED, OFF, FUTURE }
 fun MonthCalendar(
     month: YearMonth,
     markedDates: Set<String>,
+    holidays: Set<String>,
     today: LocalDate,
     onPrevMonth: () -> Unit,
     onNextMonth: () -> Unit,
@@ -99,6 +101,7 @@ fun MonthCalendar(
                         val kind = when {
                             d.isAfter(today) -> DayKind.FUTURE
                             iso in markedDates -> DayKind.MARKED
+                            iso in holidays -> DayKind.HOLIDAY
                             d.dayOfWeek !in WORKING_WEEK.workingDays -> DayKind.OFF
                             else -> DayKind.MISSED
                         }
@@ -121,12 +124,13 @@ fun MonthCalendar(
         ) {
             LegendDot(MarkedColor, "Marked")
             LegendDot(MissedColor, "Missed")
+            LegendDot(HolidayColor, "Holiday")
             LegendDot(MaterialTheme.colorScheme.surfaceVariant, "Off / future")
         }
 
         val workingUpToToday = (1..len).count { n ->
             val d = month.atDay(n)
-            !d.isAfter(today) && d.dayOfWeek in WORKING_WEEK.workingDays
+            !d.isAfter(today) && d.dayOfWeek in WORKING_WEEK.workingDays && d.toString() !in holidays
         }
         val markedUpToToday = (1..len).count { n ->
             val d = month.atDay(n)
@@ -151,11 +155,12 @@ private fun RowScope.DayCell(
     val bg = when (kind) {
         DayKind.MARKED -> MarkedColor
         DayKind.MISSED -> MissedColor
+        DayKind.HOLIDAY -> HolidayColor
         DayKind.OFF -> MaterialTheme.colorScheme.surfaceVariant
         DayKind.FUTURE -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     }
     val fg = when (kind) {
-        DayKind.MARKED, DayKind.MISSED -> Color.White
+        DayKind.MARKED, DayKind.MISSED, DayKind.HOLIDAY -> Color.White
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Box(

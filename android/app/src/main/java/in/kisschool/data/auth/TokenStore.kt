@@ -24,12 +24,19 @@ class TokenStore(context: Context) {
         )
     }
 
-    fun saveSession(token: String, name: String, allowedClasses: List<String>, forcePasswordChange: Boolean = false) {
+    fun saveSession(
+        token: String,
+        name: String,
+        allowedClasses: List<String>,
+        forcePasswordChange: Boolean = false,
+        role: String? = null,
+    ) {
         prefs.edit()
             .putString(KEY_TOKEN, token)
             .putString(KEY_NAME, name)
             .putString(KEY_CLASSES, allowedClasses.joinToString("|"))
             .putBoolean(KEY_FORCE_PW, forcePasswordChange)
+            .putString(KEY_ROLE, role)
             .apply()
     }
 
@@ -45,6 +52,7 @@ class TokenStore(context: Context) {
             ?.filter { it.isNotBlank() }
             ?: emptyList()
     val forcePasswordChange: Boolean get() = prefs.getBoolean(KEY_FORCE_PW, false)
+    val role: String? get() = prefs.getString(KEY_ROLE, null)
 
     /** "Remember me" identifier — survives logout so the login field can prefill. */
     var rememberedIdentifier: String?
@@ -67,6 +75,7 @@ class TokenStore(context: Context) {
         const val KEY_NAME = "name"
         const val KEY_CLASSES = "allowed_classes"
         const val KEY_FORCE_PW = "force_password_change"
+        const val KEY_ROLE = "role"
         const val KEY_REMEMBER_ID = "remembered_identifier"
     }
 }

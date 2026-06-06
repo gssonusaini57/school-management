@@ -1,4 +1,4 @@
-from sqlalchemy import BigInteger, String, DateTime, Date, ForeignKey, Enum, UniqueConstraint, func
+from sqlalchemy import BigInteger, String, DateTime, Date, Boolean, ForeignKey, Enum, UniqueConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, date
 import enum
@@ -9,6 +9,7 @@ class AttendanceStatus(str, enum.Enum):
     P = "P"
     A = "A"
     L = "L"
+    H = "H"  # half day
 
 
 class Attendance(Base):
@@ -18,6 +19,8 @@ class Attendance(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True, autoincrement=True)
     class_name: Mapped[str] = mapped_column(String(20), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
+    # Day-level holiday: when True the (class,date) is a holiday with NO student records.
+    is_holiday: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("0"), default=False)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )

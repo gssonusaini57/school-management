@@ -3,6 +3,9 @@ package `in`.kisschool.data.repo
 import `in`.kisschool.data.api.ApiService
 import `in`.kisschool.data.api.dto.AttendanceDto
 
+/** Coverage for a class+month: dates with student attendance, and holiday dates. */
+data class Coverage(val marked: Set<String>, val holidays: Set<String>)
+
 class AttendanceRepository(private val api: ApiService) {
 
     /** Returns the saved attendance for (class, date) or null if no record exists yet. */
@@ -13,18 +16,26 @@ class AttendanceRepository(private val api: ApiService) {
         return resp.body()
     }
 
-    suspend fun save(className: String, date: String, records: Map<Long, String>) {
+    suspend fun save(className: String, date: String, records: Map<Long, String>, isHoliday: Boolean = false) {
         val body = AttendanceDto(
             className = className,
             date = date,
-            records = records.mapKeys { it.key.toString() }
+            records = if (isHoliday) emptyMap() else records.mapKeys { it.key.toString() },
+            isHoliday = isHoliday,
         )
         val resp = api.saveAttendance(body)
         if (!resp.isSuccessful) error("HTTP ${resp.code()}")
     }
 
-    /** ISO dates in [from,to] that already have attendance for this class.
-     *  Returned as a Set for O(1) per-day lookups in the coverage calendar. */
-    suspend fun markedDates(className: String, from: String, to: String): Set<String> =
-        api.markedDates(className, from, to).dates.toSet()
+    /** Clear a wrongly-marked day entirely (also clears a holiday). */
+    suspend fun clear(className: String, date: String) {
+        val resp = api.clearAttendance(className, date)
+        if (!resp.isSuccessful) error("HTTP ${resp.code()}")
+    }
+
+    /** Marked + holiday ISO dates in [from,to]. Sets for O(1) per-day lookups. */
+    suspend fun markedDates(className: String, from: String, to: String): Coverage {
+        val r = api.markedDates(className, from, to)
+        return Coverage(marked = r.dates.toSet(), holidays = r.holidays.toSet())
+    }
 }

@@ -15,6 +15,9 @@ class AuthRepository(
     val allowedClasses: List<String> get() = tokenStore.allowedClasses
     val forcePasswordChange: Boolean get() = tokenStore.forcePasswordChange
     val rememberedIdentifier: String? get() = tokenStore.rememberedIdentifier
+    val role: String? get() = tokenStore.role
+    val isAdmin: Boolean get() = role == "admin" || role == "super_admin"
+    val isSuperAdmin: Boolean get() = role == "super_admin"
 
     /**
      * Returns true if the user must change their password before continuing.
@@ -22,7 +25,7 @@ class AuthRepository(
      */
     suspend fun login(identifier: String, password: String, remember: Boolean): Boolean {
         val resp = api.login(LoginRequest(identifier = identifier.trim(), password = password))
-        tokenStore.saveSession(resp.token, resp.name, resp.allowedClasses, resp.forcePasswordChange)
+        tokenStore.saveSession(resp.token, resp.name, resp.allowedClasses, resp.forcePasswordChange, resp.role)
         tokenStore.rememberedIdentifier = if (remember) identifier.trim() else null
         return resp.forcePasswordChange
     }
@@ -30,7 +33,7 @@ class AuthRepository(
     suspend fun refreshMe() {
         val token = tokenStore.token ?: return
         val me = api.me()
-        tokenStore.saveSession(token, me.name, me.allowedClasses, tokenStore.forcePasswordChange)
+        tokenStore.saveSession(token, me.name, me.allowedClasses, tokenStore.forcePasswordChange, me.role)
     }
 
     suspend fun changePassword(currentPassword: String, newPassword: String) {

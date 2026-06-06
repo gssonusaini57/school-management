@@ -18,6 +18,9 @@ data class AttendanceUiState(
     val date: String = todayIso(),
     val students: List<StudentDto> = emptyList(),
     val statuses: Map<Long, String> = emptyMap(),
+    val isHoliday: Boolean = false,
+    /** True if a record/holiday already exists for (class,date) — enables "Clear day". */
+    val hasExistingRecord: Boolean = false,
     val loading: Boolean = false,
     val saving: Boolean = false,
     val error: String? = null,
@@ -62,6 +65,10 @@ class AttendanceViewModel(
         _state.value = _state.value.copy(statuses = map)
     }
 
+    fun setHoliday(on: Boolean) {
+        _state.value = _state.value.copy(isHoliday = on)
+    }
+
     fun reload() {
         val cls = _state.value.selectedClass ?: return
         val date = _state.value.date
@@ -79,6 +86,8 @@ class AttendanceViewModel(
                 _state.value = _state.value.copy(
                     students = roster,
                     statuses = statuses,
+                    isHoliday = attendance?.isHoliday ?: false,
+                    hasExistingRecord = attendance != null,
                     loading = false
                 )
             } catch (e: Exception) {
@@ -93,17 +102,43 @@ class AttendanceViewModel(
     fun save() {
         val s = _state.value
         val cls = s.selectedClass ?: return
-        if (s.students.isEmpty()) return
+        // A holiday needs no roster; a normal save does.
+        if (!s.isHoliday && s.students.isEmpty()) return
         _state.value = s.copy(saving = true, error = null)
         viewModelScope.launch {
             try {
-                attendanceRepo.save(cls, s.date, s.statuses)
-                _state.value = _state.value.copy(saving = false, savedAt = System.currentTimeMillis())
+                attendanceRepo.save(cls, s.date, s.statuses, isHoliday = s.isHoliday)
+                _state.value = _state.value.copy(
+                    saving = false,
+                    hasExistingRecord = true,
+                    savedAt = System.currentTimeMillis(),
+                )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     saving = false,
                     error = e.message ?: "Save failed"
                 )
+            }
+        }
+    }
+
+    /** Clear the day entirely (wrongly-marked correction). Reloads to the empty default. */
+    fun clearDay() {
+        val s = _state.value
+        val cls = s.selectedClass ?: return
+        _state.value = s.copy(saving = true, error = null)
+        viewModelScope.launch {
+            try {
+                attendanceRepo.clear(cls, s.date)
+                _state.value = _state.value.copy(
+                    saving = false,
+                    isHoliday = false,
+                    hasExistingRecord = false,
+                    statuses = _state.value.students.associate { it.id to "P" },
+                    savedAt = System.currentTimeMillis(),
+                )
+            } catch (e: Exception) {
+                _state.value = _state.value.copy(saving = false, error = e.message ?: "Clear failed")
             }
         }
     }

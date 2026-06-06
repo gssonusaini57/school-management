@@ -14,8 +14,10 @@ data class DashboardUiState(
     val allowedClasses: List<String> = emptyList(),
     val selectedClass: String? = null,
     val month: YearMonth = YearMonth.now(),
-    /** ISO dates in the displayed month that have an attendance record. */
+    /** ISO dates in the displayed month that have student attendance. */
     val markedDates: Set<String> = emptySet(),
+    /** ISO dates flagged as holidays. */
+    val holidays: Set<String> = emptySet(),
     val loading: Boolean = false,
     val error: String? = null,
 )
@@ -68,8 +70,12 @@ class DashboardViewModel(
         _state.value = _state.value.copy(loading = true, error = null)
         viewModelScope.launch {
             try {
-                val dates = attendanceRepo.markedDates(cls, from, to)
-                _state.value = _state.value.copy(markedDates = dates, loading = false)
+                val cov = attendanceRepo.markedDates(cls, from, to)
+                _state.value = _state.value.copy(
+                    markedDates = cov.marked,
+                    holidays = cov.holidays,
+                    loading = false,
+                )
             } catch (e: Exception) {
                 _state.value = _state.value.copy(
                     loading = false,

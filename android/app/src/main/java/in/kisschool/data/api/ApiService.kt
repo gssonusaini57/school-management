@@ -12,6 +12,10 @@ import `in`.kisschool.data.api.dto.BatchSaveBody
 import `in`.kisschool.data.api.dto.ClassSubjectDetailDto
 import `in`.kisschool.data.api.dto.ClassSubjectDto
 import `in`.kisschool.data.api.dto.DeleteStudentBody
+import `in`.kisschool.data.api.dto.DeletionRequestListDto
+import `in`.kisschool.data.api.dto.EditRequestListDto
+import `in`.kisschool.data.api.dto.MarksEditRequestListDto
+import `in`.kisschool.data.api.dto.RejectBody
 import `in`.kisschool.data.api.dto.MarkedDatesDto
 import `in`.kisschool.data.api.dto.MeResponse
 import `in`.kisschool.data.api.dto.RequestEditBody
@@ -21,6 +25,7 @@ import `in`.kisschool.data.api.dto.StudentUpdateDto
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.Multipart
@@ -113,6 +118,13 @@ interface ApiService {
     @PUT("attendance")
     suspend fun saveAttendance(@Body body: AttendanceDto): Response<Unit>
 
+    // Clear a wrongly-marked day (removes the row + records).
+    @DELETE("attendance")
+    suspend fun clearAttendance(
+        @Query("class") className: String,
+        @Query("date") date: String,
+    ): Response<Unit>
+
     // Dates in [from,to] that have an attendance record for this class — powers the
     // dashboard coverage calendar (one request per month vs one GET per day).
     @GET("attendance/marked-dates")
@@ -132,4 +144,35 @@ interface ApiService {
     // unauthenticated + cheap so it can run before login.
     @GET
     suspend fun appVersion(@Url url: String): AppVersionDto
+
+    // ── Approval portal (admin/super-admin) ─────────────────────────────────
+    @GET("admin/edit-requests")
+    suspend fun editRequests(): EditRequestListDto
+
+    @POST("admin/edit-requests/{id}/approve")
+    suspend fun approveEditRequest(@Path("id") id: Long): Response<Unit>
+
+    @POST("admin/edit-requests/{id}/reject")
+    suspend fun rejectEditRequest(@Path("id") id: Long, @Body body: RejectBody): Response<Unit>
+
+    @GET("admin/marks-edit-requests")
+    suspend fun marksEditRequests(): MarksEditRequestListDto
+
+    @POST("admin/marks-edit-requests/{id}/approve")
+    suspend fun approveMarksEditRequest(@Path("id") id: Long): Response<Unit>
+
+    @POST("admin/marks-edit-requests/{id}/reject")
+    suspend fun rejectMarksEditRequest(@Path("id") id: Long, @Body body: RejectBody): Response<Unit>
+
+    @GET("admin/deletion-requests")
+    suspend fun deletionRequests(@Query("status") status: String? = null): DeletionRequestListDto
+
+    @POST("admin/deletion-requests/{kind}/{id}/approve")
+    suspend fun approveDeletion(@Path("kind") kind: String, @Path("id") id: Long): Response<Unit>
+
+    @POST("admin/deletion-requests/{kind}/{id}/restore")
+    suspend fun restoreDeletion(@Path("kind") kind: String, @Path("id") id: Long): Response<Unit>
+
+    @DELETE("admin/deletion-requests/{kind}/{id}")
+    suspend fun purgeDeletion(@Path("kind") kind: String, @Path("id") id: Long): Response<Unit>
 }

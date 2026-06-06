@@ -4,6 +4,9 @@ import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -12,6 +15,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import `in`.kisschool.di.AppContainer
+import `in`.kisschool.ui.screens.approvals.ApprovalsScreen
+import `in`.kisschool.ui.screens.approvals.ApprovalsViewModel
 import `in`.kisschool.ui.screens.attendance.AttendanceScreen
 import `in`.kisschool.ui.screens.attendance.AttendanceViewModel
 import `in`.kisschool.ui.screens.dashboard.DashboardViewModel
@@ -43,6 +48,7 @@ object Routes {
     const val STUDENT_DETAIL = "student/{id}"
     const val STUDENT_EDIT = "student/{id}/edit"
     const val MARKS = "marks"
+    const val APPROVALS = "approvals"
     const val FORGOT_PASSWORD = "forgot-password"
     fun studentDetail(id: Long) = "student/$id"
     fun studentEdit(id: Long) = "student/$id/edit"
@@ -107,6 +113,14 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                     entry.savedStateHandle["attendance_changed"] = false
                 }
             }
+            // Hydrate role on home open so the Approvals tile appears for super-admins
+            // even on installs that logged in before the app stored role (refreshMe
+            // is best-effort; failure leaves role as-is → tile stays hidden).
+            var isSuperAdmin by remember { mutableStateOf(container.authRepo.isSuperAdmin) }
+            LaunchedEffect(Unit) {
+                runCatching { container.authRepo.refreshMe() }
+                isSuperAdmin = container.authRepo.isSuperAdmin
+            }
             HomeScreen(
                 userName = container.authRepo.displayName ?: "Teacher",
                 dashVm = dashVm,
@@ -120,8 +134,15 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(0) { inclusive = true }
                     }
-                }
+                },
+                isSuperAdmin = isSuperAdmin,
+                onApprovals = { navController.navigate(Routes.APPROVALS) },
             )
+        }
+
+        composable(Routes.APPROVALS) {
+            val vm = viewModel { ApprovalsViewModel(container.adminRepo) }
+            ApprovalsScreen(vm = vm, onBack = { navController.popBackStack() })
         }
 
         composable(Routes.MARKS) {
