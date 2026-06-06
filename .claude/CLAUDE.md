@@ -1,7 +1,8 @@
 # Project Memory
-**Last Updated:** 2026-05-24 | **Sessions:** 13 (1–9 archived) | **Branch:** dev | **Stage:** ✅ DEPLOYED — web + signed Android APK + iOS scaffold + soft-delete/super-admin workflow + dual-mode nav + **Class Subjects master (Session 13) + Marks Entry draft→submit→lock→edit-request workflow (Session 13) + auto-reload-on-deploy cache-bust (Session 13)**. Public site at https://expressonly.in/school/, admin at /school/admin/. Default logins: `admin / admin123`, `superadmin / super123` — change both after first real use.
+**Last Updated:** 2026-06-06 | **Sessions:** 16 (1–12 archived) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in (served at the domain ROOT) **and** TEST at https://expressonly.in/school/. Android teacher app rebranded to package **`in.kisschool`** with prod/staging flavors + force-update gate. Session 16 added: prod launch + base-path parametrization, staff **temporary-password** (admin override), **forgot/reset-password** (Zoho email), and app **Edit-Student / Marks-Entry / document-upload** screens.
+> **Admin logins (both servers):** admin `nsnishasaini57@gmail.com / admin123` · super-admin `gssonusaini57@gmail.com / <changed — not super123>`. Staff log in by email-or-phone + password. Test & prod share identical admin/super-admin password hashes + SMTP creds.
 
-> Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test`, `/deploy-test-frontend`, `/deploy-test-all`, `/deploy-prod*`, `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`. Android APK build: `bash scripts/build-android.sh` (no slash command — runs locally with the keystore).
+> Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test*`, `/deploy-prod*` (incl. `/deploy-prod-public-site`), `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`. Android APK build: `bash scripts/build-android.sh {prod|test}` (local, needs keystore).
 
 ---
 
@@ -147,12 +148,12 @@ school-management/
 
 ---
 
-## Live URLs (after deploy)
-- Public site: `https://expressonly.in/school/`
-- Admin portal: `https://expressonly.in/school/admin/`  (login `admin/admin123`)
-- API: `https://expressonly.in/school/api/`
-- Health: `https://expressonly.in/school/api/health`
-- SSE streams: `https://expressonly.in/school/api/stream/{students|fees|notices|staff|dashboard}?token=<jwt>`
+## Live URLs
+**PROD — kisschool.in (served at ROOT; shared box `69.62.72.137`, key `~/.ssh/enamfoss_prod`, coexists with the enamfoss Tomcat app):**
+- Public site `https://kisschool.in/` · Admin portal `https://kisschool.in/admin/` · API `https://kisschool.in/api/` · Health `https://kisschool.in/api/health` · APK `https://kisschool.in/downloads/kis-attendance.apk`
+
+**TEST — expressonly.in/school (box `104.237.5.113`, key `~/.ssh/uploadmytds_test`, shared w/ uploadmytds):**
+- Public site `https://expressonly.in/school/` · Admin `…/school/admin/` · API `…/school/api/` · APK `…/school/downloads/kis-attendance.apk` (serves the *staging*-flavor app)
 
 ## API Endpoints (REST + SSE)
 - **Auth:** `POST /api/auth/login`, `POST /api/auth/change-password`, `POST /api/auth/logout`, `GET /api/auth/me`
@@ -290,6 +291,14 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 
 15. **Vite cache-bust contract: embedded `__BUILD_ID__` + `dist/version.json` + runtime poll + nginx no-cache.** Hashed asset filenames bust themselves on rebuild, but cached `index.html` keeps referencing the OLD hashes — that's the "user needs hard refresh after deploy" loop. Session 13 fix in 4 parts: (a) [vite.config.ts](../frontend/vite.config.ts) generates a fresh `BUILD_ID` each build, injects it as `__BUILD_ID__` via `define`, and emits `dist/version.json` via a tiny plugin; (b) [lib/version.ts](../frontend/src/lib/version.ts) `useVersionCheck()` polls `version.json` with `cache: 'no-store'` every 5 min while visible and reloads with a `?_v=<ts>` query-bust on mismatch (the query bust is essential — `window.location.reload()` alone respects the cached HTML); (c) [deploy/nginx.school.conf](../deploy/nginx.school.conf) adds exact-match `location` blocks sending `Cache-Control: no-cache, must-revalidate` for `/school/admin/`, `index.html`, and `version.json`; (d) `define: { __BUILD_ID__: JSON.stringify(...) }` — **must** use `JSON.stringify`, otherwise the substituted string is unquoted and the bundle fails to parse. To roll out the nginx side after first deploy: rerun `bash scripts/provision/06-install-nginx-snippet.sh` or one-shot `scp deploy/nginx.school.conf root@<server>:/etc/nginx/snippets/school.conf && nginx -t && systemctl reload nginx`.
 
+16. **Android R8/ProGuard keep rule must track the package name.** `app/proguard-rules.pro` keeps Gson DTOs by package: `-keep class in.kisschool.data.api.dto.** { *; }`. When the package was renamed `com.expressonly.kisattendance → in.kisschool`, the old keep rule matched nothing → R8 obfuscated DTO field names in the **release** build only → the app sent login as `{"<garbled>":…}` → backend `422` (and every API call broke). Debug builds (no minify) hid it. Fix: keep rule on the new package **plus** `-keepclassmembers,allowobfuscation class * { @com.google.gson.annotations.SerializedName <fields>; }`. Verify via `app/build/outputs/mapping/<flavor>Release/mapping.txt` — the DTO class should map to itself.
+
+17. **`frontend/vite.config.js` is a committed `tsc` artifact and Vite prefers `.js` over `.ts`.** `npm run build` (= `tsc -b && vite build`) regenerates it from `vite.config.ts`, but a bare `npx vite build` uses the STALE `.js`. Base path is build-time parametrized: `vite.config.ts` reads `process.env.VITE_BASE ?? "/school/admin/"`; `VITE_API_URL` is shell-exported (overrides `.env.production`); favicon uses a `%BASE_URL%` placeholder substituted by a `transformIndexHtml` plugin (a plain relative favicon 404s on SPA deep links). `scripts/deploy/<env>/env.sh` sets `VITE_BASE`/`VITE_API_URL`/`SITE_BASE_PATH`/`HEALTH_PATH`/`SITE_URL_PATH` (test → `/school/...`, prod → root). See [[feedback_vite_base_parametrization]].
+
+18. **`GET /api/students` is paginated** (`{items,total,page,page_size}`) — clients must read `.items`. The Android app's bare-`List<StudentDto>` DTO silently broke against the live backend until fixed with a `StudentPageDto` wrapper. Also: `in` is a Kotlin hard keyword, so the `in.kisschool` package must be backtick-escaped (`` `in`.kisschool ``) in every `package`/`import` (Gradle `namespace`/`applicationId` strings don't); and AGP forbids a product-flavor name starting with `test` → the staging flavor is named `staging` with `applicationIdSuffix = ".test"`.
+
+19. **Staff dual-credential temp password (migration 0010).** `staff.temp_password_hash` is a SECOND valid login that does NOT replace `password_hash` — admin/super-admin set it from the web Staff page to cover an absent teacher; login accepts real-OR-temp; a temp login never triggers force-password-change; cleared by admin (no auto-expiry). `POST/DELETE /api/staff/{id}/temp-password`. **Forgot-password (migration 0011)** works for admin/super-admin/staff (`_resolve_reset_account` maps the hardcoded admin emails); needs SMTP set in `.env` (`SMTP_*`, Zoho `info@kisschool.in`) + `APP_BASE_URL=https://kisschool.in/admin` so reset links are correct. The web ForgotPassword form must POST `{identifier}` (not `{email}`).
+
 ---
 
 ## Status (after this session)
@@ -370,7 +379,8 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 4. `bash scripts/deploy/prod/deploy-all.sh` (every release).
 
 ## Next Steps (TODOs)
-1. **Change default passwords** — both `admin / admin123` AND `superadmin / super123` are at seed defaults on TEST. Use in-app Change Password dialog the moment a real human logs in.
+0. **(Session 16 open)** Push `dev` to origin (2 commits `79b9eed` + `60133ff` unpushed). Super-admin password is no longer `super123` (unknown) — reset on both servers if needed (now identical test↔prod). Optionally downscale the Android document-photo upload (web compresses to ~900px; the app currently uploads the original). The `## Promoting test → prod` section below is now historical — prod is live; deploy via `scripts/deploy/prod/*` with key `~/.ssh/enamfoss_prod`.
+1. **Change default password** — `admin123` still the seed for admin on both servers; change via in-app Change Password.
 2. **Migration for `admission_no` / `admission_id` / `roll_no`** — Student model + schema were extended with these columns post-Session-9 (intentional user edits), but no Alembic migration was written yet. Add `admission_no INT NULL`, `admission_id VARCHAR(32) NULL UNIQUE`, `roll_no VARCHAR(20) NULL` + composite UNIQUE `(class_name, roll_no)`. Backend logic + frontend already expects these.
 3. **Verify the seeded exam pattern** — Session 13's `seed-defaults` materialised 127 subjects + 654 components hand-derived from the school's handwritten PDF. Some 9th–10th values are ambiguous (grand totals don't quite match 1900); super-admin should spot-check each class against the original sheet before relying on these for actual exams. Edit in [seed/exam_pattern.py](../backend/app/seed/exam_pattern.py) and re-seed on a fresh DB, or tweak per-row via the UI.
 4. **Optional: backfill legacy `marks.batch_id`** — pre-Session-13 mark rows have NULL `batch_id` (and likely duplicates from re-saves). One-shot script grouped by `(class, subject, exam_type, session)` to create draft batches + reassign rows would let teachers manage old data through the new lock workflow. Currently they're tolerated as read-only legacy.
@@ -396,6 +406,21 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 > Session 6 (Android app + web date pickers) → [SESSION_HISTORY_6.md](./SESSION_HISTORY_6.md)
 > Session 7 (iOS app scaffold + Mobile Apps page) → [SESSION_HISTORY_7.md](./SESSION_HISTORY_7.md)
 > Sessions 8 (KIS design + templated PDFs) + 9 (soft-delete workflow + /check-logs) → [SESSION_HISTORY_8_9.md](./SESSION_HISTORY_8_9.md)
+> Session 10 (staff email/phone+password auth) + 11 (useBlocker fix) — see memory `project_staff_auth_revamp` / `feedback_useblocker_data_router`
+> Session 12 (top-bar nav) → [SESSION_HISTORY_12.md](./SESSION_HISTORY_12.md)
+> Session 14 (Android force-update gate) + 15 (Android dashboard + back-dated attendance, v1.2.3) — see memory `project_android_force_update` / `project_android_dashboard_attendance`
+
+### Session 16 — 2026-06-06 · PROD launch at kisschool.in + Android `in.kisschool` rebrand + temp-password + forgot-password
+
+**Focus:** Stand up a dedicated production environment and a batch of cross-cutting features.
+
+**(A) PROD at kisschool.in (served at ROOT).** New dedicated domain on a SHARED box `69.62.72.137` (key `~/.ssh/enamfoss_prod`) that already runs a Java/Tomcat "enamfoss" app (bare-IP vhost). Installed MySQL 8 + certbot; new **standalone** nginx vhost [deploy/nginx.kisschool.conf](../deploy/nginx.kisschool.conf) (`/`=public site, `/admin/`=SPA, `/api/`=FastAPI, `/downloads/`). **Base-path parametrized** so one source ships to TEST (`/school/...`) and PROD (root): `VITE_BASE`/`VITE_API_URL`/`SITE_BASE_PATH`/`HEALTH_PATH`/`SITE_URL_PATH` in `scripts/deploy/<env>/env.sh`, consumed by `common/lib.sh`; `vite.config.ts` base + `public-site/src/_data/site.cjs` basePath read env (test defaults) — see Gotcha #17. Filled `scripts/deploy/prod/env.sh`; added `scripts/deploy/prod/{deploy-public-site,upload-apk}.sh`. **Migrated master data** test→prod (staff+staff_classes, students+documents, class_subjects+subject_exam_components) via streamed mysqldump.
+
+**(B) Android `in.kisschool` rebrand + features.** Package renamed `com.expressonly.kisattendance → in.kisschool` (backtick-escaped `in` keyword everywhere). **Product flavors** `prod` (`in.kisschool`, kisschool.in/api) + `staging` (`in.kisschool.test`, expressonly.in/school/api) via `BuildConfig.API_BASE_URL`; `build-android.sh {prod|test}` + force-update gate ([release-android](./commands/release-android.md) publishes `app-version.json`). New app screens: **Login** redesigned to match web (gradient/crest/remember-me + Forgot-password link); **Edit Student** (full validation + staff edit-request workflow) with **document upload/preview** (Coil, photo/dob_cert/aadhar); **Marks Entry** (draft→submit→lock→request-edit). Fixed `/students` pagination DTO (Gotcha #18) and the **R8 keep-rule → login 422** bug (Gotcha #16). Both APKs rebuilt + deployed per server.
+
+**(C) Auth: temp-password + forgot-password + gmail admin logins.** Admin/super-admin login identifiers → `nsnishasaini57@gmail.com` / `gssonusaini57@gmail.com`. **Migration 0010** staff `temp_password_hash` (admin-set 2nd credential, web Staff page; login accepts real-OR-temp). **Migration 0011** `password_reset_tokens` — forgot/reset works for admin/super-admin/staff; SMTP (Zoho `info@kisschool.in`) + `APP_BASE_URL=https://kisschool.in/admin` configured on prod; fixed web ForgotPassword form to POST `{identifier}`. See Gotcha #19. Copied admin/super-admin password hashes test→prod so both match.
+
+**Deploys:** prod provisioned + `deploy-prod-all`/`-frontend`/`-backend`/`-public-site`; test brought to parity (`deploy-test-all` + frontend). Migrations on prod: …→0009→0010→0011. **Commits:** `79b9eed` (big), `60133ff` (forgot-form fix) on `dev` — **not pushed**. Open TODO: push `dev`; super-admin password is not `super123` (reset if unknown); downscale app photo uploads (web compresses, app sends original).
 
 ### Session 13 — 2026-05-24 · Class Subjects master + Marks draft/submit/lock/edit-request workflow + auto cache-bust
 
@@ -412,31 +437,6 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 **Deploys:** four `/deploy-test-frontend` for incremental rollouts + two `/deploy-test-all` for migration 0008 and 0009. Snapshots retained: `app_20260523_220103.tgz`, `app_20260523_222025.tgz`, `app_20260524_000020.tgz`. Bundle: 949–965 KB JS / 288–293 KB gz (+18 KB gz total this session: NumberField + tabs primitive + version probe + marks workflow). nginx snippet hot-applied via SSH (user-authorised). Migration 0009 ran cleanly: `0008_class_subjects → 0009_marks_batches_edit_requests`.
 
 **Plan file:** `/Users/manjeetsaini/.claude/plans/add-draft-functionaly-to-merry-popcorn.md` (approved + executed).
-
-### Session 12 — 2026-05-17 · Top-bar nav with hamburger toggle to sidebar mode
-
-**Focus:** Replace the always-visible left sidebar (desktop default) with a horizontal top bar of section dropdowns. A hamburger toggle flips between top-bar and sidebar modes (preference persisted to `localStorage`). Mobile drawer behavior unchanged. Logout moved to slim topbar's right side (per user feedback).
-
-**New files:**
-- [frontend/src/lib/nav-sections.ts](../frontend/src/lib/nav-sections.ts) — extracted hardcoded `SECTIONS` array + `NavItem`/`NavSection` types out of Layout.tsx; new `filterAccessibleSections(sections, user, isAdmin, isSuperAdmin)` helper reuses [canAccessMenu](../frontend/src/lib/auth.ts). Both shells consume this so the menu source-of-truth lives in one place.
-- [frontend/src/lib/nav-mode.ts](../frontend/src/lib/nav-mode.ts) — `useNavMode()` hook returning `{ mode, setMode, toggle }`; persists `'topbar' | 'sidebar'` to `localStorage` key `kis.nav.mode` (default `topbar`). SSR-guarded.
-- [frontend/src/components/ui/dropdown-menu.tsx](../frontend/src/components/ui/dropdown-menu.tsx) — standard shadcn Radix primitive (dep was already in package.json, just unwrapped). Exports `DropdownMenu`, `DropdownMenuTrigger`, `DropdownMenuContent`, `DropdownMenuItem`, `DropdownMenuLabel`, `DropdownMenuSeparator`, `DropdownMenuGroup`.
-- [frontend/src/components/Sidebar.tsx](../frontend/src/components/Sidebar.tsx) — extracted dark left `<aside>` block. Props: `open` (mobile drawer state), `visibleOnDesktop` (gated by mode), `onItemClick`, `onChangePassword`, `onLogout`. Sidebar footer still has Change Password (admin) + Logout buttons for users who happen to be in sidebar mode.
-- [frontend/src/components/TopNav.tsx](../frontend/src/components/TopNav.tsx) — desktop-only horizontal nav. 5 dropdown triggers (Main / Academic / Administration / Stationery / Resources) with `ChevronDown` icon; each trigger opens a `DropdownMenu` of its items wrapped in `NavLink` via `asChild`. Section trigger turns `text-royal-gold` when any of its routes is active. Dark `bg-deep-indigo` band to match brand sidebar.
-
-**Modified files:**
-- [frontend/src/components/Layout.tsx](../frontend/src/components/Layout.tsx) — slimmed from 193 → ~130 lines, pure composition now. Hamburger click handler reads `window.matchMedia('(min-width: 768px)')` at click time: on desktop it `toggle()`s mode; on mobile it toggles `mobileOpen`. Slim topbar always rendered (z-40, `fixed top-0 right-0 left-0`, `md:left-64` only when in sidebar mode). TopNav rendered in a `fixed top-16 hidden md:block z-30` wrapper, only when `mode === 'topbar'`. Main padding: `pt-16` always, `md:pt-28` adds the TopNav strip's 48 px when topbar mode, `md:ml-64` only in sidebar mode. User name in slim topbar is now a DropdownMenu trigger exposing Change Password (admin) + Logout. **Logout also surfaced as a standalone destructive Button at the right of the slim topbar** (icon-only `<sm:` widths, icon + label from `sm:` up) after the date and `LocaleSwitch`. Added mobile backdrop (`fixed inset-0 z-30 bg-black/40 md:hidden`) for the drawer.
-
-**Decisions:**
-- Top-bar layout: section dropdowns (vs flat row or primary+more). Cleanest fit for 14 items across 5 sections; preserves the current hierarchy.
-- Persist mode in `localStorage` under `kis.nav.mode`. Default `topbar`. Mobile ignores the value (only the desktop topbar/sidebar split branches on it).
-- Slim topbar stays in both modes — user name, role, date, locale switch, Logout button always visible up top.
-
-**Deploys:** Two via `/deploy-test-frontend` (no backend change). Bundle: 925 KB JS / 284 KB gz (≈ +16 KB gz vs 268 gz before — DropdownMenu primitive pulls in Radix runtime). Type-check clean on both deploys.
-
-**Plan file:** `/Users/manjeetsaini/.claude/plans/so-i-want-a-linked-popcorn.md` (approved + executed).
-
-> Sessions 9 (soft-delete workflow + /check-logs) and 8 (KIS design + templated PDFs) archived → [SESSION_HISTORY_8_9.md](./SESSION_HISTORY_8_9.md)
 
 
 ---

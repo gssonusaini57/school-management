@@ -14,10 +14,12 @@ originSessionId: a28c76aa-d68b-4bf2-ac4b-fb655aa4a1d3
 - Files: stored as MySQL `LONGBLOB` rows, not on disk
 - `/opt/school-management/` layout: `app/` (FastAPI), `frontend/dist/` (Vite build), `logs/`, `backups/` (auto-pruned >30d), `.env` (chmod 600)
 
-**Unified login (Session 10, 2026-05-16):** `POST /auth/login` accepts `{identifier, password}` only — no role tab. Identifier may be:
-- `admin@kis.com` / `admin123` — singleton admin (lazily seeded on first login attempt; rotate via `/auth/change-password`).
-- `superadmin@kis.com` / `super123` — singleton super-admin.
-- A staff email (e.g. `nishasaini@kis.com`) OR a staff phone (digits-normalized).
+**ALSO LIVE ON PROD (Session 16):** `https://kisschool.in` served at the domain ROOT — see [[project_prod_deployment_kisschool]]. Test & prod run the same code.
+
+**Unified login (Session 10; admin emails changed Session 16):** `POST /auth/login` accepts `{identifier, password}` only — no role tab. Identifier may be:
+- **`nsnishasaini57@gmail.com`** / `admin123` — singleton admin (was `admin@kis.com`).
+- **`gssonusaini57@gmail.com`** — singleton super-admin (was `superadmin@kis.com`; password CHANGED from `super123`, now unknown).
+- A staff email OR phone (digits-normalized), now **also a staff temp password** an admin set — see [[project_staff_temp_password]].
 
 Admin identifiers are hardcoded in [backend/app/routers/auth.py](../../../Documents/GitHub/school-management/backend/app/routers/auth.py) (`ADMIN_EMAIL`, `SUPER_ADMIN_EMAIL`). Staff credentials are stored in `staff.email` (UNIQUE) + `staff.password_hash` + `staff.force_password_change`. The legacy `access_code` model is gone — see [[staff-auth-revamp]].
 
