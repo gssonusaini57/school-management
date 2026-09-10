@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, Header, Query, status
 from sqlalchemy.orm import Session
 from .db import get_db
 from .security import decode_token
+from .constants import expand_classes, is_all_sentinel
 
 
 @dataclass
@@ -23,7 +24,9 @@ def _parse(token: str) -> CurrentUser:
         sub=str(payload.get("sub")),
         role=payload.get("role", ""),
         name=payload.get("name", ""),
-        allowed_classes=payload.get("allowed_classes", []) or [],
+        # Expand the "All" sentinel so tokens issued before the fix (still valid
+        # ~8h) also surface the concrete class list for /me and authorization.
+        allowed_classes=expand_classes(payload.get("allowed_classes", []) or []),
         allowed_menus=payload.get("allowed_menus", []) or [],
     )
 
@@ -57,6 +60,8 @@ def assert_class_allowed(user: CurrentUser, class_name: str | None) -> None:
     if user.role in ("admin", "super_admin"):
         return
     if class_name is None:
+        return
+    if any(is_all_sentinel(c) for c in user.allowed_classes):
         return
     if class_name not in user.allowed_classes:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Class not in scope")

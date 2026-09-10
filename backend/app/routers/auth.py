@@ -21,6 +21,7 @@ from ..models.record_status import RecordStatus
 from ..models.password_reset import PasswordResetToken, ResetAccountType
 from ..security import hash_password, verify_password, create_token
 from ..config import settings
+from ..constants import expand_classes
 from ..logging_config import get_logger
 from ..mailer import send_email, EmailNotConfigured
 from ..email_templates import password_reset_email
@@ -154,7 +155,10 @@ def login(payload: LoginRequest, db: Session = Depends(db_dep)):
         log.warning("login failed", extra={"event": "login_failed", "role": "staff", "identifier_kind": "email" if "@" in ident_lower else "phone"})
         raise HTTPException(status_code=401, detail="Invalid credentials")
 
-    classes = [c.class_name for c in matched.classes]
+    # Staff assigned every class are stored as a single sentinel row "All";
+    # expand it to the concrete list so clients (app + web class pickers) and the
+    # JWT scope get real class names instead of the literal "All".
+    classes = expand_classes([c.class_name for c in matched.classes])
     menus = list(matched.allowed_menus or [])
     token = create_token(
         sub=str(matched.id),
