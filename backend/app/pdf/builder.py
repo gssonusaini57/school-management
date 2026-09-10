@@ -23,6 +23,7 @@ from .schemas import (
     ReportCard, ReportCardStudent, ReportCardSubject, ReportCardSummary,
     ReportCardSignatures,
 )
+from ..services.results import aggregate_student_subjects, Scope
 
 
 def _bi(s: str | None) -> Bilingual:
@@ -33,20 +34,6 @@ def _bi(s: str | None) -> Bilingual:
     return Bilingual(en=text, pa=text)
 
 
-def _grade_for(marks: float, max_marks: float) -> str:
-    """Default grade band; matches the scale on the report-card template."""
-    if max_marks <= 0:
-        return "—"
-    pct = (marks / max_marks) * 100
-    if pct >= 91: return "A1"
-    if pct >= 81: return "A2"
-    if pct >= 71: return "B1"
-    if pct >= 61: return "B2"
-    if pct >= 51: return "C1"
-    if pct >= 41: return "C2"
-    return "D"
-
-
 def build_report_card_payload(
     *,
     template_data: dict[str, Any],
@@ -54,28 +41,31 @@ def build_report_card_payload(
     student_data: dict[str, Any] | None,
     session: str,
     term: str | None,
-    marks_rows: list[Any],             # app.models.marks.Marks
+    scope: Scope,
+    class_subjects: list[Any],         # app.models.class_subject.ClassSubject (+components)
+    marks_rows: list[Any],             # app.models.marks.Marks (this student × class × session)
 ) -> ReportCard:
-    """Merge a template + student + per-student data + marks into a
-    fully-validated ReportCard model."""
+    """Merge a template + student + per-student data + component-aggregated
+    marks into a fully-validated ReportCard model. Marks are rolled up to one
+    row per subject (sum of in-scope components) by the shared results engine."""
     sd = student_data or {}
 
-    subjects = []
-    total = 0.0
-    max_total = 0.0
-    for m in sorted(marks_rows, key=lambda r: r.subject):
-        marks_v = float(m.marks)
-        max_v = float(m.max_marks or 100)
-        total += marks_v
-        max_total += max_v
-        subjects.append(ReportCardSubject(
-            name=Bilingual(en=m.subject, pa=m.subject),
-            marks=marks_v,
-            max=max_v,
-            grade=_grade_for(marks_v, max_v),
-        ))
-
-    pct = (total / max_total * 100.0) if max_total else 0.0
+    subj_results, total, max_total, pct_opt, _grade = aggregate_student_subjects(
+        scope=scope, class_subjects=class_subjects, marks_rows=marks_rows,
+    )
+    # Scholastic table = graded subjects only (max > 0); grading subjects are
+    # rendered from the co-scholastic block (pdf_student_data), not from marks.
+    subjects = [
+        ReportCardSubject(
+            name=Bilingual(en=sr.subject_name, pa=sr.subject_name_pa or sr.subject_name),
+            marks=sr.obtained,
+            max=sr.max,
+            grade=sr.grade,
+        )
+        for sr in subj_results
+        if sr.max > 0
+    ]
+    pct = pct_opt or 0.0
 
     co_scholastic = []
     head_lookup = {h["name"]["en"]: h["name"] for h in template_data.get("coScholasticHeads", [])}
@@ -121,9 +111,10 @@ def build_report_card_payload(
         photoUrl=None,
     )
 
+    display_term = term or ("Annual" if scope == "annual" else None)
     return ReportCard(
         session=session,
-        term=term,
+        term=display_term,
         student=student_block,
         subjects=subjects,
         coScholastic=co_scholastic,

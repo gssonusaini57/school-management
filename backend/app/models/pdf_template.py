@@ -108,6 +108,10 @@ class PdfCache(Base):
         BigInteger, ForeignKey("pdf_templates.id", ondelete="CASCADE"), nullable=False, index=True
     )
     template_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    # Hash of the source data the PDF was rendered from (report-card marks).
+    # Lets a marks change invalidate a cached PDF even when template.version
+    # hasn't bumped. NULL for legacy rows / kinds with no marks input.
+    source_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     mime_type: Mapped[str] = mapped_column(String(64), nullable=False, default="application/pdf")
     byte_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     data: Mapped[bytes] = mapped_column(LONGBLOB, nullable=False)

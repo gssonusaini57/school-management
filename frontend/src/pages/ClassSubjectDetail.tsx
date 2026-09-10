@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { NumberField } from "@/components/ui/number-field";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "@/components/ui/toaster";
 import { api, apiError } from "@/lib/api";
@@ -20,6 +21,14 @@ const CATEGORY_LABEL: Record<SubjectCategory, string> = {
   grading: "Grading",
 };
 
+// Term select uses "both" as the sentinel for NULL (radix Select forbids an
+// empty-string item value). Mapped back to null on save.
+const TERM_OPTIONS: { value: string; label: string }[] = [
+  { value: "both", label: "Both" },
+  { value: "1", label: "Term 1" },
+  { value: "2", label: "Term 2" },
+];
+
 interface DraftRow {
   // Local id used only for React keys while editing — server ids are stripped
   // on save because we PUT-replace the whole list.
@@ -27,6 +36,7 @@ interface DraftRow {
   component_name: string;
   max_marks: string;
   order_index: string;
+  term: string; // "both" | "1" | "2"
 }
 
 const draftFromServer = (rows: ClassSubjectDetail["components"]): DraftRow[] =>
@@ -38,6 +48,7 @@ const draftFromServer = (rows: ClassSubjectDetail["components"]): DraftRow[] =>
       component_name: c.component_name,
       max_marks: String(c.max_marks),
       order_index: String(c.order_index || i + 1),
+      term: c.term == null ? "both" : String(c.term),
     }));
 
 const blankRow = (idx: number): DraftRow => ({
@@ -45,6 +56,7 @@ const blankRow = (idx: number): DraftRow => ({
   component_name: "",
   max_marks: "0",
   order_index: String(idx),
+  term: "both",
 });
 
 export default function ClassSubjectDetail() {
@@ -67,7 +79,7 @@ export default function ClassSubjectDetail() {
   }, [subjectQ.data?.id, subjectQ.data?.updated_at]);
 
   const replace = useMutation({
-    mutationFn: (components: { component_name: string; max_marks: number; order_index: number }[]) =>
+    mutationFn: (components: { component_name: string; max_marks: number; order_index: number; term: number | null }[]) =>
       api.put(`/class-subjects/${subjectId}/components`, { components }),
     onSuccess: () => {
       toast("Exam components saved", "success");
@@ -91,7 +103,8 @@ export default function ClassSubjectDetail() {
       if (!s) return true;
       return s.component_name !== d.component_name
         || s.max_marks !== d.max_marks
-        || s.order_index !== d.order_index;
+        || s.order_index !== d.order_index
+        || s.term !== d.term;
     });
   }, [draft, subjectQ.data]);
 
@@ -121,7 +134,7 @@ export default function ClassSubjectDetail() {
   };
 
   const save = () => {
-    const cleaned: { component_name: string; max_marks: number; order_index: number }[] = [];
+    const cleaned: { component_name: string; max_marks: number; order_index: number; term: number | null }[] = [];
     const seen = new Set<string>();
     for (let i = 0; i < draft.length; i++) {
       const r = draft[i];
@@ -145,6 +158,7 @@ export default function ClassSubjectDetail() {
         component_name: name,
         max_marks: marks,
         order_index: Number(r.order_index) || i + 1,
+        term: r.term === "both" ? null : Number(r.term),
       });
     }
     replace.mutate(cleaned);
@@ -194,7 +208,9 @@ export default function ClassSubjectDetail() {
         Define every test or component that contributes to {s.subject_name}'s total
         (e.g. <code>P.T. First / 35</code>, <code>Semester First / 80</code>,
         <code> Semester First — Practical / 10</code>). The total max marks shown
-        below is the sum of all component max marks.
+        below is the sum of all component max marks. <strong>Term</strong> controls
+        which scope (Term 1 / Term 2 / Annual) a component rolls up into on the
+        Results page and report cards — pick <em>Both</em> if it counts in either term.
       </p>
 
       <Card>
@@ -214,6 +230,7 @@ export default function ClassSubjectDetail() {
                   <TableHead className="w-16 text-right">#</TableHead>
                   <TableHead>Component name</TableHead>
                   <TableHead className="w-32 text-right">Max marks</TableHead>
+                  <TableHead className="w-28">Term</TableHead>
                   <TableHead className="w-20 text-right">Order</TableHead>
                   <TableHead className="w-20 text-right"></TableHead>
                 </TableRow>
@@ -260,6 +277,14 @@ export default function ClassSubjectDetail() {
                       />
                     </TableCell>
                     <TableCell>
+                      <Select value={r.term} onValueChange={(v) => updateRow(r.key, { term: v })}>
+                        <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {TERM_OPTIONS.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
                       <NumberField
                         className="text-right"
                         min={0}
@@ -277,7 +302,7 @@ export default function ClassSubjectDetail() {
                 <TableRow className="bg-cream/40">
                   <TableCell colSpan={3} className="text-right font-medium">Total max marks</TableCell>
                   <TableCell className="text-right font-bold">{totalMax}</TableCell>
-                  <TableCell colSpan={2}></TableCell>
+                  <TableCell colSpan={3}></TableCell>
                 </TableRow>
               </TableBody>
             </Table>

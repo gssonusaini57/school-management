@@ -11,6 +11,7 @@ class ExamComponentBase(BaseModel):
     component_name: str = Field(min_length=1, max_length=80)
     max_marks: int = Field(default=0, ge=0, le=1000)
     order_index: int = Field(default=0, ge=0)
+    term: int | None = Field(default=None, ge=1, le=2)  # 1 | 2 | None = both terms
 
 
 class ExamComponentCreate(ExamComponentBase):
@@ -21,6 +22,7 @@ class ExamComponentUpdate(BaseModel):
     component_name: str | None = Field(default=None, min_length=1, max_length=80)
     max_marks: int | None = Field(default=None, ge=0, le=1000)
     order_index: int | None = Field(default=None, ge=0)
+    term: int | None = Field(default=None, ge=1, le=2)
 
 
 class ExamComponentOut(ExamComponentBase):

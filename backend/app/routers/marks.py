@@ -1,9 +1,18 @@
+from typing import Literal
+
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
 from ..deps import db_dep, current_user, CurrentUser, assert_class_allowed
 from ..schemas.marks import MarksBulkCreate, MarkOut
+from ..schemas.results import (
+    ClassResultsOut, StudentResultOut, SubjectResultOut, SubjectColumnOut,
+)
 from ..models.marks import Marks
+from ..models.class_subject import ClassSubject
+from ..models.student import Student
+from ..models.record_status import RecordStatus
+from ..services.results import aggregate_class_results
 from ..logging_config import get_logger
 from ._bulk import read_csv, must_str, opt_str, must_int, opt_int, FieldError, error_dict
 
@@ -46,6 +55,75 @@ def save_bulk(
         ))
     db.commit()
     return {"saved": len(payload.items)}
+
+
+@router.get("/results", response_model=ClassResultsOut)
+def class_results(
+    class_name: str = Query(alias="class"),
+    session: str = Query(),
+    scope: Literal["term1", "term2", "annual"] = Query(default="annual"),
+    user: CurrentUser = Depends(current_user),
+    db: Session = Depends(db_dep),
+):
+    """Component-aware results for a class+session, rolled up to per-subject
+    totals within the chosen scope (Term 1 / Term 2 / Annual). Includes draft
+    marks (no batch-status filter); students joined server-side."""
+    assert_class_allowed(user, class_name)
+
+    subjects = db.execute(
+        select(ClassSubject)
+        .where(ClassSubject.class_name == class_name)
+        .options(selectinload(ClassSubject.components))
+        .order_by(ClassSubject.order_index, ClassSubject.subject_name)
+    ).scalars().all()
+
+    students = db.execute(
+        select(Student.id, Student.name, Student.roll_no)
+        .where(Student.class_name == class_name, Student.status != RecordStatus.deleted)
+        .order_by(Student.roll_no.asc(), Student.name.asc())
+    ).all()
+    name_by_id = {s.id: (s.name, s.roll_no) for s in students}
+    student_ids = [s.id for s in students]
+
+    marks_rows = db.execute(
+        select(Marks).where(Marks.class_name == class_name, Marks.session == session)
+    ).scalars().all()
+
+    agg = aggregate_class_results(
+        class_name=class_name, session=session, scope=scope,
+        class_subjects=subjects, marks_rows=marks_rows, student_ids=student_ids,
+    )
+
+    return ClassResultsOut(
+        class_name=agg.class_name,
+        session=agg.session,
+        scope=agg.scope,
+        subject_columns=[
+            SubjectColumnOut(
+                subject_name=c.subject_name, subject_name_pa=c.subject_name_pa,
+                category=c.category, order_index=c.order_index, max=c.max,
+            )
+            for c in agg.subject_columns
+        ],
+        students=[
+            StudentResultOut(
+                student_id=sr.student_id,
+                name=name_by_id.get(sr.student_id, ("", None))[0],
+                roll_no=name_by_id.get(sr.student_id, ("", None))[1],
+                subjects=[
+                    SubjectResultOut(
+                        subject_name=s.subject_name, category=s.category,
+                        obtained=s.obtained, max=s.max, percentage=s.percentage,
+                        grade=s.grade, status=s.status,
+                    )
+                    for s in sr.subjects
+                ],
+                total_obtained=sr.total_obtained, total_max=sr.total_max,
+                percentage=sr.percentage, grade=sr.grade,
+            )
+            for sr in agg.students
+        ],
+    )
 
 
 @router.get("", response_model=list[MarkOut])

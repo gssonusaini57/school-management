@@ -223,6 +223,7 @@ export interface ExamComponent {
   component_name: string;
   max_marks: number;
   order_index: number;
+  term: number | null; // 1 | 2 | null = both terms
   created_at: string;
   updated_at: string;
 }
@@ -240,6 +241,46 @@ export interface ClassSubject {
 
 export interface ClassSubjectDetail extends ClassSubject {
   components: ExamComponent[];
+}
+
+// ── Aggregated results (GET /marks/results) ──────────────────────
+export type ResultScope = "term1" | "term2" | "annual";
+
+export interface SubjectColumn {
+  subject_name: string;
+  subject_name_pa: string | null;
+  category: SubjectCategory;
+  order_index: number;
+  max: number; // scope max = sum of in-scope component max marks
+}
+
+export interface SubjectResult {
+  subject_name: string;
+  category: SubjectCategory;
+  obtained: number;
+  max: number;
+  percentage: number | null;
+  grade: string | null;
+  status: "complete" | "partial" | "missing";
+}
+
+export interface StudentResult {
+  student_id: number;
+  name: string;
+  roll_no: string | null;
+  subjects: SubjectResult[];
+  total_obtained: number;
+  total_max: number;
+  percentage: number | null;
+  grade: string | null;
+}
+
+export interface ClassResults {
+  class_name: string;
+  session: string;
+  scope: ResultScope;
+  subject_columns: SubjectColumn[];
+  students: StudentResult[];
 }
 
 // ── Marks batch + edit-request workflow ──────────────────────────

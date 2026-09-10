@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import BigInteger, String, Integer, DateTime, Enum, UniqueConstraint, ForeignKey, func
+from sqlalchemy import BigInteger, String, Integer, SmallInteger, DateTime, Enum, UniqueConstraint, ForeignKey, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from ..db import Base
@@ -64,6 +64,9 @@ class SubjectExamComponent(Base):
     component_name: Mapped[str] = mapped_column(String(80), nullable=False)
     max_marks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Which term this component belongs to: 1, 2, or NULL = both/annual-only.
+    # Drives result aggregation scope (Term 1 / Term 2 / Annual).
+    term: Mapped[int | None] = mapped_column(SmallInteger, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()

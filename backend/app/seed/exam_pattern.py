@@ -29,6 +29,7 @@ class Component(TypedDict):
     component_name: str
     max_marks: int
     order_index: int
+    term: int | None       # 1 | 2 | None = both terms (drives result scope)
 
 
 class SubjectSeed(TypedDict):
@@ -40,71 +41,73 @@ class SubjectSeed(TypedDict):
     components: list[Component]
 
 
-def _components(pairs: list[tuple[str, int]]) -> list[Component]:
-    """Convert [(name, max_marks), ...] → ordered component dicts."""
+def _components(triples: list[tuple[str, int, int | None]]) -> list[Component]:
+    """Convert [(name, max_marks, term), ...] → ordered component dicts."""
     return [
-        {"component_name": name, "max_marks": marks, "order_index": idx}
-        for idx, (name, marks) in enumerate(pairs, start=1)
+        {"component_name": name, "max_marks": marks, "order_index": idx, "term": term}
+        for idx, (name, marks, term) in enumerate(triples, start=1)
     ]
 
 
 # ── Standard component patterns ───────────────────────────────────
+# Third tuple element is the term: 1 (First/Second/Semester First/Oral I),
+# 2 (Third/Fourth/Semester Second/Oral II).
 NUR_ACADEMIC_COMPONENTS = _components([
-    ("P.T. First", 25), ("P.T. Second", 25),
-    ("Semester First", 50), ("Oral I", 20),
-    ("P.T. Third", 25), ("P.T. Fourth", 25),
-    ("Semester Second", 50), ("Oral II", 20),
+    ("P.T. First", 25, 1), ("P.T. Second", 25, 1),
+    ("Semester First", 50, 1), ("Oral I", 20, 1),
+    ("P.T. Third", 25, 2), ("P.T. Fourth", 25, 2),
+    ("Semester Second", 50, 2), ("Oral II", 20, 2),
 ])
 
 KG_ACADEMIC_COMPONENTS = _components([
-    ("P.T. First", 25), ("P.T. Second", 25),
-    ("Semester First", 80), ("Oral I", 20),
-    ("P.T. Third", 25), ("P.T. Fourth", 25),
-    ("Semester Second", 80), ("Oral II", 20),
+    ("P.T. First", 25, 1), ("P.T. Second", 25, 1),
+    ("Semester First", 80, 1), ("Oral I", 20, 1),
+    ("P.T. Third", 25, 2), ("P.T. Fourth", 25, 2),
+    ("Semester Second", 80, 2), ("Oral II", 20, 2),
 ])
 
 STANDARD_ACADEMIC_COMPONENTS = _components([
-    ("P.T. First", 35), ("P.T. Second", 35),
-    ("Semester First", 80),
-    ("P.T. Third", 35), ("P.T. Fourth", 35),
-    ("Semester Second", 80),
+    ("P.T. First", 35, 1), ("P.T. Second", 35, 1),
+    ("Semester First", 80, 1),
+    ("P.T. Third", 35, 2), ("P.T. Fourth", 35, 2),
+    ("Semester Second", 80, 2),
 ])
 
 # Punjabi class 9th-10th has PT max=25 instead of 35 (note in PDF).
 PUNJABI_9_10_COMPONENTS = _components([
-    ("P.T. First", 25), ("P.T. Second", 25),
-    ("Semester First", 80),
-    ("P.T. Third", 25), ("P.T. Fourth", 25),
-    ("Semester Second", 80),
+    ("P.T. First", 25, 1), ("P.T. Second", 25, 1),
+    ("Semester First", 80, 1),
+    ("P.T. Third", 25, 2), ("P.T. Fourth", 25, 2),
+    ("Semester Second", 80, 2),
 ])
 
 # Subjects with a practical component (e.g. Maths/Science 6th-10th).
 # Written reduces from 80 to 70 and a 10-mark practical is added per term.
 PRACTICAL_70_10_COMPONENTS = _components([
-    ("P.T. First", 35), ("P.T. Second", 35),
-    ("Semester First — Written", 70), ("Semester First — Practical", 10),
-    ("P.T. Third", 35), ("P.T. Fourth", 35),
-    ("Semester Second — Written", 70), ("Semester Second — Practical", 10),
+    ("P.T. First", 35, 1), ("P.T. Second", 35, 1),
+    ("Semester First — Written", 70, 1), ("Semester First — Practical", 10, 1),
+    ("P.T. Third", 35, 2), ("P.T. Fourth", 35, 2),
+    ("Semester Second — Written", 70, 2), ("Semester Second — Practical", 10, 2),
 ])
 
 # 11th-12th Phy.Edu: 50 written + 30 practical per term.
 PHY_EDU_11_12_COMPONENTS = _components([
-    ("P.T. First", 35), ("P.T. Second", 35),
-    ("Semester First — Written", 50), ("Semester First — Practical", 30),
-    ("P.T. Third", 35), ("P.T. Fourth", 35),
-    ("Semester Second — Written", 50), ("Semester Second — Practical", 30),
+    ("P.T. First", 35, 1), ("P.T. Second", 35, 1),
+    ("Semester First — Written", 50, 1), ("Semester First — Practical", 30, 1),
+    ("P.T. Third", 35, 2), ("P.T. Fourth", 35, 2),
+    ("Semester Second — Written", 50, 2), ("Semester Second — Practical", 30, 2),
 ])
 
 # Grading-only subjects (Computer, Phy.Edu, Agri) — no numeric marks;
 # we stub one "Grade" row with max_marks=0 so the UI shows something.
 GRADING_COMPONENTS = _components([
-    ("Term 1 Grade", 0),
-    ("Term 2 Grade", 0),
+    ("Term 1 Grade", 0, 1),
+    ("Term 2 Grade", 0, 2),
 ])
 
 # Per-term single-mark components for co-curricular subjects.
 def co_curric_components(per_term_max: int) -> list[Component]:
-    return _components([("Term 1", per_term_max), ("Term 2", per_term_max)])
+    return _components([("Term 1", per_term_max, 1), ("Term 2", per_term_max, 2)])
 
 
 # ── Helpers to build sets of subjects ─────────────────────────────
@@ -155,8 +158,8 @@ def _kg(class_name: str) -> list[SubjectSeed]:
         + _make(class_name, [
             ("Drawing", "ਚਿੱਤਰਕਾਰੀ", co_curric_components(25)),
             ("E.V.S.", "ਵਾਤਾਵਰਣ", _components([
-                ("Term 1 — Written", 30), ("Term 1 — Oral", 20),
-                ("Term 2 — Written", 30), ("Term 2 — Oral", 20),
+                ("Term 1 — Written", 30, 1), ("Term 1 — Oral", 20, 1),
+                ("Term 2 — Written", 30, 2), ("Term 2 — Oral", 20, 2),
             ])),
             ("Rhyme", "ਕਵਿਤਾ", co_curric_components(25)),
         ], category="co_curricular", order_start=10)

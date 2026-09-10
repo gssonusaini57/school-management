@@ -27,7 +27,9 @@ class Marks(Base):
         nullable=True,
     )
     class_name: Mapped[str] = mapped_column(String(20), nullable=False)
-    exam_type: Mapped[str] = mapped_column(String(60), nullable=False)
+    # Holds the exam-component name (e.g. "Semester First — Practical"); 80 to
+    # match subject_exam_components.component_name / marks_batches.exam_type.
+    exam_type: Mapped[str] = mapped_column(String(80), nullable=False)
     subject: Mapped[str] = mapped_column(String(60), nullable=False)
     marks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     max_marks: Mapped[int] = mapped_column(Integer, nullable=False, default=100)

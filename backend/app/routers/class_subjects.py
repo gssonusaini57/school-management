@@ -247,6 +247,7 @@ def seed_defaults(
                 component_name=c["component_name"],
                 max_marks=c["max_marks"],
                 order_index=c["order_index"],
+                term=c.get("term"),
             ))
             inserted_components += 1
         inserted_subjects += 1
@@ -276,6 +277,7 @@ def add_component(
         component_name=payload.component_name.strip(),
         max_marks=payload.max_marks,
         order_index=payload.order_index,
+        term=payload.term,
     )
     db.add(row)
     try:
@@ -309,6 +311,8 @@ def update_component(
         row.max_marks = data["max_marks"]
     if "order_index" in data and data["order_index"] is not None:
         row.order_index = data["order_index"]
+    if "term" in data:  # membership, not truthiness — allows clearing to None and setting 2
+        row.term = data["term"]
     try:
         db.commit()
     except IntegrityError:
@@ -369,6 +373,7 @@ def replace_components(
             component_name=c.component_name.strip(),
             max_marks=c.max_marks,
             order_index=c.order_index or idx,
+            term=c.term,
         ))
     try:
         db.commit()
