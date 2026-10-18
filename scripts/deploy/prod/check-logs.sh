@@ -24,22 +24,21 @@ ssh_preflight
 
 log_step "Log analysis · since '$SINCE' · ${SERVER} (PROD)"
 
-ssh_run "SINCE=\"$SINCE\" bash -s" <<'REMOTE'
+ssh_run "SINCE=\"$SINCE\" $(remote_env) bash -s" <<'REMOTE'
 set -u
-APP_ROOT=/opt/school-management
 ERR=$APP_ROOT/logs/error.log
 ACC=$APP_ROOT/logs/access.log
 
 section() { printf '\n\033[36m── %s ─────────────────────────────────────\033[0m\n' "$1"; }
 
 section "1. Service status"
-systemctl is-active school-management || true
-systemctl show school-management --no-page \
+systemctl is-active "$SERVICE_NAME" || true
+systemctl show "$SERVICE_NAME" --no-page \
   --property=ActiveEnterTimestamp,MainPID,NRestarts,MemoryCurrent,Restart \
   | sed 's/^/  /'
 
 section "2. journalctl --since '$SINCE'"
-JLINES=$(journalctl -u school-management --since "$SINCE" --no-pager \
+JLINES=$(journalctl -u "$SERVICE_NAME" --since "$SINCE" --no-pager \
   | grep -E 'systemd\[1\]|ERROR|CRITICAL|WARN|Traceback|Exception' \
   | tail -40)
 if [ -n "$JLINES" ]; then

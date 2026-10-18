@@ -27,14 +27,14 @@ function emitVersionJson(): Plugin {
 }
 
 // Served under a per-environment base path. TEST mounts the staff portal at
-// /school/admin/ (shared expressonly.in box); PROD mounts it at the domain root
-// /admin/ (dedicated kisschool.in). The base is build-time configurable via the
-// VITE_BASE env var (set by scripts/deploy/<env>/env.sh); the default keeps TEST
-// behaviour byte-identical. Everything downstream (router basename, version.json
+// /kisschool/admin/ (second instance on the prod box, http://69.62.72.137); PROD
+// mounts it at the domain root /admin/ (kisschool.in). The base is build-time
+// configurable via the VITE_BASE env var (always set by scripts/deploy/<env>/env.sh);
+// the default matches TEST. Everything downstream (router basename, version.json
 // poll, login redirect, APK url) derives from import.meta.env.BASE_URL, so this
 // single knob flips the whole SPA.
 // Dev runs locally on http://localhost:5173 with /api proxied to FastAPI on 8000.
-const BASE = process.env.VITE_BASE ?? "/school/admin/";
+const BASE = process.env.VITE_BASE ?? "/kisschool/admin/";
 
 // Substitute %BASE_URL% in index.html with the resolved base at build time. Used
 // for the favicon, which must be an ABSOLUTE base-relative path (a plain relative

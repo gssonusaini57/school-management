@@ -3,19 +3,19 @@ Description=KIS School Management FastAPI
 After=network.target mysql.service
 
 [Service]
-User=school
-Group=school
-WorkingDirectory=/opt/school-management/app
-EnvironmentFile=/opt/school-management/.env
-ExecStart=/opt/school-management/app/.venv/bin/gunicorn app.main:app \
-          -k uvicorn.workers.UvicornWorker -w 2 -b 127.0.0.1:8000 \
+User=__APP_USER__
+Group=__APP_USER__
+WorkingDirectory=__APP_ROOT__/app
+EnvironmentFile=__APP_ROOT__/.env
+ExecStart=__APP_ROOT__/app/.venv/bin/gunicorn app.main:app \
+          -k uvicorn.workers.UvicornWorker -w 2 -b 127.0.0.1:__APP_PORT__ \
           --timeout 120 \
-          --access-logfile /opt/school-management/logs/access.log \
-          --error-logfile /opt/school-management/logs/error.log
+          --access-logfile __APP_ROOT__/logs/access.log \
+          --error-logfile __APP_ROOT__/logs/error.log
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:/opt/school-management/logs/stdout.log
-StandardError=append:/opt/school-management/logs/stderr.log
+StandardOutput=append:__APP_ROOT__/logs/stdout.log
+StandardError=append:__APP_ROOT__/logs/stderr.log
 
 [Install]
 WantedBy=multi-user.target

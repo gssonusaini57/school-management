@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # Base URL of the admin SPA, used to build password-reset links in emails.
     # No trailing slash. Reset page lives at <APP_BASE_URL>/reset-password?token=...
-    APP_BASE_URL: str = "https://expressonly.in/school/admin"
+    APP_BASE_URL: str = "http://69.62.72.137/kisschool/admin"
     RESET_TOKEN_TTL_MINUTES: int = 30
 
     # Publicly-reachable logo URL embedded in transactional emails. Email clients

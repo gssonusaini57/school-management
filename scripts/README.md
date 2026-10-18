@@ -1,94 +1,91 @@
 # Deployment scripts
 
-One-page cheatsheet. Detailed plan: `.claude/plans/create-a-deep-plan-snug-tome.md`.
+One-page cheatsheet. Both environments live on **one server, 69.62.72.137**
+(SSH key `~/.ssh/enamfoss_prod`), next to the unrelated enamfoss Tomcat app:
+
+| | PROD | TEST |
+|---|---|---|
+| URL | https://kisschool.in/ (`/admin/`, `/api/`, `/downloads/`, public site at `/`) | http://69.62.72.137/kisschool/admin/ (`/kisschool/api/`, `/kisschool/downloads/`; no public site; plain HTTP) |
+| install dir · Linux user | `/opt/school-management` · `school` | `/opt/school-management-test` · `school-test` |
+| systemd unit · gunicorn | `school-management` · 127.0.0.1:8000 | `school-management-test` · 127.0.0.1:8001 |
+| MySQL DB · user | `school_management` · `school` | `school_management_test` · `school_test` |
+| nginx | standalone vhost `deploy/nginx.kisschool.conf` → `/etc/nginx/conf.d/kisschool.conf` (installed by hand) | snippet from `deploy/nginx.school-test.conf` → `/etc/nginx/snippets/school-management-test.conf`, `include`d (one line) from the enamfoss bare-IP vhost |
+| email | Zoho SMTP | off (no SMTP keys; the DB is a prod clone) |
+
+**Every one of those values is a knob in `scripts/deploy/<env>/env.sh`.** `common/lib.sh`,
+the provision steps and the `deploy/` templates only consume knobs — never hardcode
+`/opt/school-management`, `school-management`, `8000` or `school_management` anywhere.
 
 ## Layout
 
 ```
 scripts/
-├── provision/              one-time per-server setup (idempotent)
-│   ├── 01-install-prereqs.sh        python3.12, venv, libmysqlclient-dev, curl, rsync
-│   ├── 02-create-user-dirs.sh       useradd school + /opt/school-management/{app,frontend/dist,logs,backups}
-│   ├── 03-create-mysql-db.sh        CREATE DATABASE/USER/GRANT (idempotent), persists pwd to /opt/school-management/.db_password
-│   ├── 04-write-env.sh              writes /opt/school-management/.env (chmod 600 school:school)
-│   ├── 05-install-systemd.sh        installs /etc/systemd/system/school-management.service
-│   ├── 06-install-nginx-snippet.sh  installs /etc/nginx/snippets/school.conf + include in expressonly.in block
-│   └── provision.sh                 wrapper: SSH-inspect + confirm + run 01..06
+├── provision/              one-time per-instance setup (idempotent; reads deploy/$ENV/env.sh)
+│   ├── 00-common.sh                 logging, ssh/rsync wrappers, confirm (ASSUME_YES), read_secret, render_template, validate_layout
+│   ├── 01-install-prereqs.sh        python3.12, venv, mysql client libs, WeasyPrint libs + fonts
+│   ├── 02-create-user-dirs.sh       $APP_USER + $APP_ROOT/{app,frontend/dist,logs,backups(700)}
+│   ├── 03-create-mysql-db.sh        $DB_NAME + $DB_USER (refuses to ALTER a user another instance owns); admin via MYSQL_ROOT_PASSWORD or /etc/mysql/debian.cnf
+│   ├── 04-write-env.sh              $APP_ROOT/.env (JWT secret generated on the server; APP_BASE_URL; SMTP only for prod; FORCE on prod refused)
+│   ├── 05-install-systemd.sh        renders deploy/school-management.service → /etc/systemd/system/$SERVICE_NAME.service
+│   ├── 06-install-nginx-snippet.sh  renders deploy/nginx.school-test.conf → $NGINX_SNIPPET + one include in the `server_name $DOMAIN` block (no-op when NGINX_SNIPPET is empty, i.e. prod)
+│   └── provision.sh                 wrapper: inspect + confirm + run 01..06   (ENV=test default; ENV=prod for prod)
 ├── deploy/
-│   ├── common/lib.sh                shared: ssh_run/scp_*/health_wait/snapshot/rollback/build/deploy_full
-│   ├── test/                        TEST: 104.237.5.113 · expressonly.in · ~/.ssh/uploadmytds_test
-│   │   ├── env.sh                   defaults
-│   │   ├── deploy-backend.sh        backend only
-│   │   ├── deploy-frontend.sh       frontend only
-│   │   ├── deploy-all.sh            full (backend + frontend, snapshot, rollback)
-│   │   ├── download-logs.sh         scp /opt/school-management/logs + journalctl tail
-│   │   ├── backup-db.sh             mysqldump → ~/Downloads/db-backups/school_test_<ts>.sql.gz
-│   │   └── rollback.sh              list snapshots / restore one
-│   └── prod/                        PROD: edit env.sh first (CHANGE_ME guards refuse to run otherwise)
-│       └── (same set of scripts; each prompts "Type 'DEPLOY PROD' to confirm")
+│   ├── common/lib.sh                shared: snapshot / rollback / build / push / downloads / deploy_full …
+│   ├── test/                        env.sh · deploy-{all,backend,frontend}.sh · sync-from-prod.sh · upload-apk.sh
+│   │                                check-logs.sh · download-logs.sh · backup-db.sh · rollback.sh
+│   └── prod/                        same set (+ deploy-public-site.sh, no sync); every deploy asks you to type DEPLOY PROD
+├── build-android.sh                 signed APK per flavour (prod | test) + force-update manifest (URL from env.sh)
 └── README.md (this file)
 ```
 
-## Quick start (test)
+## Quick start (TEST)
 
 ```bash
-# 1. One-time provisioning (uses ~/.ssh/uploadmytds_test against 104.237.5.113)
-bash scripts/provision/provision.sh
-
-# 2. First deploy (and every subsequent deploy)
-bash scripts/deploy/test/deploy-all.sh
-
-# 3. Inspect / debug
-bash scripts/deploy/test/download-logs.sh
-bash scripts/deploy/test/rollback.sh                 # lists snapshots
-bash scripts/deploy/test/rollback.sh 20260507_123456 # restore that snapshot
+bash scripts/provision/provision.sh --inspect-only   # read-only
+bash scripts/provision/provision.sh                  # one-time (ASSUME_YES=1 for non-interactive)
+bash scripts/deploy/test/deploy-all.sh               # ships the working tree
+bash scripts/deploy/test/sync-from-prod.sh           # replace TEST data with a fresh prod clone
+bash scripts/deploy/test/check-logs.sh 30m           # read-only log triage
+bash scripts/deploy/test/rollback.sh [<timestamp>]   # list / restore code snapshots
 ```
+
+Ship only **committed** code while the working tree holds unfinished work (the frontend
+imports `packages/design-system`, so `packages` must be in the export):
+
+```bash
+SRC_ROOT=$(mktemp -d) && git archive HEAD backend frontend packages | tar -x -C "$SRC_ROOT"
+SRC_ROOT="$SRC_ROOT" bash scripts/deploy/test/deploy-all.sh
+```
+
+## Android APKs
+
+`bash scripts/build-android.sh test` → `frontend/public/downloads/kis-attendance-test.apk` +
+`app-version-test.json`; `bash scripts/deploy/test/upload-apk.sh` publishes them as
+`/kisschool/downloads/kis-attendance.apk` (verifies HTTP 200 + byte size before arming the
+force-update manifest). Frontend deploys also publish **only their own env's** APK and never
+delete a server's APK (downloads/ is excluded from the `rsync --delete`).
 
 ## Environment overrides
 
-Every script reads its server-specific values from env vars. Defaults are in
-`scripts/deploy/{test,prod}/env.sh`. Override at the call site:
+Connection values can be overridden at the call site:
+`SCHOOL_TEST_SERVER`, `SCHOOL_TEST_SSH_USER`, `SCHOOL_TEST_SSH_KEY`, `SCHOOL_TEST_DOMAIN`,
+`SCHOOL_TEST_BASE_URL` (and the `SCHOOL_PROD_*` equivalents). Instance knobs are fixed in env.sh.
 
-```bash
-SCHOOL_TEST_SERVER=10.0.0.5 \
-SCHOOL_TEST_SSH_KEY=~/.ssh/another \
-bash scripts/deploy/test/deploy-all.sh
-```
-
-## Promoting test → prod
-
-```bash
-# 1. Edit scripts/deploy/prod/env.sh (replace CHANGE_ME_PROD_IP and CHANGE_ME_PROD_DOMAIN)
-$EDITOR scripts/deploy/prod/env.sh
-
-# 2. Generate a dedicated prod SSH key and add to prod authorized_keys
-ssh-keygen -t ed25519 -f ~/.ssh/school-management_prod
-ssh-copy-id -i ~/.ssh/school-management_prod.pub root@<prod-ip>
-
-# 3. Provision the prod box (same flow as test)
-SERVER=<prod-ip> SSH_KEY=~/.ssh/school-management_prod DOMAIN=<prod-domain> \
-  bash scripts/provision/provision.sh
-
-# 4. Deploy
-bash scripts/deploy/prod/deploy-all.sh
-```
-
-## What lives where on the server
+## What lives where on the server (per instance)
 
 ```
-/opt/school-management/
-├── app/                    rsynced from backend/
-│   └── .venv/              created on first deploy
-├── frontend/dist/          rsynced from frontend/dist/
+$APP_ROOT/                  (755, $APP_USER)
+├── app/                    rsynced from backend/  (+ .venv/ created on first deploy)
+├── frontend/dist/          rsynced from frontend/dist/ (downloads/ managed separately)
 ├── logs/                   gunicorn access/error logs
-├── backups/                app_<ts>.tgz + db_<ts>.sql.gz (auto-pruned >30d)
-├── .env                    secrets (chmod 600 school:school)
-├── .my.cnf                 mysqldump credentials (chmod 600 school:school)
-└── .db_password            generated DB password (chmod 600 root, kept for re-provision)
+├── backups/ (700)          app_<ts>.tgz + db_<ts>.sql.gz (pruned >30d); TEST also db_prodclone_* / db_presync_*
+├── .env                    secrets (600, $APP_USER)
+├── .my.cnf                 mysqldump credentials (600, $APP_USER)
+└── .db_password            generated DB password (600, root)
 ```
 
 ## Slash commands
 
-`.claude/commands/` mirrors uploadmytds:
-`/provision-test`, `/deploy-test`, `/deploy-test-frontend`, `/deploy-test-all`,
-`/deploy-prod`, `/deploy-prod-frontend`, `/deploy-prod-all`, `/clean-logs`.
+`.claude/commands/`: `/provision-test`, `/deploy-test`, `/deploy-test-frontend`, `/deploy-test-all`,
+`/sync-test-data`, `/deploy-prod`, `/deploy-prod-frontend`, `/deploy-prod-all`,
+`/deploy-prod-public-site`, `/release-android`, `/check-logs`, `/clean-logs`.
