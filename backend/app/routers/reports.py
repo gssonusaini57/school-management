@@ -7,13 +7,18 @@ from ..models.student import Student
 from ..models.staff import Staff
 from ..models.fee import FeePayment
 from ..models.attendance import Attendance, AttendanceRecord, AttendanceStatus
+from ..models.record_status import RecordStatus
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
 
 @router.get("/class-wise")
 def class_wise(user: CurrentUser = Depends(require_admin), db: Session = Depends(db_dep)):
-    rows = db.execute(select(Student).order_by(Student.class_name, Student.name)).scalars().all()
+    rows = db.execute(
+        select(Student)
+        .where(Student.status != RecordStatus.deleted)
+        .order_by(Student.class_name, Student.name)
+    ).scalars().all()
     grouped: dict[str, list[dict]] = defaultdict(list)
     for s in rows:
         grouped[s.class_name].append({
@@ -38,23 +43,30 @@ def fee_summary(user: CurrentUser = Depends(require_admin), db: Session = Depend
 
 @router.get("/attendance-monthly")
 def attendance_monthly(user: CurrentUser = Depends(require_admin), db: Session = Depends(db_dep)):
+    """Per class-day counts. Holidays carry no records and are skipped; half
+    days (H) are their own column rather than being lumped into leave."""
     out = []
     for a in db.execute(select(Attendance).order_by(Attendance.date.desc())).scalars().all():
-        p = a_ = l_ = 0
+        if a.is_holiday:
+            continue
+        counts = {s: 0 for s in AttendanceStatus}
         for r in a.records:
-            if r.status == AttendanceStatus.P: p += 1
-            elif r.status == AttendanceStatus.A: a_ += 1
-            else: l_ += 1
+            counts[r.status] += 1
         out.append({
             "class": a.class_name, "date": str(a.date),
-            "present": p, "absent": a_, "leave": l_,
+            "present": counts[AttendanceStatus.P],
+            "absent": counts[AttendanceStatus.A],
+            "leave": counts[AttendanceStatus.L],
+            "half_day": counts[AttendanceStatus.H],
         })
     return out
 
 
 @router.get("/staff-list")
 def staff_list(user: CurrentUser = Depends(require_admin), db: Session = Depends(db_dep)):
-    rows = db.execute(select(Staff).order_by(Staff.name)).scalars().all()
+    rows = db.execute(
+        select(Staff).where(Staff.status != RecordStatus.deleted).order_by(Staff.name)
+    ).scalars().all()
     return [{
         "id": s.id, "name": s.name, "designation": s.designation,
         "assigned_classes": [c.class_name for c in s.classes], "phone": s.phone,

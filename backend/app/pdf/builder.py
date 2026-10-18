@@ -1,125 +1,161 @@
 """Build the full validated render payload for a (kind, student) pair.
 
-Inputs:
-  - PdfTemplate row (class-level config; `data` JSON validated by the
-    matching *TemplateData schema before persistence so we trust its shape).
-  - Student row (DB record).
-  - PdfStudentData row | None (per-student overrides; may be missing).
-  - For report-card: a list of Marks rows for this student × class × exam_type.
+Report cards: `build_report_card_payload(inputs, student_id)` turns one
+student's slice of the class inputs (gathered once per class by
+app.services.report_cards) into a validated `ReportCard`. Marks, totals,
+rank, class size, attendance and promotion are computed; values typed into
+the per-student data override them only when present.
 
-Output: a validated `ReportCard` or `PsebAdmitCard` Pydantic model. The
-caller hands `model_dump(by_alias=True, mode="json")` to render_pdf.
+PSEB admit cards: `build_pseb_admit_payload` merges the class template, the
+student row and the per-student PSEB identifiers.
 
-Pure functions; no DB access here. Routers fetch the rows then call us.
+Pure functions; no DB access here. Routers and services fetch the rows.
 """
 from __future__ import annotations
 
 from datetime import date as DateT
 from typing import Any
 
+from .labels import EXAM_GROUP_PA, PROMOTION_LABELS, REPORT_CARD_LABELS, SCOPE_TITLES
 from .schemas import (
-    Bilingual,
+    Bilingual, BilingualOpt,
     PsebAdmitCard, PsebCandidate,
-    ReportCard, ReportCardStudent, ReportCardSubject, ReportCardSummary,
-    ReportCardSignatures,
+    ReportCard, ReportCardCell, ReportCardCoScholastic, ReportCardGroup, ReportCardOptions,
+    ReportCardSignatures, ReportCardStudent, ReportCardStudentData, ReportCardSubject,
+    ReportCardSummary,
 )
-from ..services.results import aggregate_student_subjects, Scope
+from ..services.results import grade_legend
 
 
 def _bi(s: str | None) -> Bilingual:
     """Wrap a single string as a Bilingual{en,pa}, both filled with the
-    same text. Used when the underlying Student row only has one column
-    and we need a Bilingual on the print template."""
+    same text (PSEB admit cards require both)."""
     text = s or "—"
     return Bilingual(en=text, pa=text)
 
 
-def build_report_card_payload(
-    *,
-    template_data: dict[str, Any],
-    student: Any,                      # app.models.student.Student
-    student_data: dict[str, Any] | None,
-    session: str,
-    term: str | None,
-    scope: Scope,
-    class_subjects: list[Any],         # app.models.class_subject.ClassSubject (+components)
-    marks_rows: list[Any],             # app.models.marks.Marks (this student × class × session)
-) -> ReportCard:
-    """Merge a template + student + per-student data + component-aggregated
-    marks into a fully-validated ReportCard model. Marks are rolled up to one
-    row per subject (sum of in-scope components) by the shared results engine."""
-    sd = student_data or {}
+def _opt(en: str | None, pa: str | None = None) -> BilingualOpt:
+    """English text with an optional, distinct Punjabi line."""
+    en = en or "—"
+    return BilingualOpt(en=en, pa=pa if pa and pa != en else None)
 
-    subj_results, total, max_total, pct_opt, _grade = aggregate_student_subjects(
-        scope=scope, class_subjects=class_subjects, marks_rows=marks_rows,
-    )
-    # Scholastic table = graded subjects only (max > 0); grading subjects are
-    # rendered from the co-scholastic block (pdf_student_data), not from marks.
+
+def _first(*values: Any) -> Any:
+    """The first value that is not None (an override, else the computed value)."""
+    for v in values:
+        if v is not None:
+            return v
+    return None
+
+
+def build_report_card_payload(inputs: Any, student_id: int, *, photo_url: str | None = None) -> ReportCard:
+    """One student's report card from the class inputs.
+
+    Raises ValueError when the card can't be produced (archived, other class,
+    or no marks in scope) so the caller reports it for that student only.
+    """
+    student = inputs.students.get(student_id)
+    if student is None:
+        raise ValueError(f"student {student_id} is not an active student of {inputs.template.class_name}")
+    res = inputs.results_by_student[student_id]
+    cr = inputs.class_results
+    settings = inputs.settings
+    sd = ReportCardStudentData.model_validate(inputs.student_data.get(student_id) or {})
+
+    numeric = [s for s in res.subjects if not s.is_grading]
+    grading = [s for s in res.subjects if s.is_grading]
+    if not res.has_marks:
+        drafts = f" ({res.draft_components} entered marks are still drafts)" if res.draft_components else ""
+        raise ValueError(f"no submitted marks for {student.name} in {inputs.scope}{drafts}")
+
     subjects = [
         ReportCardSubject(
-            name=Bilingual(en=sr.subject_name, pa=sr.subject_name_pa or sr.subject_name),
-            marks=sr.obtained,
-            max=sr.max,
-            grade=sr.grade,
+            name=_opt(s.subject_name, s.subject_name_pa),
+            marks=s.obtained if s.components_marked else None,
+            max=s.max,
+            # A grade on a half-entered subject would understate it: only when complete.
+            grade=s.grade if s.status == "complete" else None,
+            status=s.status,
+            cells=[
+                ReportCardCell(key=c.key, marks=c.obtained if c.marked else None, max=c.max, status=c.status)
+                for c in s.cells
+            ],
         )
-        for sr in subj_results
-        if sr.max > 0
+        for s in numeric
     ]
-    pct = pct_opt or 0.0
+    groups = [ReportCardGroup(key=g.key, label=_opt(g.key, EXAM_GROUP_PA.get(g.key))) for g in cr.groups]
+    co_scholastic = [
+        ReportCardCoScholastic(
+            name=_opt(s.subject_name, s.subject_name_pa),
+            grade=s.grade_letter, term1=s.term_letters.get(1), term2=s.term_letters.get(2),
+        )
+        for s in grading
+    ]
 
-    co_scholastic = []
-    head_lookup = {h["name"]["en"]: h["name"] for h in template_data.get("coScholasticHeads", [])}
-    for entry in sd.get("coScholasticGrades", []) or []:
-        name_obj = head_lookup.get(entry["head"], {"en": entry["head"], "pa": entry["head"]})
-        co_scholastic.append({
-            "name": name_obj.get("en", entry["head"]),
-            "grade": entry["grade"],
-        })
-
-    sigs_in = template_data.get("signatures") or {}
-    signatures = ReportCardSignatures(
-        classTeacher=sigs_in.get("classTeacher"),
-        examIncharge=sigs_in.get("examIncharge"),
-        principal=sigs_in.get("principal"),
+    att = inputs.attendance.get(student_id)
+    has_drafts = any(
+        cm.batch_status == "draft" and (cm.marks is not None or cm.grade_letter is not None)
+        for s in res.subjects for cm in s.components
     )
+    incomplete = any(s.status != "complete" for s in res.subjects)
+    promotion = _first(sd.promotion, res.promotion)
+    default_remarks = settings.get("remarksDefault")
+    remarks = sd.remarks or (BilingualOpt(**default_remarks) if default_remarks else None)
 
     summary = ReportCardSummary(
-        total=total,
-        max=max_total,
-        percentage=round(pct, 2),
-        rank=sd.get("rank"),
-        classSize=sd.get("classSize"),
-        attendancePct=sd.get("attendancePct"),
-        workingDays=sd.get("workingDays"),
-        daysPresent=sd.get("daysPresent"),
-        remarks=Bilingual(**sd["remarks"]) if sd.get("remarks") else None,
-        promotion=sd.get("promotion") or template_data.get("promotionDefault") or (
-            "Promoted" if pct >= 33 else "Needs improvement"
-        ),
+        total=res.total_obtained,
+        max=res.total_max,
+        percentage=res.percentage,
+        grade=res.grade if not incomplete else None,
+        rank=_first(sd.rank, res.rank),
+        classSize=_first(sd.classSize, cr.class_size or None),
+        attendancePct=_first(sd.attendancePct, att.pct if att else None),
+        workingDays=_first(sd.workingDays, att.working_days if att and att.working_days else None),
+        daysPresent=_first(sd.daysPresent, att.days_present if att and att.working_days else None),
+        remarks=remarks,
+        promotion=promotion,
+        promotionLabel=(BilingualOpt(**PROMOTION_LABELS[promotion]) if promotion in PROMOTION_LABELS
+                        else (_opt(promotion) if promotion else None)),
+        hasDrafts=has_drafts,
+        incomplete=incomplete,
+        failedSubjects=res.failed_subjects,
     )
 
-    student_block = ReportCardStudent(
-        name=_bi(student.name),
-        **{"class": student.class_name},
-        section="—",
-        rollNo=(student.roll_no or str(student.id)),
-        fatherName=_bi(student.father),
-        motherName=_bi(student.mother),
-        dob=student.dob or DateT(2010, 1, 1),
-        house=sd.get("house"),
-        admissionNo=sd.get("admissionNo") or student.admission_id,
-        photoUrl=None,
-    )
-
-    display_term = term or ("Annual" if scope == "annual" else None)
+    sig = settings.get("signatures") or {}
+    admission = _first(sd.admissionNo, student.admission_id,
+                       str(student.admission_no) if student.admission_no else None)
     return ReportCard(
-        session=session,
-        term=display_term,
-        student=student_block,
+        session=inputs.template.session,
+        term=inputs.template.term,
+        scope=inputs.scope,
+        layout=inputs.template.layout or "summary",
+        title=BilingualOpt(**SCOPE_TITLES[inputs.scope]),
+        student=ReportCardStudent(
+            name=_opt(student.name),
+            **{"class": student.class_name},
+            rollNo=student.roll_no,
+            fatherName=_opt(student.father),
+            motherName=_opt(student.mother),
+            dob=student.dob,
+            house=sd.house or inputs.houses.get(student_id),
+            admissionNo=admission,
+            photoUrl=photo_url,
+        ),
+        groups=groups,
         subjects=subjects,
         coScholastic=co_scholastic,
         summary=summary,
-        signatures=signatures,
+        signatures=ReportCardSignatures(
+            classTeacher=sig.get("classTeacher"), examIncharge=sig.get("examIncharge"),
+            principal=sig.get("principal"),
+        ),
+        options=ReportCardOptions(
+            showAttendance=settings.get("showAttendance", True), showRank=settings.get("showRank", True),
+            showPhoto=settings.get("showPhoto", True), showGradingScale=settings.get("showGradingScale", True),
+        ),
+        labels={k: BilingualOpt(**v) for k, v in REPORT_CARD_LABELS.items()},
+        gradeLegend=grade_legend(),
+        generatedOn=DateT.today(),
     )
 
 

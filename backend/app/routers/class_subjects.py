@@ -31,6 +31,9 @@ from ..schemas.class_subject import (
 from ..events import broker
 from ..logging_config import get_logger
 from ..seed.exam_pattern import EXAM_PATTERN_SEED
+from ..services.marks_batches import (
+    component_mark_stats, rename_component_marks, rename_subject_marks, sync_component_max,
+)
 from ._bulk import read_csv, must_str, opt_str, FieldError, error_dict
 
 router = APIRouter(prefix="/class-subjects", tags=["class-subjects"])
@@ -107,7 +110,11 @@ def update_subject(
         raise HTTPException(status_code=404, detail="Subject not found")
     data = payload.model_dump(exclude_unset=True)
     if "subject_name" in data and data["subject_name"]:
-        row.subject_name = data["subject_name"].strip()
+        new_name = data["subject_name"].strip()
+        if new_name != row.subject_name:
+            # Marks reference the subject by name: carry them along.
+            rename_subject_marks(db, row.class_name, row.subject_name, new_name)
+            row.subject_name = new_name
     if "subject_name_pa" in data:
         v = (data["subject_name_pa"] or "").strip()
         row.subject_name_pa = v or None
@@ -304,11 +311,19 @@ def update_component(
     row = db.get(SubjectExamComponent, component_id)
     if not row:
         raise HTTPException(status_code=404, detail="Component not found")
+    subject = db.get(ClassSubject, row.class_subject_id)
     data = payload.model_dump(exclude_unset=True)
-    if "component_name" in data and data["component_name"]:
-        row.component_name = data["component_name"].strip()
-    if "max_marks" in data and data["max_marks"] is not None:
+    if "max_marks" in data and data["max_marks"] is not None and data["max_marks"] != row.max_marks:
+        _check_new_max(db, subject, row.component_name, data["max_marks"])
+        sync_component_max(db, subject.class_name, subject.subject_name, row.component_name, data["max_marks"])
         row.max_marks = data["max_marks"]
+    if "component_name" in data and data["component_name"]:
+        new_name = data["component_name"].strip()
+        if new_name != row.component_name:
+            if any(c.component_name == new_name for c in subject.components if c.id != row.id):
+                raise HTTPException(status_code=409, detail="Another component already has that name for this subject")
+            rename_component_marks(db, subject.class_name, subject.subject_name, row.component_name, new_name)
+            row.component_name = new_name
     if "order_index" in data and data["order_index"] is not None:
         row.order_index = data["order_index"]
     if "term" in data:  # membership, not truthiness — allows clearing to None and setting 2
@@ -326,29 +341,50 @@ def update_component(
 @router.delete("/components/{component_id}", status_code=204)
 def delete_component(
     component_id: int,
+    force: bool = Query(default=False),
     user: CurrentUser = Depends(require_super_admin),
     db: Session = Depends(db_dep),
 ):
     row = db.get(SubjectExamComponent, component_id)
     if not row:
         raise HTTPException(status_code=404, detail="Component not found")
+    subject = db.get(ClassSubject, row.class_subject_id)
+    count, _ = component_mark_stats(db, subject.class_name, subject.subject_name, row.component_name)
+    if count and not force:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{row.component_name} has {count} marks entered. Delete anyway with force, or keep it.",
+        )
     subject_id = row.class_subject_id
     db.delete(row)
     db.commit()
     broker.publish("class_subjects", "upsert", id=subject_id)
 
 
+def _check_new_max(db: Session, subject: ClassSubject, component: str, new_max: int) -> None:
+    """Refuse a max below marks already entered: they would exceed 100 %."""
+    count, top = component_mark_stats(db, subject.class_name, subject.subject_name, component)
+    if count and top is not None and top > new_max:
+        raise HTTPException(
+            status_code=409,
+            detail=f"{component}: marks up to {top} are already entered, so max marks can't drop to {new_max}. Correct those marks first.",
+        )
+
+
 @router.put("/{subject_id}/components", response_model=ClassSubjectDetailOut)
 def replace_components(
     subject_id: int,
     payload: ComponentsReplaceBody,
+    force: bool = Query(default=False),
     user: CurrentUser = Depends(require_super_admin),
     db: Session = Depends(db_dep),
 ):
     """Replace the full component list for a subject in a single transaction.
 
-    The detail page's spreadsheet-style editor uses this to commit all edits
-    + deletes + adds with one Save click.
+    Rows carrying an `id` (or, without one, an exact existing name) edit that
+    component in place, so its marks follow a rename and a max change.
+    Components missing from the payload are deleted; deleting one that already
+    has marks is refused unless `force=true`.
     """
     subject = db.execute(
         select(ClassSubject)
@@ -358,23 +394,69 @@ def replace_components(
     if not subject:
         raise HTTPException(status_code=404, detail="Subject not found")
 
-    # Detect duplicates within the payload before touching the DB.
     names_lower = [c.component_name.strip().lower() for c in payload.components]
     if len(names_lower) != len(set(names_lower)):
         raise HTTPException(status_code=400, detail="Duplicate component names in the payload")
 
-    for old in list(subject.components):
+    by_id = {c.id: c for c in subject.components}
+    by_name = {c.component_name: c for c in subject.components}
+    plan: list[tuple[SubjectExamComponent | None, object]] = []
+    kept: set[int] = set()
+    for item in payload.components:
+        row = by_id.get(item.id) if item.id is not None else by_name.get(item.component_name.strip())
+        if item.id is not None and row is None:
+            raise HTTPException(status_code=400, detail=f"Component id {item.id} does not belong to this subject")
+        if row is not None:
+            if row.id in kept:
+                raise HTTPException(status_code=400, detail=f"Component {row.component_name!r} appears twice")
+            kept.add(row.id)
+        plan.append((row, item))
+
+    to_delete = [c for c in subject.components if c.id not in kept]
+    with_marks = [
+        (c.component_name, n) for c in to_delete
+        for n, _ in [component_mark_stats(db, subject.class_name, subject.subject_name, c.component_name)]
+        if n
+    ]
+    if with_marks and not force:
+        listed = ", ".join(f"{name} ({n} marks)" for name, n in with_marks)
+        raise HTTPException(status_code=409, detail=f"These components already have marks: {listed}. Keep them, or delete with force.")
+    for row, item in plan:
+        if row is not None and item.max_marks != row.max_marks:
+            _check_new_max(db, subject, row.component_name, item.max_marks)
+
+    for old in to_delete:
         db.delete(old)
     db.flush()
 
-    for idx, c in enumerate(payload.components, start=1):
-        db.add(SubjectExamComponent(
-            class_subject_id=subject_id,
-            component_name=c.component_name.strip(),
-            max_marks=c.max_marks,
-            order_index=c.order_index or idx,
-            term=c.term,
-        ))
+    # Renames go through a temporary name first so swapping two names can't
+    # trip the (subject, name) unique index or cross the marks over.
+    renames = [(row, item.component_name.strip()) for row, item in plan
+               if row is not None and row.component_name != item.component_name.strip()]
+    for row, _new in renames:
+        tmp = f"__renaming_{row.id}"
+        rename_component_marks(db, subject.class_name, subject.subject_name, row.component_name, tmp)
+        row.component_name = tmp
+    db.flush()
+    for row, new in renames:
+        rename_component_marks(db, subject.class_name, subject.subject_name, row.component_name, new)
+        row.component_name = new
+
+    for idx, (row, item) in enumerate(plan, start=1):
+        if row is None:
+            db.add(SubjectExamComponent(
+                class_subject_id=subject_id,
+                component_name=item.component_name.strip(),
+                max_marks=item.max_marks,
+                order_index=item.order_index or idx,
+                term=item.term,
+            ))
+            continue
+        if item.max_marks != row.max_marks:
+            sync_component_max(db, subject.class_name, subject.subject_name, row.component_name, item.max_marks)
+            row.max_marks = item.max_marks
+        row.order_index = item.order_index or idx
+        row.term = item.term
     try:
         db.commit()
     except IntegrityError:
@@ -384,11 +466,12 @@ def replace_components(
     broker.publish("class_subjects", "upsert", id=subject_id)
     log.info(
         "exam components replaced",
-        extra={"event": "exam_components_replaced", "subject_id": subject_id, "count": len(payload.components), "actor": user.name},
+        extra={"event": "exam_components_replaced", "subject_id": subject_id, "count": len(payload.components),
+               "renamed": len(renames), "deleted": len(to_delete), "actor": user.name},
     )
-    # Re-fetch with components eagerly loaded
     return db.execute(
         select(ClassSubject)
         .where(ClassSubject.id == subject_id)
         .options(selectinload(ClassSubject.components))
+        .execution_options(populate_existing=True)
     ).scalar_one()

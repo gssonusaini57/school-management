@@ -1,192 +1,253 @@
 {% extends "_base.html.j2" %}
+{#
+  Report card, v2. Payload: app/pdf/schemas.py::ReportCard, built by
+  app/pdf/builder.py::build_report_card_payload. Every label is bilingual
+  (English, Punjabi beneath) from app/pdf/labels.py.
 
-{% block doc_title %}Report Card · {{ data.student.name.en }}{% endblock %}
+  layout "summary"    → Subject | Marks | Max | Grade
+  layout "components" → Subject | <one column per exam or term> | Total | Max | Grade
+#}
+{% set L = data.labels %}
+{% set S = data.summary %}
+{% set opt = data.options %}
+
+{% macro bi(label) -%}
+{{ label.en }}{% if label.pa %}<span class="pa">{{ label.pa }}</span>{% endif %}
+{%- endmacro %}
+{# Same, with the Punjabi on the same line (keeps table rows to one line). #}
+{% macro bi_inline(label) -%}
+{{ label.en }}{% if label.pa %}<span class="pa-inline">{{ label.pa }}</span>{% endif %}
+{%- endmacro %}
+
+{% block doc_title %}{{ data.title.en }} · {{ data.student.name.en }}{% endblock %}
+
+{% block extra_head %}
+<style>
+  .rc-head { padding:16px 40px 12px; display:flex; gap:16px; align-items:center; border-bottom:1.5px solid var(--blue); }
+  .rc-badge { display:inline-block; background:var(--blue); color:#fff; padding:4px 11px; border-radius:3px;
+              font-family:'Cinzel', serif; font-size:9pt; letter-spacing:0.16em; font-weight:600; text-align:center; }
+  .rc-badge .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; letter-spacing:0; font-size:8.5pt; font-weight:500; }
+  .lbl { font-size:7.5pt; letter-spacing:0.12em; color:var(--ink-faint); font-weight:700; text-transform:uppercase; }
+  .lbl .pa { display:block; text-transform:none; letter-spacing:0; font-family:'Noto Sans Gurmukhi', sans-serif; font-weight:500; font-size:7.5pt; }
+  .val { font-weight:700; font-size:10pt; margin-top:1px; }
+  .val .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; font-weight:500; font-size:8.5pt; color:var(--ink-soft); }
+  .section { padding:9px 40px 0; }
+  .section-title { color:var(--blue); margin-bottom:5px; }
+  table.marks { width:100%; border-collapse:collapse; font-size:9.5pt; font-variant-numeric:tabular-nums; }
+  table.marks th { background:var(--blue); color:#fff; font-family:'Cinzel', serif; font-size:7.5pt; letter-spacing:0.06em;
+                   padding:5px 4px; text-align:center; font-weight:600; vertical-align:bottom; }
+  table.marks th .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; letter-spacing:0; font-size:7.5pt; font-weight:500; }
+  table.marks th.subj, table.marks td.subj { text-align:left; padding-left:8px; }
+  table.marks td { padding:3.5px 4px; border-bottom:1px solid #EEF0F3; text-align:center; }
+  table.marks td.subj { font-weight:600; }
+  .pa-inline { font-family:'Noto Sans Gurmukhi', sans-serif; font-weight:400; font-size:8pt; color:var(--ink-soft); margin-left:6px; }
+  table.marks tbody tr:nth-child(even) td { background:#FBFAF6; }
+  table.marks td.strong { font-weight:800; }
+  table.marks td.muted { color:var(--ink-faint); }
+  table.marks td.grade { font-weight:800; color:var(--blue); }
+  table.marks tr.total td { border-top:2px solid var(--blue); border-bottom:none; background:#fff;
+                            font-family:'Playfair Display', serif; font-weight:800; color:var(--blue); font-size:10.5pt; }
+  .tiles { display:flex; gap:9px; }
+  .tile { flex:1; background:#FBFAF6; border:1px solid #ECE6C5; border-radius:8px; padding:6px 10px; }
+  .tile .v { font-family:'Playfair Display', serif; font-weight:800; font-size:15pt; color:var(--ink); line-height:1.1; margin-top:3px; }
+  .tile .v.text { font-size:10.5pt; line-height:1.3; }
+  .tile .v .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; font-weight:600; font-size:8.5pt; line-height:1.4; color:var(--ink-soft); margin-top:2px; }
+  .tile .sub { font-size:8pt; color:var(--ink-soft); margin-top:1px; }
+  .tile.result { background:var(--cream); border-color:var(--gold-deep); }
+  .provisional { margin:10px 40px 0; padding:5px 10px; border:1px dashed var(--red); color:var(--red-deep);
+                 font-size:8.5pt; border-radius:4px; }
+  .provisional .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; font-size:8pt; }
+  .remark { font-size:10.5pt; line-height:1.45; color:var(--ink); border-left:3px solid var(--gold); padding-left:10px; }
+  .remark .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; font-size:9.5pt; color:var(--ink-soft); margin-top:3px; }
+  .legend { font-size:8pt; color:var(--ink-soft); line-height:1.55; column-count:2; column-gap:12px; }
+  .sigs { padding:20px 40px 0; display:flex; justify-content:space-between; gap:10px; }
+  .sig { text-align:center; flex:1; }
+  .sig .name { font-size:9pt; color:var(--ink-soft); height:16px; line-height:16px; overflow:hidden; }
+  .sig .line { border-top:1px solid var(--ink); margin-top:4px; padding-top:3px; font-size:8.5pt; font-weight:700; }
+  .sig .line .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; font-weight:500; font-size:8pt; }
+</style>
+{% endblock %}
 
 {% block page_body %}
 <div class="page">
   <div class="tri-band"></div>
 
-  <header style="padding:18px 44px 14px; display:flex; gap:16px; align-items:center; border-bottom:1.5px solid var(--blue);">
-    <img src="{{ assets_dir }}/crest-512.png" alt="" style="width:78px; height:auto; flex-shrink:0;">
+  <header class="rc-head">
+    <img src="{{ assets_dir }}/crest-512.png" alt="" style="width:74px; height:auto; flex-shrink:0;">
     <div style="flex:1;">
-      <div class="display" style="font-size:23pt; color:var(--blue); line-height:1; letter-spacing:-0.015em;">Khalsa International</div>
-      <div class="caps" style="font-size:9pt; color:var(--ink); margin-top:5px;">SENIOR &nbsp; SECONDARY &nbsp; SCHOOL</div>
-      <div class="script" style="font-size:9.5pt; color:var(--ink-soft); margin-top:5px;">Jalalabad, District Patiala — Punjab · Aff. No. 4906 · PSEB</div>
+      <div class="display" style="font-size:22pt; color:var(--blue); line-height:1; letter-spacing:-0.015em;">Khalsa International</div>
+      <div class="caps" style="font-size:8.5pt; color:var(--ink); margin-top:5px;">SENIOR &nbsp; SECONDARY &nbsp; SCHOOL</div>
+      <div class="script" style="font-size:9.5pt; color:var(--ink-soft); margin-top:4px;">Jalalabad, District Patiala — Punjab · Aff. No. 4906 · PSEB</div>
     </div>
     <div style="text-align:right; flex-shrink:0;">
-      <div style="display:inline-block; background:var(--blue); color:#fff; padding:4px 11px; border-radius:3px; font-family:'Cinzel', serif; font-size:9.5pt; letter-spacing:0.26em; font-weight:600;">REPORT CARD</div>
-      <div style="font-size:9pt; color:var(--ink-soft); margin-top:6px;">Session <b style="color:var(--ink);">{{ data.session }}</b>{% if data.term %} · {{ data.term }}{% endif %}</div>
+      <div class="rc-badge">{{ data.title.en | upper }}{% if data.title.pa %}<span class="pa">{{ data.title.pa }}</span>{% endif %}</div>
+      <div style="font-size:9pt; color:var(--ink-soft); margin-top:6px;">{{ L.session.en }} / {{ L.session.pa }} <b style="color:var(--ink);">{{ data.session }}</b></div>
     </div>
   </header>
 
-  {# Student meta — photo box + grid #}
-  <div style="padding:14px 44px 0; display:flex; gap:16px; align-items:flex-start;">
-    <div style="width:78px; height:96px; border:1px dashed #B8B09A; border-radius:5px; display:flex; align-items:center; justify-content:center; background:#FBFAF6; text-align:center; font-size:7.5pt; color:var(--ink-faint); letter-spacing:0.14em; line-height:1.3; flex-shrink:0;">
+  {# ── Student panel ── #}
+  <div style="padding:10px 40px 0; display:flex; gap:14px; align-items:flex-start;">
+    {% if opt.showPhoto %}
+    <div style="width:74px; height:92px; border:1px dashed #B8B09A; border-radius:5px; overflow:hidden; background:#FBFAF6;
+                flex-shrink:0; display:flex; align-items:center; justify-content:center; text-align:center;
+                font-size:7pt; color:var(--ink-faint); letter-spacing:0.08em;">
       {% if data.student.photoUrl %}
-      <img src="{{ data.student.photoUrl }}" alt="" style="width:100%; height:100%; object-fit:cover; border-radius:5px;">
-      {% else %}
-      STUDENT<br>PHOTO
-      {% endif %}
+      <img src="{{ data.student.photoUrl }}" alt="" style="width:100%; height:100%; object-fit:cover;">
+      {% else %}{{ L.photo.en | upper }}{% endif %}
     </div>
-    <div style="flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px 18px; font-size:10pt;">
-      <div>
-        <div class="label">STUDENT NAME</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.student.name.en }}</div>
-        {% if data.student.name.pa %}<div class="gurmukhi" style="font-size:9pt; color:var(--ink-soft);">{{ data.student.name.pa }}</div>{% endif %}
-      </div>
-      <div>
-        <div class="label">FATHER / GUARDIAN</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.student.fatherName.en }}</div>
-        {% if data.student.fatherName.pa %}<div class="gurmukhi" style="font-size:9pt; color:var(--ink-soft);">{{ data.student.fatherName.pa }}</div>{% endif %}
-      </div>
-      <div>
-        <div class="label">MOTHER</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.student.motherName.en }}</div>
-        {% if data.student.motherName.pa %}<div class="gurmukhi" style="font-size:9pt; color:var(--ink-soft);">{{ data.student.motherName.pa }}</div>{% endif %}
-      </div>
-      <div>
-        <div class="label">CLASS &amp; SECTION</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.student.class }} — {{ data.student.section }}</div>
-      </div>
-      <div>
-        <div class="label">ROLL NO.</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.student.rollNo }}</div>
-      </div>
-      {% if data.student.admissionNo %}
-      <div>
-        <div class="label">ADMISSION NO.</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.student.admissionNo }}</div>
-      </div>
-      {% endif %}
-      <div>
-        <div class="label">DATE OF BIRTH</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.student.dob | dt }}</div>
-      </div>
+    {% endif %}
+    <div style="flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px 16px;">
+      <div><div class="lbl">{{ bi(L.studentName) }}</div><div class="val">{{ bi(data.student.name) }}</div></div>
+      <div><div class="lbl">{{ bi(L.father) }}</div><div class="val">{{ bi(data.student.fatherName) }}</div></div>
+      <div><div class="lbl">{{ bi(L.mother) }}</div><div class="val">{{ bi(data.student.motherName) }}</div></div>
+      <div><div class="lbl">{{ bi(L["class"]) }}</div><div class="val">{{ data.student["class"] }}</div></div>
+      <div><div class="lbl">{{ bi(L.rollNo) }}</div><div class="val">{{ data.student.rollNo or "—" }}</div></div>
+      <div><div class="lbl">{{ bi(L.admissionNo) }}</div><div class="val">{{ data.student.admissionNo or "—" }}</div></div>
+      <div><div class="lbl">{{ bi(L.dob) }}</div><div class="val">{{ (data.student.dob | dt) if data.student.dob else "—" }}</div></div>
       {% if data.student.house %}
-      <div>
-        <div class="label">HOUSE</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.student.house }}</div>
-      </div>
+      <div><div class="lbl">{{ bi(L.house) }}</div><div class="val">{{ data.student.house }}</div></div>
       {% endif %}
       {% if data.signatures and data.signatures.classTeacher %}
-      <div>
-        <div class="label">CLASS TEACHER</div>
-        <div style="font-weight:700; margin-top:1px;">{{ data.signatures.classTeacher }}</div>
-      </div>
+      <div><div class="lbl">{{ bi(L.classTeacher) }}</div><div class="val">{{ data.signatures.classTeacher }}</div></div>
       {% endif %}
     </div>
   </div>
 
-  {# Scholastic table #}
-  <div style="padding:14px 44px 0;">
-    <div class="label" style="color:var(--blue); margin-bottom:6px;">SCHOLASTIC AREAS — MARKS OBTAINED</div>
-    <table style="width:100%; border-collapse:collapse; font-size:10pt;">
+  {% if S.incomplete or S.hasDrafts %}
+  <div class="provisional">{{ L.provisional.en }}<span class="pa">{{ L.provisional.pa }}</span></div>
+  {% endif %}
+
+  {# ── Scholastic table ── #}
+  {% set components = data.layout == "components" %}
+  <div class="section">
+    <div class="lbl section-title">{{ bi(L.scholastic) }}</div>
+    <table class="marks">
       <thead>
-        <tr style="background:var(--blue); color:#fff; font-family:'Cinzel', serif; font-size:9pt; letter-spacing:0.14em;">
-          <th style="padding:7px 8px; text-align:left;">SUBJECT</th>
-          <th style="padding:7px 6px; text-align:center; width:70px;">MARKS</th>
-          <th style="padding:7px 6px; text-align:center; width:60px;">MAX</th>
-          <th style="padding:7px 6px; text-align:center; width:50px;">GRADE</th>
+        <tr>
+          <th class="subj">{{ bi(L.subjectsHead) }}</th>
+          {% if components %}
+            {% for g in data.groups %}<th>{{ bi(g.label) }}</th>{% endfor %}
+            <th>{{ bi(L.totalHead) }}</th>
+          {% else %}
+            <th>{{ bi(L.marks) }}</th>
+          {% endif %}
+          <th>{{ bi(L.max) }}</th>
+          <th>{{ bi(L.gradeHead) }}</th>
         </tr>
       </thead>
       <tbody>
         {% for sub in data.subjects %}
-        <tr style="background:{% if loop.index0 % 2 %}#FBFAF6{% else %}#FFF{% endif %};">
-          <td style="padding:6px 8px; border-bottom:1px solid #EEF0F3; font-weight:600;">
-            {{ sub.name.en }}
-            {% if sub.name.pa %}<div class="gurmukhi" style="font-size:8.5pt; color:var(--ink-soft); font-weight:400;">{{ sub.name.pa }}</div>{% endif %}
-          </td>
-          <td class="mono" style="padding:6px 6px; border-bottom:1px solid #EEF0F3; text-align:center; font-weight:800;">{{ sub.marks }}</td>
-          <td class="mono" style="padding:6px 6px; border-bottom:1px solid #EEF0F3; text-align:center; color:var(--ink-soft);">{{ sub.max }}</td>
-          <td style="padding:6px 6px; border-bottom:1px solid #EEF0F3; text-align:center; font-weight:800; color:var(--blue);">{{ sub.grade or "—" }}</td>
+        <tr>
+          <td class="subj">{{ bi_inline(sub.name) }}</td>
+          {% if components %}
+            {% for c in sub.cells %}
+            <td class="{{ 'muted' if c.status in ('none', 'missing') else '' }}">{{ '' if c.status == 'none' else (c.marks | num) }}</td>
+            {% endfor %}
+          {% endif %}
+          <td class="strong">{{ sub.marks | num }}</td>
+          <td class="muted">{{ sub.max | num }}</td>
+          <td class="grade">{{ sub.grade or "—" }}</td>
         </tr>
         {% endfor %}
-        <tr>
-          <td style="padding:9px 8px; font-family:'Playfair Display', serif; font-weight:800; color:var(--blue); border-top:2px solid var(--blue);">TOTAL</td>
-          <td class="mono" style="padding:9px 6px; border-top:2px solid var(--blue); text-align:center; font-family:'Playfair Display', serif; font-weight:800; font-size:12pt;">{{ data.summary.total }}</td>
-          <td class="mono" style="padding:9px 6px; border-top:2px solid var(--blue); text-align:center; color:var(--ink-soft);">{{ data.summary.max }}</td>
-          <td style="padding:9px 6px; border-top:2px solid var(--blue); text-align:center; font-family:'Playfair Display', serif; font-weight:800; font-size:12pt; color:var(--blue);">{{ "%.1f"|format(data.summary.percentage) }}%</td>
+        <tr class="total">
+          <td class="subj">{{ bi_inline(L.totalHead) }}</td>
+          {% if components %}{% for g in data.groups %}<td></td>{% endfor %}{% endif %}
+          <td>{{ S.total | num }}</td>
+          <td>{{ S.max | num }}</td>
+          <td>{{ S.grade or "—" }}</td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  {# Co-scholastic + attendance/rank tile #}
-  <div style="padding:14px 44px 0; display:flex; gap:14px;">
+  {# ── Summary tiles ── #}
+  <div class="section">
+    <div class="tiles">
+      <div class="tile">
+        <div class="lbl">{{ bi(L.totalHead) }}</div>
+        <div class="v">{{ S.total | num }}<span style="font-size:10pt; color:var(--ink-soft);"> / {{ S.max | num }}</span></div>
+      </div>
+      <div class="tile">
+        <div class="lbl">{{ bi(L.percentage) }}</div>
+        <div class="v">{{ S.percentage | pct }}</div>
+      </div>
+      {% if opt.showRank and S.rank %}
+      <div class="tile">
+        <div class="lbl">{{ bi(L.rank) }}</div>
+        <div class="v">{{ S.rank }}{% if S.classSize %}<span style="font-size:10pt; color:var(--ink-soft);"> {{ L.of.en }} {{ S.classSize }}</span>{% endif %}</div>
+      </div>
+      {% endif %}
+      {% if opt.showAttendance and S.attendancePct is not none %}
+      <div class="tile">
+        <div class="lbl">{{ bi(L.attendance) }}</div>
+        <div class="v">{{ S.attendancePct | pct(1) }}</div>
+        {% if S.workingDays %}<div class="sub">{{ S.daysPresent | num }} {{ L.of.en }} {{ S.workingDays }} {{ L.workingDays.en }}</div>{% endif %}
+      </div>
+      {% endif %}
+      {% if S.promotionLabel %}
+      <div class="tile result">
+        <div class="lbl">{{ bi(L.result) }}</div>
+        <div class="v text">{{ bi(S.promotionLabel) }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  {# ── Co-scholastic (grading subjects) + grading scale ── #}
+  {% set two_terms = data.scope == "annual" and components %}
+  {% if data.coScholastic or opt.showGradingScale %}
+  <div class="section" style="display:flex; gap:14px; align-items:flex-start;">
+    {% if data.coScholastic %}
     <div style="flex:1.4;">
-      {% if data.coScholastic %}
-      <div class="label" style="color:var(--blue); margin-bottom:6px;">CO-SCHOLASTIC AREAS</div>
-      <table style="width:100%; border-collapse:collapse; font-size:10pt;">
+      <div class="lbl section-title">{{ bi(L.coScholastic) }}</div>
+      <table class="marks">
+        <thead>
+          <tr>
+            <th class="subj">{{ bi(L.subjectsHead) }}</th>
+            {% if two_terms %}<th>{{ bi(L.term1) }}</th><th>{{ bi(L.term2) }}</th>{% else %}<th>{{ bi(L.gradeHead) }}</th>{% endif %}
+          </tr>
+        </thead>
         <tbody>
           {% for c in data.coScholastic %}
           <tr>
-            <td style="padding:5px 8px; border-bottom:1px solid #EEF0F3;">{{ c.name }}</td>
-            <td style="padding:5px 8px; border-bottom:1px solid #EEF0F3; text-align:right; font-weight:800; color:var(--blue);">{{ c.grade }}</td>
+            <td class="subj">{{ bi_inline(c.name) }}</td>
+            {% if two_terms %}
+            <td class="grade">{{ c.term1 or "—" }}</td><td class="grade">{{ c.term2 or "—" }}</td>
+            {% else %}
+            <td class="grade">{{ c.grade or "—" }}</td>
+            {% endif %}
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      {% endif %}
     </div>
-    <div style="flex:1; background:#FBFAF6; border:1px solid #ECE6C5; border-radius:8px; padding:12px 14px;">
-      {% if data.summary.attendancePct is not none %}
-      <div class="label" style="color:var(--blue);">ATTENDANCE</div>
-      <div style="font-family:'Playfair Display', serif; font-weight:800; font-size:30pt; color:var(--blue); line-height:1; margin-top:4px;">{{ "%.0f"|format(data.summary.attendancePct) }}%</div>
-      {% if data.summary.daysPresent and data.summary.workingDays %}
-      <div style="font-size:9pt; color:var(--ink-soft);">{{ data.summary.daysPresent }} of {{ data.summary.workingDays }} working days</div>
-      {% endif %}
-      <div style="height:1px; background:#ECE6C5; margin:10px 0;"></div>
-      {% endif %}
-      {% if data.summary.rank %}
-      <div class="label" style="color:var(--blue);">RANK · CLASS {{ data.student.class }}-{{ data.student.section }}</div>
-      <div style="font-family:'Playfair Display', serif; font-weight:800; font-size:20pt; color:var(--ink); line-height:1; margin-top:4px;">
-        {{ data.summary.rank }}<span style="font-size:11pt; color:var(--ink-soft);">{% if data.summary.rank == 1 %}st{% elif data.summary.rank == 2 %}nd{% elif data.summary.rank == 3 %}rd{% else %}th{% endif %}</span>
-        {% if data.summary.classSize %}<span style="font-size:10pt; color:var(--ink-soft);"> of {{ data.summary.classSize }}</span>{% endif %}
-      </div>
-      {% endif %}
-    </div>
-  </div>
-
-  {# Remarks + grading scale #}
-  <div style="padding:14px 44px 0; display:flex; gap:14px;">
-    <div style="flex:1.5;">
-      <div class="label" style="color:var(--blue); margin-bottom:4px;">CLASS TEACHER'S REMARK</div>
-      <div class="script" style="font-size:11pt; line-height:1.5; color:var(--ink); border-left:3px solid var(--gold); padding-left:10px;">
-        {% if data.summary.remarks %}
-        {{ data.summary.remarks.en }}
-        {% if data.summary.remarks.pa %}
-        <div class="gurmukhi" style="font-style:normal; font-size:9.5pt; color:var(--ink-soft); margin-top:4px;">{{ data.summary.remarks.pa }}</div>
-        {% endif %}
-        {% else %}
-        Excellent term, keep it up.
-        {% endif %}
-      </div>
-    </div>
+    {% endif %}
+    {% if opt.showGradingScale %}
     <div style="flex:1;">
-      <div class="label" style="color:var(--blue); margin-bottom:4px;">GRADING SCALE</div>
-      <div style="font-size:8.5pt; line-height:1.55; color:var(--ink-soft); column-count:2; column-gap:14px;">
-        A1 &nbsp;91–100<br>A2 &nbsp;81–90<br>B1 &nbsp;71–80<br>B2 &nbsp;61–70<br>C1 &nbsp;51–60<br>C2 &nbsp;41–50<br>D &nbsp;&nbsp;below 41
+      <div class="lbl section-title">{{ bi(L.gradingScale) }}</div>
+      <div class="legend">
+        {% for row in data.gradeLegend %}<b>{{ row.grade }}</b> &nbsp;{{ row.range }}<br>{% endfor %}
       </div>
     </div>
+    {% endif %}
   </div>
+  {% endif %}
 
-  {# Sign-off row #}
-  <div style="padding:28px 44px 0; display:flex; justify-content:space-between;">
-    {% set sigs = [
-      ('Class Teacher', data.signatures.classTeacher if data.signatures else None),
-      ('Examination In-charge', data.signatures.examIncharge if data.signatures else None),
-      ('Principal', data.signatures.principal if data.signatures else None),
-      ('Parent / Guardian', None),
-    ] %}
-    {% for label, name in sigs %}
-    <div style="text-align:center; min-width:130px;">
-      <div class="script" style="font-size:14pt; height:18px;">{% if label == 'Principal' and name %}{{ name }}{% endif %}</div>
-      <div style="border-top:1px solid var(--ink); margin-top:6px; padding-top:4px; font-size:9pt;">
-        <b>{{ label }}</b>
-        {% if name and label != 'Principal' %}<br><span style="color:var(--ink-soft); font-weight:400;">{{ name }}</span>{% endif %}
-      </div>
-    </div>
-    {% endfor %}
+  {# ── Remarks (only when there is one: no invented praise) ── #}
+  {% if S.remarks %}
+  <div class="section">
+    <div class="lbl section-title">{{ bi(L.remarks) }}</div>
+    <div class="remark">{{ S.remarks.en }}{% if S.remarks.pa %}<span class="pa">{{ S.remarks.pa }}</span>{% endif %}</div>
+  </div>
+  {% endif %}
+
+  {# ── Signatures ── #}
+  {% set sig = data.signatures %}
+  <div class="sigs">
+    <div class="sig"><div class="name">{{ sig.classTeacher if sig and sig.classTeacher else "" }}</div><div class="line">{{ bi(L.classTeacher) }}</div></div>
+    <div class="sig"><div class="name">{{ sig.examIncharge if sig and sig.examIncharge else "" }}</div><div class="line">{{ bi(L.examIncharge) }}</div></div>
+    <div class="sig"><div class="name">{{ sig.principal if sig and sig.principal else "" }}</div><div class="line">{{ bi(L.principal) }}</div></div>
+    <div class="sig"><div class="name"></div><div class="line">{{ bi(L.parentSign) }}</div></div>
   </div>
 
   <img class="watermark" src="{{ assets_dir }}/crest-512.png" alt="">
@@ -194,7 +255,7 @@
   <footer class="brand-footer">
     <span>VIDYA · VICHAR · SEVA</span>
     <span class="gold">EST. 2005</span>
-    <span>{{ data.summary.promotion or "" }}</span>
+    <span>{{ data.generatedOn | dt if data.generatedOn else "" }}</span>
   </footer>
 </div>
 {% endblock %}

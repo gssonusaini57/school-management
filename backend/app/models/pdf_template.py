@@ -55,6 +55,10 @@ class PdfTemplate(Base):
     term_key: Mapped[str] = mapped_column(String(32), nullable=False, default="")
     version: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     data: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # Report cards: which results scope the card prints (term1 | term2 | annual)
+    # and its design (summary | components). Migration 0016.
+    scope: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    layout: Mapped[str] = mapped_column(String(16), nullable=False, default="summary", server_default="summary")
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     created_by: Mapped[str] = mapped_column(String(120), nullable=False, default="")
     updated_at: Mapped[datetime] = mapped_column(

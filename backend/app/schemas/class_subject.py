@@ -64,8 +64,14 @@ class ClassSubjectDetailOut(ClassSubjectOut):
     components: list[ExamComponentOut] = []
 
 
+class ComponentReplaceItem(ExamComponentBase):
+    """`id` of the existing component this row edits; omit for a new one.
+    Rows without an id are matched to an existing component by exact name."""
+    id: int | None = None
+
+
 class ComponentsReplaceBody(BaseModel):
     """Used by the detail page's bulk-save button to replace all components
     for a subject in a single transaction. Simpler than per-row PATCH for
     the spreadsheet-style editor."""
-    components: list[ExamComponentCreate]
+    components: list[ComponentReplaceItem]

@@ -10,8 +10,10 @@ MerRoleT = Literal["admin", "staff"]
 
 # ── Marks rows shipped with a batch ─────────────────────────────
 class MarkItemIn(BaseModel):
+    """`marks` for numeric components; `grade` (A1…D) for grading components (max 0)."""
     student_id: int
-    marks: int
+    marks: int | None = None
+    grade: str | None = Field(default=None, max_length=4)
 
 
 class MarkItemOut(BaseModel):
@@ -19,6 +21,7 @@ class MarkItemOut(BaseModel):
     id: int
     student_id: int
     marks: int
+    grade: str | None = None
 
 
 # ── Batch CRUD ──────────────────────────────────────────────────
@@ -34,7 +37,7 @@ class BatchSaveBody(BaseModel):
     subject: str = Field(min_length=1, max_length=60)
     exam_type: str = Field(min_length=1, max_length=80)
     session: str = Field(min_length=1, max_length=20)
-    max_marks: int = Field(ge=1, le=1000)
+    max_marks: int = Field(ge=0, le=1000)   # 0 = grading component (letters)
     items: list[MarkItemIn] = Field(default_factory=list)
 
 

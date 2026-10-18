@@ -32,6 +32,8 @@ class Marks(Base):
     exam_type: Mapped[str] = mapped_column(String(80), nullable=False)
     subject: Mapped[str] = mapped_column(String(60), nullable=False)
     marks: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # Letter (A1…D) for grading-subject components (max 0); marks stays 0 then.
+    grade: Mapped[str | None] = mapped_column(String(4), nullable=True)
     max_marks: Mapped[int] = mapped_column(Integer, nullable=False, default=100)
     session: Mapped[str] = mapped_column(String(20), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())

@@ -47,6 +47,23 @@ def _parse(d: str | date | datetime) -> date:
 _MONTHS_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 
+def format_num(v) -> str:
+    """Marks for print: 45 not 45.0; 12.5 stays 12.5; None prints a dash."""
+    if v is None or v == "":
+        return "—"
+    f = float(v)
+    if f.is_integer():
+        return str(int(f))
+    return f"{f:.1f}".rstrip("0").rstrip(".")
+
+
+def format_pct(v, places: int = 2) -> str:
+    """Percentage for print: 66.67 %; None prints a dash."""
+    if v is None or v == "":
+        return "—"
+    return f"{float(v):.{places}f}%"
+
+
 def format_date_long(d: str | date | datetime) -> str:
     """Default date format — `08 May 2026`. Used everywhere except PSEB docs."""
     if not d:

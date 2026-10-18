@@ -1,68 +1,51 @@
-"""Cache-aware render: lookup → render-on-miss → store → return PdfCache row.
+"""Cache-aware rendering for templated PDFs (report cards, PSEB admit cards).
 
 Public API:
-  result = render_or_cache(db, kind, template, student_id, force=False, actor="")
+  render_students(db, template=..., student_ids=[...], force=False, actor="",
+                  include_drafts=None, on_result=None) -> list[result]
+  render_or_cache(db, template=..., student_id=..., force=False, actor="") -> result
 
-`result` shape mirrors what the API returns to the frontend:
-  {"student_id": int, "status": "cached"|"rendered"|"error", "pdf_id": int|None, "error": str|None}
+Each result mirrors what the API returns:
+  {"student_id", "status": "cached"|"rendered"|"error", "pdf_id", "error", "warnings"}
 
-Report cards pull their marks from the component-based `marks` table and roll
-them up via app.services.results. Because a marks (or per-student-data) change
-does NOT bump template.version, the cache also keys on a `source_hash` of those
-inputs so an edit auto-invalidates the cached PDF.
+The cache row is keyed on (kind, student, template, template version) and
+stores a `source_hash` of the exact payload the template received, so any
+change to what a card would print (marks, a classmate's marks moving the
+rank, attendance, remarks, names, settings, template revision) re-renders it.
+Report-card inputs are gathered once per class, not once per student.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import logging
-from typing import Any
+from typing import Any, Callable
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session, selectinload
 from pydantic import ValidationError
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from ..models.pdf_template import PdfTemplate, PdfStudentData, PdfCache, TemplateKind
+from ..models.pdf_template import PdfCache, PdfStudentData, PdfTemplate, TemplateKind
+from ..models.record_status import RecordStatus
 from ..models.student import Student
-from ..models.marks import Marks
-from ..models.class_subject import ClassSubject
-from ..services.results import scope_from_term
+from ..services.report_cards import (
+    ClassRenderInputs, gather_class_inputs, payload_hash, photo_data_uri, term_key,
+)
+from .builder import build_pseb_admit_payload, build_report_card_payload
 from .render import render_pdf
-from .builder import build_report_card_payload, build_pseb_admit_payload
 
 log = logging.getLogger(__name__)
 
-
-def _term_key(term: str | None) -> str:
-    return term or ""
+__all__ = ["render_students", "render_or_cache", "term_key", "cache_lookup"]
 
 
-def _load_student_data(
-    db: Session, kind: TemplateKind, student_id: int, session: str, term: str | None
-) -> dict[str, Any] | None:
-    row = db.scalar(
-        select(PdfStudentData).where(
-            PdfStudentData.kind == kind,
-            PdfStudentData.student_id == student_id,
-            PdfStudentData.session == session,
-            PdfStudentData.term_key == _term_key(term),
-        )
-    )
-    return row.data if row else None
+def _result(student_id: int, status: str, pdf_id: int | None = None, error: str | None = None,
+            warnings: list[str] | None = None) -> dict[str, Any]:
+    return {"student_id": student_id, "status": status, "pdf_id": pdf_id, "error": error,
+            "warnings": warnings or []}
 
 
-def _report_card_source_hash(marks_rows: list[Any], student_data: dict[str, Any] | None) -> str:
-    """Content hash of everything a report card is rendered from (marks +
-    per-student data). Changes when any of them changes → cache invalidates."""
-    marks_parts = sorted(
-        f"{m.subject}|{m.exam_type}|{m.marks}|{m.max_marks}" for m in marks_rows
-    )
-    sd_json = json.dumps(student_data or {}, sort_keys=True, default=str)
-    raw = "MARKS\n" + "\n".join(marks_parts) + "\nSD\n" + sd_json
-    return hashlib.sha1(raw.encode("utf-8")).hexdigest()
-
-
-def _cache_lookup(
+def cache_lookup(
     db: Session, *, kind: TemplateKind, student_id: int, template_id: int,
     version: int, source_hash: str | None,
 ) -> PdfCache | None:
@@ -79,94 +62,10 @@ def _cache_lookup(
     return db.scalar(stmt)
 
 
-def render_or_cache(
-    db: Session,
-    *,
-    template: PdfTemplate,
-    student_id: int,
-    force: bool = False,
-    actor: str = "",
-) -> dict[str, Any]:
-    """Look up cache → render fresh on miss → return result dict."""
-    student = db.get(Student, student_id)
-    if not student:
-        return {"student_id": student_id, "status": "error", "pdf_id": None,
-                "error": f"student {student_id} not found"}
-    if student.class_name != template.class_name:
-        return {"student_id": student_id, "status": "error", "pdf_id": None,
-                "error": f"student is in class {student.class_name}, not {template.class_name}"}
-
-    # Gather render inputs once — these also feed the marks-aware cache hash.
-    student_data = _load_student_data(
-        db, template.kind, student.id, template.session, template.term
-    )
-    marks_rows: list[Any] = []
-    class_subjects: list[Any] = []
-    scope = "annual"
-    source_hash: str | None = None
-    if template.kind == TemplateKind.report_card:
-        marks_rows = list(db.scalars(
-            select(Marks).where(
-                Marks.student_id == student.id,
-                Marks.class_name == template.class_name,
-                Marks.session == template.session,
-            )
-        ))
-        class_subjects = list(db.scalars(
-            select(ClassSubject)
-            .where(ClassSubject.class_name == template.class_name)
-            .options(selectinload(ClassSubject.components))
-        ))
-        scope = scope_from_term(template.term)
-        source_hash = _report_card_source_hash(marks_rows, student_data)
-
-    # 1) cache lookup (only if not force)
-    if not force:
-        hit = _cache_lookup(
-            db, kind=template.kind, student_id=student_id, template_id=template.id,
-            version=template.version, source_hash=source_hash,
-        )
-        if hit:
-            return {"student_id": student_id, "status": "cached", "pdf_id": hit.id, "error": None}
-
-    # 2) build + validate payload
-    try:
-        if template.kind == TemplateKind.report_card:
-            model = build_report_card_payload(
-                template_data=template.data,
-                student=student,
-                student_data=student_data,
-                session=template.session,
-                term=template.term,
-                scope=scope,
-                class_subjects=class_subjects,
-                marks_rows=marks_rows,
-            )
-        elif template.kind == TemplateKind.pseb_admit_card:
-            # PSEB requires rollNo + regNo per-student; builder raises if missing.
-            model = build_pseb_admit_payload(
-                template_data=template.data,
-                student=student,
-                student_data=student_data or {},
-                session=template.session,
-            )
-        else:
-            raise ValueError(f"unsupported template kind: {template.kind!r}")
-        payload = model.model_dump(by_alias=True, mode="json")
-    except (ValidationError, ValueError) as e:
-        log.warning("payload build failed", extra={"student_id": student_id, "err": str(e)})
-        return {"student_id": student_id, "status": "error", "pdf_id": None, "error": str(e)}
-
-    # 3) render
-    try:
-        pdf_bytes = render_pdf(template.kind.value, payload)
-    except Exception as e:
-        log.exception("weasyprint render failed", extra={"student_id": student_id})
-        return {"student_id": student_id, "status": "error", "pdf_id": None, "error": str(e)}
-
-    # 4) persist (replace any row at the unique key — happens when force=True
-    # re-renders, when marks/source_hash change, or on a rare race).
-    existing = db.scalar(
+def _store(db: Session, template: PdfTemplate, student_id: int, pdf_bytes: bytes,
+           source_hash: str, actor: str) -> PdfCache:
+    """Replace the row at the unique key (one PDF per student per template version)."""
+    row = db.scalar(
         select(PdfCache).where(
             PdfCache.kind == template.kind,
             PdfCache.student_id == student_id,
@@ -174,27 +73,131 @@ def render_or_cache(
             PdfCache.template_version == template.version,
         )
     )
-    if existing:
-        existing.data = pdf_bytes
-        existing.byte_size = len(pdf_bytes)
-        existing.created_by = actor
-        existing.source_hash = source_hash
-        db.flush()
-        cache_row = existing
-    else:
-        cache_row = PdfCache(
-            kind=template.kind,
-            student_id=student_id,
-            template_id=template.id,
-            template_version=template.version,
-            source_hash=source_hash,
-            mime_type="application/pdf",
-            byte_size=len(pdf_bytes),
-            data=pdf_bytes,
-            created_by=actor,
+    if row is None:
+        row = PdfCache(
+            kind=template.kind, student_id=student_id, template_id=template.id,
+            template_version=template.version, mime_type="application/pdf",
         )
-        db.add(cache_row)
-        db.flush()
-    db.commit()
+        db.add(row)
+    row.data = pdf_bytes
+    row.byte_size = len(pdf_bytes)
+    row.source_hash = source_hash
+    row.created_by = actor
+    db.flush()
+    return row
 
-    return {"student_id": student_id, "status": "rendered", "pdf_id": cache_row.id, "error": None}
+
+# ── report cards ─────────────────────────────────────────────────────────
+def report_card_payload(inputs: ClassRenderInputs, student_id: int) -> tuple[dict[str, Any], str]:
+    """(payload without photo data, its cache hash). Raises ValueError when no card can be built."""
+    model = build_report_card_payload(inputs, student_id)
+    payload = model.model_dump(by_alias=True, mode="json")
+    return payload, payload_hash(payload, inputs.photos.get(student_id))
+
+
+def _render_report_card(db: Session, inputs: ClassRenderInputs, student_id: int, *,
+                        force: bool, actor: str) -> dict[str, Any]:
+    template = inputs.template
+    try:
+        payload, source_hash = report_card_payload(inputs, student_id)
+    except (ValidationError, ValueError) as e:
+        return _result(student_id, "error", error=str(e))
+    warnings = []
+    if payload["summary"]["incomplete"] or payload["summary"]["hasDrafts"]:
+        warnings.append("provisional: some marks are missing or still drafts")
+
+    if not force:
+        hit = cache_lookup(db, kind=template.kind, student_id=student_id, template_id=template.id,
+                           version=template.version, source_hash=source_hash)
+        if hit:
+            return _result(student_id, "cached", hit.id, warnings=warnings)
+
+    photo = inputs.photos.get(student_id)
+    if photo and inputs.settings.get("showPhoto", True):
+        payload["student"]["photoUrl"] = photo_data_uri(db, photo.doc_id)
+    try:
+        pdf_bytes = render_pdf(template.kind.value, payload)
+    except Exception as e:  # WeasyPrint/system-font failures surface per student
+        log.exception("report card render failed", extra={"student_id": student_id})
+        return _result(student_id, "error", error=str(e))
+    row = _store(db, template, student_id, pdf_bytes, source_hash, actor)
+    db.commit()
+    return _result(student_id, "rendered", row.id, warnings=warnings)
+
+
+# ── PSEB admit cards ─────────────────────────────────────────────────────
+def _render_pseb(db: Session, template: PdfTemplate, student_id: int, *, force: bool, actor: str) -> dict[str, Any]:
+    student = db.get(Student, student_id)
+    if not student or student.status == RecordStatus.deleted:
+        return _result(student_id, "error", error=f"student {student_id} not found or archived")
+    if student.class_name != template.class_name:
+        return _result(student_id, "error",
+                       error=f"student is in class {student.class_name}, not {template.class_name}")
+    row = db.scalar(select(PdfStudentData).where(
+        PdfStudentData.kind == template.kind, PdfStudentData.student_id == student_id,
+        PdfStudentData.session == template.session, PdfStudentData.term_key == term_key(template.term),
+    ))
+    try:
+        model = build_pseb_admit_payload(template_data=template.data, student=student,
+                                         student_data=(row.data if row else None) or {},
+                                         session=template.session)
+    except (ValidationError, ValueError, KeyError) as e:
+        return _result(student_id, "error", error=str(e))
+    payload = model.model_dump(by_alias=True, mode="json")
+    stable = {k: v for k, v in payload.items() if k != "printedOn"}   # printedOn changes daily
+    source_hash = hashlib.sha1(("pseb\n" + json.dumps(stable, sort_keys=True, default=str)).encode()).hexdigest()
+    if not force:
+        hit = cache_lookup(db, kind=template.kind, student_id=student_id, template_id=template.id,
+                           version=template.version, source_hash=source_hash)
+        if hit:
+            return _result(student_id, "cached", hit.id)
+    try:
+        pdf_bytes = render_pdf(template.kind.value, payload)
+    except Exception as e:
+        log.exception("pseb render failed", extra={"student_id": student_id})
+        return _result(student_id, "error", error=str(e))
+    cache_row = _store(db, template, student_id, pdf_bytes, source_hash, actor)
+    db.commit()
+    return _result(student_id, "rendered", cache_row.id)
+
+
+# ── public API ───────────────────────────────────────────────────────────
+def render_students(
+    db: Session,
+    *,
+    template: PdfTemplate,
+    student_ids: list[int],
+    force: bool = False,
+    actor: str = "",
+    include_drafts: bool | None = None,
+    on_result: Callable[[dict[str, Any]], None] | None = None,
+) -> list[dict[str, Any]]:
+    """Render (or reuse) one PDF per student. Each student is committed on its
+    own, so a failure or an interrupted bulk run keeps what already finished."""
+    results: list[dict[str, Any]] = []
+    inputs: ClassRenderInputs | None = None
+    if template.kind == TemplateKind.report_card:
+        try:
+            inputs = gather_class_inputs(db, template, include_drafts=include_drafts)
+        except ValueError as e:
+            out = [_result(sid, "error", error=str(e)) for sid in student_ids]
+            for r in out:
+                if on_result:
+                    on_result(r)
+            return out
+    for sid in student_ids:
+        if inputs is not None:
+            r = _render_report_card(db, inputs, sid, force=force, actor=actor)
+        else:
+            r = _render_pseb(db, template, sid, force=force, actor=actor)
+        results.append(r)
+        if on_result:
+            on_result(r)
+    return results
+
+
+def render_or_cache(
+    db: Session, *, template: PdfTemplate, student_id: int, force: bool = False, actor: str = "",
+) -> dict[str, Any]:
+    """Single-student convenience wrapper over render_students."""
+    return render_students(db, template=template, student_ids=[student_id], force=force, actor=actor)[0]

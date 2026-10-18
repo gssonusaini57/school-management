@@ -7,6 +7,7 @@ Super-admin's own PATCHes apply directly (handled in students.py).
 """
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -64,7 +65,15 @@ def _apply_diff(db: Session, student: Student, changes: dict, actor: str) -> lis
     from ..schemas.student import StudentUpdate
     new_values = {k: v.get("new") for k, v in changes.items()}
     # Re-validate type coercion (Decimal/date) via Pydantic.
-    validated = StudentUpdate(**new_values).model_dump(exclude_unset=True)
+    try:
+        validated = StudentUpdate(**new_values).model_dump(exclude_unset=True)
+    except ValidationError as e:
+        # A request queued before a validation rule existed (e.g. an unknown
+        # class name) must fail the approval cleanly, not as a 500.
+        raise HTTPException(
+            status_code=422,
+            detail="; ".join(err.get("msg", "invalid value") for err in e.errors()),
+        ) from None
     applied: list[str] = []
     for k, v in validated.items():
         setattr(student, k, v)

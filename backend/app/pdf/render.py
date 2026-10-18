@@ -23,7 +23,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
-from .format import format_inr, format_date_long, format_date_pseb, format_month_label
+from .format import format_inr, format_date_long, format_date_pseb, format_month_label, format_num, format_pct
 
 log = logging.getLogger(__name__)
 
@@ -50,6 +50,8 @@ _jinja.filters["inr"] = format_inr
 _jinja.filters["dt"] = format_date_long
 _jinja.filters["dt_pseb"] = format_date_pseb
 _jinja.filters["ym_label"] = format_month_label
+_jinja.filters["num"] = format_num
+_jinja.filters["pct"] = format_pct
 
 
 def render_html(kind: str, data: dict[str, Any]) -> str:

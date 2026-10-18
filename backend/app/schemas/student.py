@@ -1,6 +1,18 @@
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 from datetime import date, datetime
 from decimal import Decimal
+
+from ..constants import CLASSES, canonical_class
+
+
+def _validate_class_name(v: str | None) -> str | None:
+    """Normalise to the canonical class spelling; reject anything that isn't a class."""
+    if v is None:
+        return None
+    canon = canonical_class(v)
+    if canon is None:
+        raise ValueError(f"unknown class {v!r}; expected one of: {', '.join(CLASSES)}")
+    return canon
 
 
 class StudentBase(BaseModel):
@@ -25,7 +37,12 @@ class StudentBase(BaseModel):
 
 
 class StudentCreate(StudentBase):
-    pass
+    # Validated here and on StudentUpdate only, never on StudentBase: StudentOut
+    # inherits StudentBase and must still serialise legacy non-canonical rows.
+    @field_validator("class_name")
+    @classmethod
+    def _class_name(cls, v: str) -> str:
+        return _validate_class_name(v)
 
 
 class StudentUpdate(BaseModel):
@@ -47,6 +64,11 @@ class StudentUpdate(BaseModel):
     class_name: str | None = None
     admission_no: int | None = None
     roll_no: str | None = None
+
+    @field_validator("class_name")
+    @classmethod
+    def _class_name(cls, v: str | None) -> str | None:
+        return _validate_class_name(v)
 
 
 class StudentOut(StudentBase):

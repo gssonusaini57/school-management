@@ -7,7 +7,7 @@ body before passing the dict into the Jinja template.
 """
 from typing import Literal
 from datetime import date as DateT
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class Bilingual(BaseModel):
@@ -15,6 +15,13 @@ class Bilingual(BaseModel):
     by side. The template can pick either or both."""
     en: str
     pa: str
+
+
+class BilingualOpt(BaseModel):
+    """`{en, pa}` where the Punjabi is optional: people's names exist only in
+    English in the student register, so a card shouldn't print them twice."""
+    en: str
+    pa: str | None = None
 
 
 class Signatory(BaseModel):
@@ -86,40 +93,67 @@ LetterheadA = Letterhead
 LetterheadB = Letterhead
 
 
-# ── Report card ─────────────────────────────────────────────────────────
+# ── Report card (render payload built by pdf/builder.py) ────────────────
 class ReportCardStudent(BaseModel):
-    name: Bilingual
+    name: BilingualOpt
     class_: str = Field(alias="class")
-    section: str
-    rollNo: str
-    fatherName: Bilingual
-    motherName: Bilingual
-    dob: DateT
+    rollNo: str | None = None
+    fatherName: BilingualOpt
+    motherName: BilingualOpt
+    dob: DateT | None = None
     house: str | None = None
     admissionNo: str | None = None
-    photoUrl: str | None = None
+    photoUrl: str | None = None   # data: URI of the student's photo, when shown
 
     model_config = {"populate_by_name": True}
 
 
+class ReportCardCell(BaseModel):
+    """One exam column (or term column on an annual card) for one subject."""
+    key: str
+    marks: float | None = None    # None = nothing entered for this column yet
+    max: float = 0
+    status: Literal["complete", "partial", "missing", "none"] = "none"
+
+
 class ReportCardSubject(BaseModel):
-    name: Bilingual
-    marks: float
-    max: float = 100
+    name: BilingualOpt
+    marks: float | None = None    # None = no marks entered in this scope
+    max: float
     grade: str | None = None
+    status: Literal["complete", "partial", "missing"] = "complete"
+    cells: list[ReportCardCell] = Field(default_factory=list)
+
+
+class ReportCardGroup(BaseModel):
+    key: str
+    label: BilingualOpt
+
+
+class ReportCardCoScholastic(BaseModel):
+    """A grading subject (Computer, P.E., …) with letters from Marks Entry."""
+    name: BilingualOpt
+    grade: str | None = None
+    term1: str | None = None
+    term2: str | None = None
 
 
 class ReportCardSummary(BaseModel):
     total: float
     max: float
-    percentage: float
+    percentage: float | None = None
+    grade: str | None = None
     rank: int | None = None
     classSize: int | None = None
     attendancePct: float | None = None
     workingDays: int | None = None
-    daysPresent: int | None = None
-    remarks: Bilingual | None = None
+    daysPresent: float | None = None
+    remarks: BilingualOpt | None = None
     promotion: str | None = None
+    promotionLabel: BilingualOpt | None = None
+    hasDrafts: bool = False
+    incomplete: bool = False
+    failedSubjects: list[str] = Field(default_factory=list)
 
 
 class ReportCardSignatures(BaseModel):
@@ -128,14 +162,29 @@ class ReportCardSignatures(BaseModel):
     principal: str | None = None
 
 
+class ReportCardOptions(BaseModel):
+    showAttendance: bool = True
+    showRank: bool = True
+    showPhoto: bool = True
+    showGradingScale: bool = True
+
+
 class ReportCard(BaseModel):
     session: str
-    term: str | None = None  # e.g. "Term II"
+    term: str | None = None
+    scope: Literal["term1", "term2", "annual"] = "annual"
+    layout: Literal["summary", "components"] = "summary"
+    title: BilingualOpt
     student: ReportCardStudent
+    groups: list[ReportCardGroup] = Field(default_factory=list)
     subjects: list[ReportCardSubject] = Field(min_length=1)
-    coScholastic: list[dict] = Field(default_factory=list)  # [{name, grade}]
+    coScholastic: list[ReportCardCoScholastic] = Field(default_factory=list)
     summary: ReportCardSummary
     signatures: ReportCardSignatures | None = None
+    options: ReportCardOptions = Field(default_factory=ReportCardOptions)
+    labels: dict[str, BilingualOpt] = Field(default_factory=dict)
+    gradeLegend: list[dict[str, str]] = Field(default_factory=list)
+    generatedOn: DateT | None = None
 
 
 # ── Salary slip ─────────────────────────────────────────────────────────
@@ -248,40 +297,42 @@ SCHEMA_BY_KIND: dict[str, type[BaseModel]] = {
 # (template, student row, student-data, marks).
 
 
-# Report card — class-level (one row per kind × class × session × term)
-class ReportCardCoScholasticHead(BaseModel):
-    name: Bilingual
-
-
-class ReportCardGradingScaleRow(BaseModel):
-    grade: str
-    range: str  # e.g. "91–100"
+# Report card — class-level settings (one row per class × session × term).
+# Marks, rank, class size, attendance and promotion are computed; this holds
+# only what the school decides per class. Unknown keys from the v1 shape
+# (coScholasticHeads, gradingScale, promotionDefault) are dropped on save.
+class ReportCardPromotionRule(BaseModel):
+    passPct: float = Field(default=33.0, ge=0, le=100)
+    conditionalMaxFails: int = Field(default=2, ge=0, le=20)
 
 
 class ReportCardTemplateData(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     signatures: ReportCardSignatures = Field(default_factory=ReportCardSignatures)
-    coScholasticHeads: list[ReportCardCoScholasticHead] = Field(default_factory=list)
-    gradingScale: list[ReportCardGradingScaleRow] | None = None
-    promotionDefault: str | None = None  # template-level default; student data can override
+    showAttendance: bool = True
+    showRank: bool = True
+    showPhoto: bool = True
+    showGradingScale: bool = True
+    includeDrafts: bool = False      # print marks whose batch is still a draft
+    promotionRule: ReportCardPromotionRule = Field(default_factory=ReportCardPromotionRule)
+    remarksDefault: BilingualOpt | None = None   # printed when a student has no remark
 
 
-# Report card — per-student (everything that varies per student except marks)
-class ReportCardCoScholasticGrade(BaseModel):
-    head: str  # matches a name from the template's coScholasticHeads (en)
-    grade: str
-
-
+# Report card — per student. Remarks and house are entered by the class
+# teacher; every other field is an optional override of a computed value.
 class ReportCardStudentData(BaseModel):
-    coScholasticGrades: list[ReportCardCoScholasticGrade] = Field(default_factory=list)
-    remarks: Bilingual | None = None
-    attendancePct: float | None = None
-    workingDays: int | None = None
-    daysPresent: int | None = None
-    rank: int | None = None
-    classSize: int | None = None
-    promotion: str | None = None
-    house: str | None = None
-    admissionNo: str | None = None
+    model_config = ConfigDict(extra="ignore")
+
+    remarks: BilingualOpt | None = None
+    house: str | None = Field(default=None, max_length=40)
+    rank: int | None = Field(default=None, ge=1)
+    classSize: int | None = Field(default=None, ge=1)
+    attendancePct: float | None = Field(default=None, ge=0, le=100)
+    workingDays: int | None = Field(default=None, ge=0)
+    daysPresent: float | None = Field(default=None, ge=0)
+    promotion: str | None = Field(default=None, max_length=60)
+    admissionNo: str | None = Field(default=None, max_length=40)
 
 
 # PSEB admit card — class-level

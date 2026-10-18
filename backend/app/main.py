@@ -9,7 +9,7 @@ from .config import settings
 from .db import SessionLocal
 from .logging_config import configure_logging, get_logger
 from .middleware import RequestContextMiddleware
-from .routers import health, auth, students, files, attendance, marks, fees, notices, staff, reports, stream, pdf, pdf_templates, deletion_requests, edit_requests, class_subjects, marks_batches
+from .routers import health, auth, students, files, attendance, marks, fees, notices, staff, reports, stream, pdf, pdf_templates, deletion_requests, edit_requests, class_subjects, marks_batches, sessions, meta, pdf_render_jobs
 from .routers.auth import _ensure_admin_seed, _ensure_super_admin_seed
 
 
@@ -61,8 +61,9 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 # `/pdf/cache/{id}`, etc. (FastAPI route resolution is first-match-wins.)
 app.include_router(pdf_templates.router, prefix="/api")
 app.include_router(pdf_templates.cache_router, prefix="/api")
+app.include_router(pdf_render_jobs.router, prefix="/api")
 
-api_routers = [health, auth, students, files, attendance, marks, fees, notices, staff, reports, stream, pdf, deletion_requests, edit_requests, class_subjects]
+api_routers = [health, auth, students, files, attendance, marks, fees, notices, staff, reports, stream, pdf, deletion_requests, edit_requests, class_subjects, sessions, meta]
 # marks_batches exposes two routers (workflow + super-admin queue); register both.
 app.include_router(marks_batches.router, prefix="/api")
 app.include_router(marks_batches.queue_router, prefix="/api")

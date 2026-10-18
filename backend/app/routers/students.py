@@ -14,6 +14,7 @@ from ..models.student_edit_request import StudentEditRequest, EditRequestStatus,
 from ..events import broker
 from ..notifications import notify_student_edit_request
 from ..logging_config import get_logger
+from ..constants import CLASSES, canonical_class
 from ._bulk import read_csv, title_case, parse_date_field, must_str, opt_str, FieldError, error_dict
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -494,7 +495,10 @@ async def bulk_import_students(
             aadhar = opt_str(row, "aadhar")
             if aadhar and (not aadhar.isdigit() or len(aadhar) != 12):
                 raise FieldError("aadhar", aadhar, "must be exactly 12 digits when provided")
-            cls = must_str(row, "class_name")
+            raw_cls = must_str(row, "class_name")
+            cls = canonical_class(raw_cls)
+            if cls is None:
+                raise FieldError("class_name", raw_cls, f"unknown class; expected one of: {', '.join(CLASSES)}")
             try:
                 assert_class_allowed(user, cls)
             except HTTPException as he:

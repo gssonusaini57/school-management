@@ -33,6 +33,9 @@ from ..schemas.marks_batch import (
     RequestEditBody, RejectRequestBody,
     MarksEditRequestOut, MarksEditRequestList,
 )
+from ..services.marks_batches import component_max, find_batch, upsert_batch_marks
+from ..services.results import GRADE_LETTERS, normalize_grade_letter
+from ..services.sessions import get_session
 
 router = APIRouter(prefix="/marks/batches", tags=["marks-batches"])
 queue_router = APIRouter(prefix="/admin/marks-edit-requests", tags=["marks-edit-requests"])
@@ -40,17 +43,6 @@ log = get_logger("app.audit.marks_batches")
 
 
 # ── Helpers ─────────────────────────────────────────────────────
-def _find_batch(db: Session, class_name: str, subject: str, exam_type: str, session: str) -> MarksBatch | None:
-    return db.execute(
-        select(MarksBatch).where(
-            MarksBatch.class_name == class_name,
-            MarksBatch.subject == subject,
-            MarksBatch.exam_type == exam_type,
-            MarksBatch.session == session,
-        )
-    ).scalar_one_or_none()
-
-
 def _pending_request(db: Session, batch_id: int) -> MarksEditRequest | None:
     return db.execute(
         select(MarksEditRequest).where(
@@ -98,7 +90,32 @@ def _detail(db: Session, batch: MarksBatch) -> BatchDetailOut:
     )
 
 
-def _validate_items(items, max_marks: int) -> None:
+def _validate_items(items, max_marks: int) -> tuple[dict[int, int], dict[int, str] | None]:
+    """Check each entry against its component; return (marks, grades) keyed by student.
+
+    Grading components (max 0) take a letter per student (A1…D) and store
+    marks 0. Numeric components take marks within 0..max; a stray `grade` on
+    them is ignored.
+    """
+    if max_marks == 0:
+        bad = [it.student_id for it in items if normalize_grade_letter(it.grade) is None]
+        if bad:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "message": f"{len(bad)} entries need a grade ({', '.join(GRADE_LETTERS)})",
+                    "rows": [{"student_id": s} for s in bad[:10]],
+                },
+            )
+        return ({it.student_id: 0 for it in items},
+                {it.student_id: normalize_grade_letter(it.grade) for it in items})
+    missing = [it.student_id for it in items if it.marks is None]
+    if missing:
+        raise HTTPException(
+            status_code=400,
+            detail={"message": f"{len(missing)} entries have no marks",
+                    "rows": [{"student_id": s} for s in missing[:10]]},
+        )
     bad = [(it.student_id, it.marks) for it in items if it.marks < 0 or it.marks > max_marks]
     if bad:
         raise HTTPException(
@@ -108,6 +125,7 @@ def _validate_items(items, max_marks: int) -> None:
                 "rows": [{"student_id": s, "marks": m, "max_marks": max_marks} for s, m in bad[:10]],
             },
         )
+    return {it.student_id: it.marks for it in items}, None
 
 
 # ── Batch endpoints ─────────────────────────────────────────────
@@ -122,7 +140,7 @@ def get_batch(
 ):
     """Return the single batch matching the 4-tuple, or `null` if none exists."""
     assert_class_allowed(user, class_name)
-    batch = _find_batch(db, class_name, subject, exam_type, session)
+    batch = find_batch(db, class_name, subject, exam_type, session)
     if not batch:
         return None
     return _detail(db, batch)
@@ -142,62 +160,46 @@ def save_batch(
     - Otherwise replaces the entire mark set under that batch via per-row upsert.
     """
     assert_class_allowed(user, payload.class_name)
-    _validate_items(payload.items, payload.max_marks)
+    if get_session(db, payload.session) is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Session {payload.session!r} is not an academic session. Pick the current session (e.g. 2026-27).",
+        )
+    marks_by_student, grades_by_student = _validate_items(payload.items, payload.max_marks)
+    master_max = component_max(db, payload.class_name, payload.subject, payload.exam_type)
+    if master_max is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"{payload.exam_type!r} is not an exam component of {payload.subject} in {payload.class_name} (see Class Subjects)",
+        )
+    if master_max != payload.max_marks:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Max marks for {payload.exam_type} is now {master_max} in Class Subjects. Reload the page and re-check the marks.",
+        )
 
-    batch = _find_batch(db, payload.class_name, payload.subject, payload.exam_type, payload.session)
+    batch = find_batch(db, payload.class_name, payload.subject, payload.exam_type, payload.session)
     if batch and batch.status == MarksBatchStatus.submitted and user.role != "super_admin":
         raise HTTPException(
             status_code=409,
             detail="Batch is submitted (locked). Request edit before changing marks.",
         )
 
-    if not batch:
-        batch = MarksBatch(
-            class_name=payload.class_name,
-            subject=payload.subject,
-            exam_type=payload.exam_type,
-            session=payload.session,
-            max_marks=payload.max_marks,
-            status=MarksBatchStatus.draft,
-            created_by=user.name,
-        )
-        db.add(batch)
-        db.flush()  # need batch.id for the FK below
-
-    # Sync max_marks in case super-admin updated the master after a draft was started.
-    batch.max_marks = payload.max_marks
-
-    # Upsert each item; delete entries that the client dropped from the payload
-    # so the batch reflects exactly what the teacher sees on screen.
-    existing = {
-        m.student_id: m
-        for m in db.execute(select(Marks).where(Marks.batch_id == batch.id)).scalars().all()
-    }
-    incoming_ids = {it.student_id for it in payload.items}
-
-    for sid, m in existing.items():
-        if sid not in incoming_ids:
-            db.delete(m)
-
-    for it in payload.items:
-        m = existing.get(it.student_id)
-        if m is None:
-            db.add(Marks(
-                student_id=it.student_id,
-                batch_id=batch.id,
-                class_name=batch.class_name,
-                exam_type=batch.exam_type,
-                subject=batch.subject,
-                marks=it.marks,
-                max_marks=batch.max_marks,
-                session=batch.session,
-                saved_by=user.name,
-            ))
-        else:
-            m.marks = it.marks
-            m.max_marks = batch.max_marks
-            m.saved_by = user.name
-
+    # The form sends the complete on-screen set, so students the teacher
+    # cleared are removed (prune_missing=True).
+    batch = upsert_batch_marks(
+        db,
+        class_name=payload.class_name,
+        subject=payload.subject,
+        exam_type=payload.exam_type,
+        session=payload.session,
+        max_marks=payload.max_marks,
+        marks_by_student=marks_by_student,
+        grades_by_student=grades_by_student,
+        actor=user.name,
+        prune_missing=True,
+        batch=batch,
+    )
     db.commit()
     db.refresh(batch)
     broker.publish("marks_batches", "upsert", id=batch.id)
@@ -229,6 +231,10 @@ def submit_batch(
         raise HTTPException(status_code=404, detail="Batch not found")
     assert_class_allowed(user, batch.class_name)
     if batch.status == MarksBatchStatus.submitted:
+        if user.role == "super_admin":
+            # Super-admin edits locked batches in place and the web form then
+            # calls submit again; the batch is already locked, so this is a no-op.
+            return _detail(db, batch)
         raise HTTPException(status_code=409, detail="Batch is already submitted")
     batch.status = MarksBatchStatus.submitted
     batch.submitted_at = datetime.utcnow()
@@ -236,6 +242,10 @@ def submit_batch(
     db.commit()
     db.refresh(batch)
     broker.publish("marks_batches", "upsert", id=batch.id)
+    student_count = db.scalar(
+        select(func.count(Marks.id)).where(Marks.batch_id == batch.id)
+    ) or 0
+    notify_marks_submitted(db, batch, student_count)  # @_never_raises; after commit
     log.warning(
         "marks_batch_submitted",
         extra={

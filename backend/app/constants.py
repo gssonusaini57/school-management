@@ -3,6 +3,7 @@
 Kept in sync with the frontend `CLASSES` list in
 `frontend/src/lib/utils.ts` and the Android class list.
 """
+import re
 
 # Canonical, ordered list of every class in the school. Single source of truth
 # on the backend for the "All classes" sentinel expansion (see `expand_classes`).
@@ -30,3 +31,27 @@ def expand_classes(names: list[str]) -> list[str]:
     if any(is_all_sentinel(n) for n in names):
         return list(CLASSES)
     return list(names)
+
+
+# Student houses, as defined by the brand handoff's report-card schema.
+HOUSES: tuple[str, ...] = ("Ravidas", "Tagore", "Bhagat Singh", "Nanak")
+
+
+def _class_key(name: str) -> str:
+    return re.sub(r"[\s.]", "", name).lower()
+
+
+_CLASS_BY_KEY: dict[str, str] = {_class_key(c): c for c in CLASSES}
+
+
+def canonical_class(name: str | None) -> str | None:
+    """Return the canonical spelling of a class name, or None if it is not a class.
+
+    Matching ignores case, spaces and dots, so "LKG", "l.k.g." and "L K G" all
+    resolve to "L.K.G". Every write path that stores a `class_name` runs it, so a
+    bulk import can never again create a parallel non-canonical class (35 "LKG"
+    rows reached prod that way). The "All" sentinel is not a class: it returns None.
+    """
+    if name is None:
+        return None
+    return _CLASS_BY_KEY.get(_class_key(name))
