@@ -14,6 +14,7 @@ metadata:
 - Components per subject edited via the spreadsheet at `/class-subjects/:id` — atomic `PUT /api/class-subjects/{id}/components` replaces the whole list per save.
 - MarksEntry binds: class dropdown → `GET /class-subjects?class=X` filtered to non-grading → subject pick → load detail → component dropdown (with `— max N` label) → max_marks auto-fills read-only.
 - The seeded pattern is hand-derived from the school's handwritten PDF; values are ambiguous in spots (especially 9th–10th grand totals). Spot-check before relying on it.
+- **Session 18 (2026-10-18) added a third field to each component: `term`** (`1` | `2` | `NULL` = counts in both terms), editable from a Term dropdown on `/class-subjects/:id` and carried as the 3rd tuple element in the seed data. It is what makes Term-1 / Term-2 / Annual result scoping possible — a graded component left at NULL inflates both term totals, so audit NULLs after migration 0013 runs. See [[project_results_aggregation]].
 - Related: [[project-marks-batches-workflow]], [[feedback-numberfield-clamp]].
 
-Tables: `class_subjects`, `subject_exam_components`. Migration: `0008_class_subjects`.
+Tables: `class_subjects`, `subject_exam_components`. Migrations: `0008_class_subjects`, `0013_component_term` (adds `term`).
