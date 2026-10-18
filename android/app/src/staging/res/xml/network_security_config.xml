@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  STAGING (test flavour) only — overrides src/main/res/xml/network_security_config.xml
+  for every staging variant; the prod build keeps main's file untouched.
+
+  The TEST instance is served over plain HTTP on the bare IP
+  (http://69.62.72.137/kisschool/api/), so cleartext is allowed for exactly that
+  host. Everything else stays HTTPS-only, same as prod.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">69.62.72.137</domain>
+    </domain-config>
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">kisschool.in</domain>
+    </domain-config>
+</network-security-config>

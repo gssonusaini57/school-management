@@ -4,11 +4,12 @@
 #
 # Usage:
 #   bash scripts/build-android.sh          # prod  → kis-attendance.apk      (talks to kisschool.in)
-#   bash scripts/build-android.sh test     # test  → kis-attendance-test.apk (talks to expressonly.in/school)
+#   bash scripts/build-android.sh test     # test  → kis-attendance-test.apk (talks to 69.62.72.137/kisschool)
 #
 # Flavors are defined in android/app/build.gradle.kts:
 #   prod → applicationId in.kisschool,      API https://kisschool.in/api/
-#   test → applicationId in.kisschool.test, API https://expressonly.in/school/api/
+#   test → applicationId in.kisschool.test, API http://69.62.72.137/kisschool/api/
+# The force-update manifest's download URL comes from scripts/deploy/<env>/env.sh.
 # The .test suffix lets both APKs be installed on the same phone at once.
 
 set -euo pipefail
@@ -73,15 +74,13 @@ cp -f "$BUILT_APK" "$TARGET_APK"
 # min_version_code == this build forces every older (gated) install to update.
 # To make a release an *optional* update instead, lower min_version_code by hand
 # in the published JSON (or here) so it stays below latest_version_code.
-if [[ "$FLAVOR" == "prod" ]]; then
-    MANIFEST="$DOWNLOAD_DIR/app-version.json"
-    MANIFEST_APK_URL="https://kisschool.in/downloads/kis-attendance.apk"
-else
-    MANIFEST="$DOWNLOAD_DIR/app-version-test.json"
-    # The test box serves the staging APK under the stable kis-attendance.apk name
-    # (see scripts/deploy/test/upload-apk.sh), so point the manifest there.
-    MANIFEST_APK_URL="https://expressonly.in/school/downloads/kis-attendance.apk"
-fi
+# Each server publishes its flavour under the stable name kis-attendance.apk
+# (scripts/deploy/<env>/upload-apk.sh), at DOWNLOADS_URL from that env's env.sh.
+MANIFEST_NAME="$( ( source "$REPO_ROOT/scripts/deploy/$FLAVOR/env.sh" >/dev/null && printf '%s' "$MANIFEST_NAME" ) )"
+DOWNLOADS_URL="$( ( source "$REPO_ROOT/scripts/deploy/$FLAVOR/env.sh" >/dev/null && printf '%s' "$DOWNLOADS_URL" ) )"
+[[ -n "$MANIFEST_NAME" && -n "$DOWNLOADS_URL" ]] || { echo "ERROR: MANIFEST_NAME/DOWNLOADS_URL missing in scripts/deploy/$FLAVOR/env.sh" >&2; exit 1; }
+MANIFEST="$DOWNLOAD_DIR/$MANIFEST_NAME"
+MANIFEST_APK_URL="$DOWNLOADS_URL/kis-attendance.apk"
 cat > "$MANIFEST" <<JSON
 {
   "latest_version_code": ${NEW_VC:-0},
@@ -102,5 +101,6 @@ if [[ "$FLAVOR" == "prod" ]]; then
     echo "Next step: bash scripts/deploy/prod/deploy-frontend.sh"
     echo "  → publishes to https://kisschool.in/downloads/kis-attendance.apk"
 else
-    echo "Test APK built. Sideload it directly, or deploy via the test frontend if you publish it."
+    echo "Next step: bash scripts/deploy/test/upload-apk.sh"
+    echo "  → publishes to $MANIFEST_APK_URL"
 fi

@@ -32,8 +32,10 @@ android {
     }
 
     // Two build flavors so one codebase ships a PROD APK (talks to kisschool.in)
-    // and a TEST APK (talks to the expressonly.in/school test box). The .test
-    // applicationId suffix lets both be installed on the same phone at once.
+    // and a TEST APK (talks to the TEST instance at http://69.62.72.137/kisschool/,
+    // plain HTTP — allowed for that host only by src/staging/res/xml/
+    // network_security_config.xml). The .test applicationId suffix lets both be
+    // installed on the same phone at once.
     flavorDimensions += "env"
     productFlavors {
         create("prod") {
@@ -49,8 +51,8 @@ android {
             dimension = "env"
             applicationIdSuffix = ".test"
             versionNameSuffix = "-test"
-            buildConfigField("String", "API_BASE_URL", "\"https://expressonly.in/school/api/\"")
-            buildConfigField("String", "APP_VERSION_URL", "\"https://expressonly.in/school/downloads/app-version-test.json\"")
+            buildConfigField("String", "API_BASE_URL", "\"http://69.62.72.137/kisschool/api/\"")
+            buildConfigField("String", "APP_VERSION_URL", "\"http://69.62.72.137/kisschool/downloads/app-version-test.json\"")
             resValue("string", "app_name", "KIS School Portal (Test)")
         }
     }
