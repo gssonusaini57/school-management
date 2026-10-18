@@ -1,6 +1,6 @@
 ---
 name: release-android
-description: Build a signed Android APK for a chosen flavor (prod or test) and, after explicit y/N confirmation, upload just the APK file to its server — prod → kisschool.in/downloads, test → expressonly.in/school/downloads. Does NOT rebuild the SPA.
+description: Build a signed Android APK for a chosen flavor (prod or test) and, after explicit y/N confirmation, upload just the APK file to its server — prod → kisschool.in/downloads, test → 69.62.72.137/kisschool/downloads. Does NOT rebuild the SPA.
 ---
 
 # Release Android APK
@@ -14,11 +14,16 @@ The app ships in two flavors (defined in `android/app/build.gradle.kts`):
 | Flavor | applicationId | API base URL | Local file | Served at |
 |---|---|---|---|---|
 | **prod** | `in.kisschool` | `https://kisschool.in/api/` | `kis-attendance.apk` | `https://kisschool.in/downloads/kis-attendance.apk` |
-| **test** (internal flavor name `staging`) | `in.kisschool.test` | `https://expressonly.in/school/api/` | `kis-attendance-test.apk` | `https://expressonly.in/school/downloads/kis-attendance.apk` |
+| **test** (internal flavor name `staging`) | `in.kisschool.test` | `http://69.62.72.137/kisschool/api/` | `kis-attendance-test.apk` | `http://69.62.72.137/kisschool/downloads/kis-attendance.apk` |
 
 The `.test` applicationId suffix means both can be installed on one phone. The web
 "Download for Android" link points at the stable `kis-attendance.apk` filename on
 each server, so the SPA never needs redeploying for an APK update.
+
+TEST is plain HTTP, so the staging flavour ships its own
+`android/app/src/staging/res/xml/network_security_config.xml` that allows cleartext for
+`69.62.72.137` only (prod keeps main's HTTPS-only file). Download URLs and manifest names
+come from `scripts/deploy/<env>/env.sh` (`DOWNLOADS_URL`, `MANIFEST_NAME`).
 
 ## Step 0 — Ask which flavor
 
@@ -46,7 +51,7 @@ The app polls a published manifest on launch and **force-updates** any build old
 | | Path |
 |---|---|
 | prod manifest | `https://kisschool.in/downloads/app-version.json` |
-| test manifest | `https://expressonly.in/school/downloads/app-version-test.json` |
+| test manifest | `http://69.62.72.137/kisschool/downloads/app-version-test.json` |
 
 `scripts/build-android.sh` writes this manifest next to the APK with
 `min_version_code == latest_version_code == <this build>`, so **every release forces all
@@ -78,7 +83,7 @@ signed APK to `frontend/public/downloads/`. Expect ~3 MB and `BUILD SUCCESSFUL`.
 After the build succeeds, **stop and ask explicitly**, naming the right URL:
 
 > APK built — N.N MB. Upload to **<prod|test>** so it's live at
-> `https://<kisschool.in|expressonly.in/school>/downloads/kis-attendance.apk`?
+> `<https://kisschool.in|http://69.62.72.137/kisschool>/downloads/kis-attendance.apk`?
 > Type `y` to upload, anything else to skip.
 
 **Do not auto-upload** — every push is a real action against a live server. A
@@ -93,16 +98,15 @@ bash scripts/deploy/prod/upload-apk.sh
 bash scripts/deploy/test/upload-apk.sh
 ```
 
-Each rsyncs its APK → `/opt/school-management/frontend/dist/downloads/kis-attendance.apk`
-on the matching server (prod uses key `~/.ssh/enamfoss_prod`; test uses
-`~/.ssh/uploadmytds_test` — both from the respective `env.sh`). Server-side
-`chown school:school` + `chmod 644` happen automatically; the script prints `curl -I`
-headers as a smoke check.
+Each rsyncs its APK → `<APP_ROOT>/frontend/dist/downloads/kis-attendance.apk` on the same
+box 69.62.72.137 (key `~/.ssh/enamfoss_prod`): prod → `/opt/school-management`, test →
+`/opt/school-management-test`. It then checks the served APK is HTTP 200 **with the local
+byte size** before publishing the manifest, and prints the live manifest.
 
 ## After running
 
-- Verify: `curl -sI https://<server>/downloads/kis-attendance.apk` → `HTTP 200` and
-  `Content-Length` matching the local APK.
+- Verify: `curl -sI <DOWNLOADS_URL>/kis-attendance.apk` → `HTTP 200` and
+  `Content-Length` matching the local APK (upload-apk.sh already enforces this).
 - Reminder: bumping `versionCode`/`versionName` makes it an update; the **same**
   keystore must keep signing. Because the package was renamed to `in.kisschool`
   (from the old `com.expressonly.kisattendance`), phones with the *old* app installed
@@ -120,5 +124,6 @@ headers as a smoke check.
 
 - This command never modifies the keystore. Re-keying is a manual `keytool` step.
 - If the SPA itself changed, use `/deploy-test-frontend` or `/deploy-prod-frontend`
-  separately — those rebuild the SPA and also publish whatever APK is in
-  `public/downloads/` (which, after a build, is the prod-flavor `kis-attendance.apk`).
+  separately — those rebuild the SPA and publish **only that env's** APK + manifest from
+  `frontend/public/downloads/` (test → `kis-attendance-test.apk`, prod → `kis-attendance.apk`)
+  under the stable name; they never delete a server's APK when the local one is missing.

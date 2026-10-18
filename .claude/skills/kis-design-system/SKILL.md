@@ -115,8 +115,8 @@ import { T, BilingualHeading, BilingualBody } from "@/components/T";
 
 ## Routing & domain notes
 
-- Staff portal: served at `https://expressonly.in/school/`. `<BrowserRouter basename={import.meta.env.BASE_URL}>` reads from Vite `base: "/school/"`. Don't hardcode `/login` — derive from `BASE_URL`.
-- Public site: deploy target TBD. Final target is `khalsainternational.in`; interim could mount under `expressonly.in/` or a subpath. Locale prefix: `/en/...` and `/pa/...` (separate static files per locale, with `hreflang` pairing).
+- Staff portal: PROD `https://kisschool.in/admin/`, TEST `http://69.62.72.137/kisschool/admin/`. `<BrowserRouter basename={import.meta.env.BASE_URL}>` reads Vite `base` from `VITE_BASE` (set per env in `scripts/deploy/<env>/env.sh`). Don't hardcode `/login` — derive from `BASE_URL`.
+- Public site: PROD only, at the root of `https://kisschool.in/` (TEST has no public site). Locale prefix: `/en/...` and `/pa/...` (separate static files per locale, with `hreflang` pairing).
 - Print endpoint: `POST /api/pdf/{kind}` (Sprint 5).
 
 ## When updating the handoff

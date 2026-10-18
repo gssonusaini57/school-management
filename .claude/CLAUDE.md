@@ -1,8 +1,8 @@
 # Project Memory
-**Last Updated:** 2026-10-18 | **Sessions:** 18 (1–12 archived) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in (served at the domain ROOT) **and** TEST at https://expressonly.in/school/. Android teacher app ships as **`in.kisschool`** (prod/staging flavors + force-update gate), currently **v1.2.5 build 18**. Session 18 added: **term-scoped result aggregation** (migration 0013) shared by the results table and report-card PDFs, plus the **"All" class-sentinel expansion** fix — both committed on `dev`, **not yet deployed**.
-> **Admin logins (both servers):** admin `nsnishasaini57@gmail.com / admin123` · super-admin `gssonusaini57@gmail.com / <changed — not super123>`. Staff log in by email-or-phone + password. Test & prod share identical admin/super-admin password hashes + SMTP creds.
+**Last Updated:** 2026-10-19 | **Sessions:** 18 (1–12 archived) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in (served at the domain ROOT) **and** TEST at http://69.62.72.137/kisschool/admin/ — since 2026-10-19 a **second instance on the prod box** (plain HTTP, no public site, data = prod clone; Gotcha #23). Android teacher app ships as **`in.kisschool`** (prod/staging flavors + force-update gate): prod **v1.2.6 build 19**, staging **v1.2.7 build 20**. Prod runs the Session 18 code at schema **0013** (verified 2026-10-19); dev HEAD adds 0014–0017, already rehearsed on the TEST prod-clone.
+> **Admin logins (both instances):** admin `gssonusaini57@gmail.com` · super-admin `khalsainternationalschool@gmail.com` (hardcoded `ADMIN_EMAIL`/`SUPER_ADMIN_EMAIL` in auth.py since a20133c). Passwords are user-known only — `admin123` is rejected on prod (verified 2026-10-19). Staff log in by email-or-phone + password. TEST's DB is a prod clone, so every hash matches prod; TEST has no SMTP (email off).
 
-> Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test*`, `/deploy-prod*` (incl. `/deploy-prod-public-site`), `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`, `/deep-analysis`. Android APK build: `bash scripts/build-android.sh {prod|test}` (local, needs keystore).
+> Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test*`, `/sync-test-data`, `/deploy-prod*` (incl. `/deploy-prod-public-site`), `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`, `/deep-analysis`. Android APK build: `bash scripts/build-android.sh {prod|test}` (local, needs keystore).
 
 ---
 
@@ -13,8 +13,8 @@ Handoff package at [_handoff/khalsa-international-handoff/](../_handoff/khalsa-i
 **For implementation rules (tokens / i18n / currency-date / Punjabi-fallback) read the skill at [.claude/skills/kis-design-system/SKILL.md](./skills/kis-design-system/SKILL.md) before editing any UI or copy.**
 
 **Surfaces (delivered):**
-- Public marketing site → static HTML via Eleventy + Tailwind CLI in `public-site/`, deployed to nginx at `/school/`. (Separate from the React app.)
-- Staff portal at `/school/admin/` → retrofitted to KIS palette + bilingual scaffolding.
+- Public marketing site → static HTML via Eleventy + Tailwind CLI in `public-site/`, deployed to the PROD root (kisschool.in). TEST has no public site. (Separate from the React app.)
+- Staff portal at `/admin/` (PROD) · `/kisschool/admin/` (TEST) → retrofitted to KIS palette + bilingual scaffolding.
 - Print PDFs → Python WeasyPrint pipeline in `backend/app/pdf/`. **Sprint 5 polished + shipped Session 8**: 6 doc kinds (letterhead-a/b, fee-receipt, salary-slip, report-card, pseb-admit-card) with shared brand frame (tri-band, Cinzel motto footer, watermark crest). Footer pinned via `position: fixed` (Gotcha #14).
 - **NEW Session 8: class-templated bulk PDF flow** for `report-card` and `pseb-admit-card` — admin saves per-class config once, fills per-student data in a spreadsheet, bulk-renders with server-side cache keyed on `(kind, student_id, template_id, template_version)`. Editing a template bumps the version and auto-invalidates the cache.
 - Parent mobile app — **still deferred**.
@@ -44,7 +44,7 @@ Used daily by administrators and teachers to manage students, attendance, marks,
 - **Frontend:** React + Vite + TypeScript + Tailwind + shadcn/ui
 - **Realtime:** Server-Sent Events (no Firebase listeners)
 - **Auth:** JWT with bcrypt-hashed credentials (admin password + staff access codes)
-- **Hosting target:** `https://expressonly.in/school/` on test VPS `104.237.5.113`
+- **Hosting:** PROD `https://kisschool.in` and TEST `http://69.62.72.137/kisschool/` — two instances on one VPS `69.62.72.137`
 - **Old single-file `index.html`** archived at `_archive/index.firebase.html` for reference
 
 **GitHub Repo:** https://github.com/gssonusaini57/school-management
@@ -60,10 +60,10 @@ Used daily by administrators and teachers to manage students, attendance, marks,
 | Charts | Chart.js 4 + react-chartjs-2 |
 | Backend | FastAPI 0.115 (Python 3.12) on gunicorn + uvicorn workers |
 | ORM | SQLAlchemy 2.0 + Alembic migrations |
-| Database | MySQL 8.0 (shared with uploadmytds; new schema `school_management`) |
+| Database | MySQL 8.0 on 69.62.72.137 (`school_management` prod · `school_management_test` test) |
 | File storage | MySQL `LONGBLOB` rows (no filesystem, no S3) |
 | Auth | JWT (PyJWT, HS256, 8h) + bcrypt (passlib) for admin password & staff access codes |
-| Hosting | Single VPS (test): nginx + systemd unit `school-management` |
+| Hosting | One VPS (69.62.72.137): nginx + units `school-management` (prod, :8000) and `school-management-test` (test, :8001) |
 
 ---
 
@@ -106,10 +106,10 @@ school-management/
 │   │   │   └── utils.ts          # cn(), CLASSES, COLORS, formatDate, formatCurrency
 │   │   ├── types/api.ts          # mirrors backend Pydantic schemas
 │   │   └── styles/globals.css    # Tailwind base + CSS vars
-│   ├── vite.config.ts            # base "/school/", dev proxy /api → :8000
+│   ├── vite.config.ts            # base = VITE_BASE (default "/kisschool/admin/"), dev proxy /api → :8000
 │   ├── tailwind.config.ts
 │   ├── tsconfig.json             # path alias @/* → src/*
-│   ├── .env.production           # VITE_API_URL=/school/api
+│   ├── .env.production           # VITE_API_URL=/kisschool/api (deploys export the real value)
 │   ├── .env.development          # VITE_API_URL=/api
 │   └── package.json
 ├── ios/                          # Native SwiftUI teacher app (Session 7) — XcodeGen-driven, .xcodeproj NOT committed
@@ -133,12 +133,12 @@ school-management/
 │   ├── keystore/                     # GITIGNORED — kis-release.jks + keystore.properties
 │   └── README.md                     # build + sign + sideload instructions
 ├── deploy/
-│   ├── school-management.service # systemd unit (gunicorn + uvicorn workers)
-│   ├── nginx.school.conf         # /school/ → static dist; /school/api/ → FastAPI :8000
-│   └── .env.example              # DATABASE_URL, JWT_SECRET, CORS_ORIGINS, etc.
+│   ├── school-management.service # systemd unit TEMPLATE (__APP_ROOT__ / __APP_USER__ / __APP_PORT__)
+│   ├── nginx.kisschool.conf      # PROD vhost (kisschool.in, root layout → :8000)
+│   ├── nginx.school-test.conf    # TEST snippet TEMPLATE (/kisschool/… → :8001), included from the enamfoss vhost
+│   └── .env.example              # DATABASE_URL, JWT_SECRET, CORS_ORIGINS, APP_BASE_URL, SMTP (prod only)
 ├── scripts/build-android.sh      # build signed APK + copy to frontend/public/downloads/
-├── scripts/deploy/test/
-│   └── deploy-test.sh            # rsync + pip + alembic + systemctl restart + health check
+├── scripts/deploy/{common,test,prod}/ # env.sh knobs + lib.sh; deploy-*, upload-apk, check-logs, … (+ test/sync-from-prod.sh)
 ├── _archive/
 │   └── index.firebase.html       # OLD Firebase single-file app (reference only)
 ├── .gitignore
@@ -152,8 +152,9 @@ school-management/
 **PROD — kisschool.in (served at ROOT; shared box `69.62.72.137`, key `~/.ssh/enamfoss_prod`, coexists with the enamfoss Tomcat app):**
 - Public site `https://kisschool.in/` · Admin portal `https://kisschool.in/admin/` · API `https://kisschool.in/api/` · Health `https://kisschool.in/api/health` · APK `https://kisschool.in/downloads/kis-attendance.apk`
 
-**TEST — expressonly.in/school (box `104.237.5.113`, key `~/.ssh/uploadmytds_test`, shared w/ uploadmytds):**
-- Public site `https://expressonly.in/school/` · Admin `…/school/admin/` · API `…/school/api/` · APK `…/school/downloads/kis-attendance.apk` (serves the *staging*-flavor app)
+**TEST — second instance on the PROD box (`69.62.72.137`, key `~/.ssh/enamfoss_prod`): plain HTTP, no public site, data = prod clone (`/sync-test-data`), email off:**
+- Admin `http://69.62.72.137/kisschool/admin/` · API `http://69.62.72.137/kisschool/api/` · Health `…/kisschool/api/health` · APK `…/kisschool/downloads/kis-attendance.apk` (*staging* flavor) · manifest `…/kisschool/downloads/app-version-test.json`
+- Until 2026-10 TEST was `https://expressonly.in/school/` on 104.237.5.113 (shared with uploadmytds); our SSH key is rejected there now.
 
 ## API Endpoints (REST + SSE)
 - **Auth:** `POST /api/auth/login`, `POST /api/auth/change-password`, `POST /api/auth/logout`, `GET /api/auth/me`
@@ -214,30 +215,20 @@ All migrations live under `backend/alembic/versions/`. `0001_initial.py` is the 
 
 ---
 
-## Deployment (test VPS — `104.237.5.113`)
+## Deployment (both instances on `69.62.72.137`)
 
-**One-time server setup:**
-1. `apt install python3.12 python3.12-venv mysql-client nginx`
-2. `mysql -e "CREATE DATABASE school_management CHARACTER SET utf8mb4; CREATE USER 'school'@'localhost' IDENTIFIED BY '<pwd>'; GRANT ALL ON school_management.* TO 'school'@'localhost';"`
-3. `useradd --system --home /opt/school-management school`
-4. `mkdir -p /opt/school-management/{app,frontend/dist,logs,backups}` and `chown -R school:school /opt/school-management`
-5. Place `.env` at `/opt/school-management/.env` (see `deploy/.env.example`).
-6. `cp deploy/school-management.service /etc/systemd/system/` then `systemctl daemon-reload && systemctl enable --now school-management`
-7. Add `deploy/nginx.school.conf` to your nginx config (inside the existing `expressonly.in` server block) and `nginx -s reload`.
-8. Set DNS so `expressonly.in/school/` resolves to this server. Reuse the existing Let's Encrypt cert (it's wildcard for the domain).
+Cheat sheet: [scripts/README.md](../scripts/README.md). Every server resource (install dir, Linux user, unit, port, DB, nginx snippet, URLs) is a knob in `scripts/deploy/<env>/env.sh` — Gotcha #23.
 
-**Subsequent deploys (run from local):**
-```bash
-./scripts/deploy/test/deploy-test.sh
-```
-Steps it does: AST-parse Python → `npm ci && npm run build` (Vite) → rsync `backend/` and `frontend/dist/` → `pip install -r requirements.txt` → `alembic upgrade head` → `systemctl restart school-management` → health check.
+**Provision an instance (idempotent):** `bash scripts/provision/provision.sh --inspect-only`, then `bash scripts/provision/provision.sh` (`ENV=test` default, `ENV=prod` for prod; `ASSUME_YES=1` when non-interactive). MySQL admin for step 03: `MYSQL_ROOT_PASSWORD` if exported, else the server's `/etc/mysql/debian.cnf`. nginx, mysql-server and certbot are already on this box — provisioning doesn't install them.
 
-**Default admin login:** `admin` / `admin123` (auto-seeded as bcrypt hash on first boot via `lifespan`). Change immediately via in-app "Change Password".
+**Deploy:** `bash scripts/deploy/test/deploy-all.sh` ships the working tree; prefix `SRC_ROOT=<export>` (from `git archive HEAD backend frontend packages`) to ship committed code only. Steps: AST-parse → `npm ci && npm run build` (Vite base from `VITE_BASE`) → snapshot (tar app + `mysqldump --no-tablespaces`) → rsync `backend/` + `dist/` (downloads/ excluded) → publish this env's APK + manifest → pip + `alembic upgrade head` → `systemctl restart $SERVICE_NAME` → health check `${BASE_URL}${HEALTH_PATH}` → auto-rollback on failure. PROD: same scripts under `scripts/deploy/prod/`, each gated by typing `DEPLOY PROD`.
+
+**TEST data:** `bash scripts/deploy/test/sync-from-prod.sh` (`/sync-test-data`) — dumps prod (`--single-transaction`, no locks) on the box → replaces `school_management_test` → `alembic upgrade head` with TEST's code → restart.
 
 ---
 
 ## Frontend Routes
-SPA mounted at `/school/admin/` (Vite `base`). Routes:
+SPA mounted at `VITE_BASE` (`/admin/` prod · `/kisschool/admin/` test). Routes:
 `/login` (public) · `/dashboard` · `/admissions` · `/students` · `/students/:id?edit=1` · `/attendance` · `/marks/entry` · `/marks/results` · `/fees` (admin) · `/notices` · `/staff` (admin) · `/reports` (admin) · `/letterheads` (admin) · `/salary-slips` (admin) · `/templates` (admin) · `/templates/:id` (admin) · `/class-subjects` (super-admin) · `/class-subjects/:id` (super-admin) · `/deletion-requests` (super-admin) · `/edit-requests` (super-admin — student + marks tabs) · `/mobile-apps`
 
 Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master, Session 13) · Administration · **Stationery** (Letterheads / Salary Slips / Templates) · Resources. The `Templates` page replaced the old single-shot `/pseb-admit-card` (Session 8); the per-row report-card download on MarksResults is gone, replaced by a banner pointing at /templates.
@@ -267,7 +258,7 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 
 3. **Native `<input type="date">` is banned in this repo.** Browser-native date pickers had two real bugs users hit: (a) Safari's mm/dd/yyyy subfield Tab-trap, (b) year navigation broken on Chrome/macOS, (c) popup not closing after select. All 4 places (Admissions DOB, StudentDetail DOB edit, Fees payment date, Attendance class date) now use [`<DatePicker>`](../frontend/src/components/ui/date-picker.tsx) — popover-based with year/month dropdowns, auto-closes on selection, accepts `min`/`max` ISO strings. Built on `@radix-ui/react-popover` + `react-day-picker@9` + `date-fns`. **For any new date input: import `DatePicker` from `@/components/ui/date-picker`, never re-introduce `<Input type="date">`.**
 
-4. **Vite ships everything in `frontend/public/` verbatim into `dist/`.** That's how the Android APK reaches teachers: `scripts/build-android.sh` writes `frontend/public/downloads/kis-attendance.apk` → `npm run build` copies it into `dist/downloads/` → existing rsync deploys it to nginx. **No nginx changes needed** — the existing `alias /opt/school-management/frontend/dist/` already serves arbitrary subpaths under `/school/`. Side effect: the rsync uses `--delete`, so if you ever run `/deploy-test-frontend` *without* first running `bash scripts/build-android.sh`, the public APK URL 404s until the next APK build. Same goes for any future static asset under `public/`.
+4. **Vite ships everything in `frontend/public/` verbatim into `dist/` — except APKs, which each deploy publishes for its own env.** `frontend/public/downloads/` holds BOTH flavors' gitignored build outputs (`kis-attendance.apk` prod, `kis-attendance-test.apk` staging, plus both manifests), so shipping `dist/downloads/` as-is used to put the prod APK on TEST, and the `rsync --delete` wiped a server's APK whenever the local copy was missing. Since 2026-10-19 `push_frontend` excludes `downloads/` and `push_downloads` publishes only `$APK_LOCAL_NAME` as `downloads/kis-attendance.apk` + `$MANIFEST_NAME` (from env.sh), never deleting anything. Other static assets under `public/` still ship verbatim (and are still subject to `--delete`).
 
 5. **`Theme.Material3.*` XML themes need `com.google.android.material:material`.** AGP doesn't include the Google Material Components library by default — only Compose Material 3 (which is a runtime-only Kotlin library, no XML resources). When the manifest references `Theme.Material3.DayNight.NoActionBar` for the Activity, AAPT errors with "resource style not found" unless you add `implementation("com.google.android.material:material:1.12.0")` to [android/app/build.gradle.kts](../android/app/build.gradle.kts). Adds ~700 KB but is the standard pattern for any Compose app that uses an XML theme parent.
 
@@ -289,11 +280,11 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 
 14. **MySQL UNIQUE(batch_id, student_id) plus nullable `batch_id` gives free upsert + legacy tolerance.** MySQL (unlike Postgres) treats NULL as distinct in unique indexes, so legacy `marks` rows with `batch_id IS NULL` never collide. New rows from `/marks/batches` always populate `batch_id`, so the unique constraint enforces upsert semantics: re-saving the same batch updates rows instead of duplicating. Lets you ship the batch workflow without backfilling 2 years of pre-existing marks. Same trick reusable for any "migrate to batched X" feature later. See [models/marks.py](../backend/app/models/marks.py) `__table_args__`.
 
-15. **Vite cache-bust contract: embedded `__BUILD_ID__` + `dist/version.json` + runtime poll + nginx no-cache.** Hashed asset filenames bust themselves on rebuild, but cached `index.html` keeps referencing the OLD hashes — that's the "user needs hard refresh after deploy" loop. Session 13 fix in 4 parts: (a) [vite.config.ts](../frontend/vite.config.ts) generates a fresh `BUILD_ID` each build, injects it as `__BUILD_ID__` via `define`, and emits `dist/version.json` via a tiny plugin; (b) [lib/version.ts](../frontend/src/lib/version.ts) `useVersionCheck()` polls `version.json` with `cache: 'no-store'` every 5 min while visible and reloads with a `?_v=<ts>` query-bust on mismatch (the query bust is essential — `window.location.reload()` alone respects the cached HTML); (c) [deploy/nginx.school.conf](../deploy/nginx.school.conf) adds exact-match `location` blocks sending `Cache-Control: no-cache, must-revalidate` for `/school/admin/`, `index.html`, and `version.json`; (d) `define: { __BUILD_ID__: JSON.stringify(...) }` — **must** use `JSON.stringify`, otherwise the substituted string is unquoted and the bundle fails to parse. To roll out the nginx side after first deploy: rerun `bash scripts/provision/06-install-nginx-snippet.sh` or one-shot `scp deploy/nginx.school.conf root@<server>:/etc/nginx/snippets/school.conf && nginx -t && systemctl reload nginx`.
+15. **Vite cache-bust contract: embedded `__BUILD_ID__` + `dist/version.json` + runtime poll + nginx no-cache.** Hashed asset filenames bust themselves on rebuild, but cached `index.html` keeps referencing the OLD hashes — that's the "user needs hard refresh after deploy" loop. Session 13 fix in 4 parts: (a) [vite.config.ts](../frontend/vite.config.ts) generates a fresh `BUILD_ID` each build, injects it as `__BUILD_ID__` via `define`, and emits `dist/version.json` via a tiny plugin; (b) [lib/version.ts](../frontend/src/lib/version.ts) `useVersionCheck()` polls `version.json` with `cache: 'no-store'` every 5 min while visible and reloads with a `?_v=<ts>` query-bust on mismatch (the query bust is essential — `window.location.reload()` alone respects the cached HTML); (c) the nginx configs ([deploy/nginx.kisschool.conf](../deploy/nginx.kisschool.conf) PROD, [deploy/nginx.school-test.conf](../deploy/nginx.school-test.conf) TEST) add exact-match `location` blocks sending `Cache-Control: no-cache, must-revalidate` for `<base>/admin/`, `index.html`, and `version.json`; (d) `define: { __BUILD_ID__: JSON.stringify(...) }` — **must** use `JSON.stringify`, otherwise the substituted string is unquoted and the bundle fails to parse. To roll out a TEST snippet change: `(set -a; source scripts/deploy/test/env.sh; set +a; bash scripts/provision/06-install-nginx-snippet.sh)` — it re-renders, `nginx -t`s and reloads. PROD's vhost is installed by hand.
 
 16. **Android R8/ProGuard keep rule must track the package name.** `app/proguard-rules.pro` keeps Gson DTOs by package: `-keep class in.kisschool.data.api.dto.** { *; }`. When the package was renamed `com.expressonly.kisattendance → in.kisschool`, the old keep rule matched nothing → R8 obfuscated DTO field names in the **release** build only → the app sent login as `{"<garbled>":…}` → backend `422` (and every API call broke). Debug builds (no minify) hid it. Fix: keep rule on the new package **plus** `-keepclassmembers,allowobfuscation class * { @com.google.gson.annotations.SerializedName <fields>; }`. Verify via `app/build/outputs/mapping/<flavor>Release/mapping.txt` — the DTO class should map to itself.
 
-17. **`frontend/vite.config.js` is a committed `tsc` artifact and Vite prefers `.js` over `.ts`.** `npm run build` (= `tsc -b && vite build`) regenerates it from `vite.config.ts`, but a bare `npx vite build` uses the STALE `.js`. Base path is build-time parametrized: `vite.config.ts` reads `process.env.VITE_BASE ?? "/school/admin/"`; `VITE_API_URL` is shell-exported (overrides `.env.production`); favicon uses a `%BASE_URL%` placeholder substituted by a `transformIndexHtml` plugin (a plain relative favicon 404s on SPA deep links). `scripts/deploy/<env>/env.sh` sets `VITE_BASE`/`VITE_API_URL`/`SITE_BASE_PATH`/`HEALTH_PATH`/`SITE_URL_PATH` (test → `/school/...`, prod → root). **To typecheck without building, run `npx tsc -b`** — `npx tsc -b --noEmit` fails on this repo's project-references setup with `TS6310: Referenced project 'tsconfig.node.json' may not disable emit`. See [[feedback_vite_base_parametrization]].
+17. **`frontend/vite.config.js` is a committed `tsc` artifact and Vite prefers `.js` over `.ts`.** `npm run build` (= `tsc -b && vite build`) regenerates it from `vite.config.ts`, but a bare `npx vite build` uses the STALE `.js`. Base path is build-time parametrized: `vite.config.ts` reads `process.env.VITE_BASE ?? "/kisschool/admin/"`; `VITE_API_URL` is shell-exported (overrides `.env.production`); favicon uses a `%BASE_URL%` placeholder substituted by a `transformIndexHtml` plugin (a plain relative favicon 404s on SPA deep links). `scripts/deploy/<env>/env.sh` sets `VITE_BASE`/`VITE_API_URL`/`SITE_BASE_PATH`/`HEALTH_PATH`/`SITE_URL_PATH` (test → `/kisschool/...` on `http://69.62.72.137`, prod → root). **To typecheck without building, run `npx tsc -b`** — `npx tsc -b --noEmit` fails on this repo's project-references setup with `TS6310: Referenced project 'tsconfig.node.json' may not disable emit`. See [[feedback_vite_base_parametrization]].
 
 18. **`GET /api/students` is paginated** (`{items,total,page,page_size}`) — clients must read `.items`. The Android app's bare-`List<StudentDto>` DTO silently broke against the live backend until fixed with a `StudentPageDto` wrapper. Also: `in` is a Kotlin hard keyword, so the `in.kisschool` package must be backtick-escaped (`` `in`.kisschool ``) in every `package`/`import` (Gradle `namespace`/`applicationId` strings don't); and AGP forbids a product-flavor name starting with `test` → the staging flavor is named `staging` with `applicationIdSuffix = ".test"`.
 
@@ -308,6 +299,14 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
     - **[.githooks/commit-msg](../.githooks/commit-msg)** — the real backstop. Fires on commit / amend / merge / rebase / cherry-pick / squash, whoever drives it (agent, IDE, you). **Needs `git config core.hooksPath .githooks` once per clone** — `core.hooksPath` is local config and is NOT committed, so a fresh clone has no enforcement until you run it.
     - **`PreToolUse` Bash hook** in [.claude/settings.json](./settings.json), filtered by `if: "Bash(git commit *)"` / `"Bash(gh pr *)"` — fails fast with the reason before the command runs, and is the only layer that covers a `gh pr create --body`, which git hooks never see.
     - Escape hatch is `git commit --no-verify` (git skips all hooks); that's git's design, not a hole worth closing. Verified end-to-end: a real commit carrying the trailer is rejected with HEAD unchanged, the same message clean commits fine.
+
+
+23. **Two instances on one box: every server resource is an env.sh knob.** Since 2026-10-19 PROD (`/opt/school-management`, user `school`, unit `school-management`, :8000, DB/user `school_management`/`school`) and TEST (`/opt/school-management-test`, `school-test`, `school-management-test`, :8001, `school_management_test`/`school_test`) share 69.62.72.137. `scripts/deploy/<env>/env.sh` is the only place those values live; `lib.sh` hands them to its quoted `<<'REMOTE'` heredocs as env assignments (`$(remote_env) bash -s`), and the `deploy/` templates use `__TOKEN__` placeholders rendered by `render_template` — never `envsubst`, which would blank nginx's `$host`/`$uri`. Rendering the unit with prod values is byte-identical to the live prod unit (checked by diff). Traps found on the way:
+    - **`mysqldump` as an app user needs `--no-tablespaces`** — MySQL 8 wants PROCESS for tablespace metadata; without the flag the dump still completes but prints an access-denied error.
+    - **TEST's nginx lives inside someone else's server block** (the enamfoss bare-IP :80 vhost): our prefix locations use `^~` so a future host regex can't hijack them; the host's `error_page 500 502 503 504 /50x.html` (file missing) turned "backend down" into a 404 until the API location declared its own `error_page` → JSON 503; locations with their own `add_header` re-declare the host's security headers. Step 06 inserts exactly one `include` line (backup in `/etc/nginx/backups/`, restored automatically if `nginx -t` fails).
+    - **Step 03 refuses to `ALTER USER` a MySQL user this instance didn't create** — with two instances, resetting a shared user's password would break the other one.
+    - **Deploying committed code from a dirty tree:** `SRC_ROOT=$(mktemp -d) && git archive HEAD backend frontend packages | tar -x -C "$SRC_ROOT"` — `packages/` is required because the frontend imports `packages/design-system` (i18n JSON, tokens.css, crest).
+    - **Plain-HTTP TEST:** the staging Android flavor needs `android/app/src/staging/res/xml/network_security_config.xml` (cleartext for `69.62.72.137` only). Resource shrinking renames it inside the APK (e.g. `res/8G.xml`), so verify by content, not path. Browsers also block `navigator.clipboard` on HTTP origins, and Chrome warns on HTTP APK downloads.
 
 ---
 
@@ -325,7 +324,7 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 | Bulk import UI (Students / Attendance / Staff / Marks Entry) | ✅ Shared `BulkImportDialog` + templates, inline error banner + table, error report CSV |
 | shadcn UI primitives | ✅ Button focus ring, Select tabIndex + visible ring, Dialog/Table/Toast/etc. |
 | Server provisioning (idempotent) | ✅ `bash scripts/provision/provision.sh` |
-| Test deploy | ✅ Live at https://expressonly.in/school/ (admin/admin123) |
+| Test deploy | ✅ Live at http://69.62.72.137/kisschool/admin/ (second instance on the prod box since 2026-10-19; prod logins) |
 | Reusable deploy framework (test ↔ prod parity) | ✅ `scripts/deploy/{common,test,prod}/` + `scripts/provision/` + `.claude/commands/` |
 | Firebase configs deleted, old `index.html` archived | ✅ |
 | Modern popover date pickers (replaces native `<input type="date">` everywhere) | ✅ Session 6 — react-day-picker v9 + custom shadcn `DatePicker` on 4 sites (Admissions DOB, StudentDetail DOB, Fees, Attendance) |
@@ -348,21 +347,23 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 | **NumberField + global spinner removal + hard-clamp (Session 13)** | ✅ [components/ui/number-field.tsx](../frontend/src/components/ui/number-field.tsx) stores state as string (empty allowed), rejects keystrokes that exceed `max`/`min`, red border on invalid. Spinner arrows hidden globally on `<Input type="number">` — kills the "100 → 31" bug (Gotcha #13) |
 | **Auto cache-bust on deploy (Session 13)** | ✅ Vite injects `__BUILD_ID__` + emits `dist/version.json`; `useVersionCheck()` polls every 5 min while visible and reloads with `?_v=<ts>` query bust on mismatch. nginx serves `index.html` + `version.json` with `Cache-Control: no-cache, must-revalidate`. No more "need a hard refresh after deploy" (Gotcha #15) |
 | **Attendance half-day / holiday / clear-day + in-app approvals (Session 17)** | ✅ Migration 0012 widens `attendance_records.status` ENUM to add `H` + adds `attendance.is_holiday`; `PUT /attendance` takes `is_holiday`, new `DELETE /attendance?class=&date=`, `marked-dates` returns `{dates, holidays}`. Android gained a super-admin `ApprovalsScreen` (student-edit / marks-edit / deletion queues) and became role-aware. Shipped in APK v1.2.4 build 17; current APK **v1.2.5 build 18** |
-| **Term-scoped result aggregation (Session 18)** | 🔄 **Committed on `dev`, NOT deployed.** Migration 0013 adds `subject_exam_components.term` (1/2/NULL=both), widens `marks.exam_type` 60→80, adds `pdf_cache.source_hash`. New [app/services/results.py](../backend/app/services/results.py) is the single roll-up engine behind both `GET /api/marks/results` and the report-card PDF builder. MarksResults page rebuilt around class+session+scope; ClassSubjectDetail gained a Term column |
-| **"All" class-sentinel expansion (Session 18)** | 🔄 **Committed on `dev`, NOT deployed.** New [app/constants.py](../backend/app/constants.py) expands the `staff_classes` `"All"` sentinel into the real 15-class list at login AND on token decode, so clients stop seeing a literal `"All"` and `assert_class_allowed` stops rejecting real class names (Gotcha #21) |
+| **Term-scoped result aggregation (Session 18)** | ✅ **Live on prod** (verified 2026-10-19: prod DB at 0013, `services/results.py` deployed). Migration 0013 adds `subject_exam_components.term` (1/2/NULL=both), widens `marks.exam_type` 60→80, adds `pdf_cache.source_hash`. New [app/services/results.py](../backend/app/services/results.py) is the single roll-up engine behind both `GET /api/marks/results` and the report-card PDF builder. MarksResults page rebuilt around class+session+scope; ClassSubjectDetail gained a Term column |
+| **"All" class-sentinel expansion (Session 18)** | ✅ **Live on prod** (verified 2026-10-19: `constants.py` with `expand_classes` deployed). New [app/constants.py](../backend/app/constants.py) expands the `staff_classes` `"All"` sentinel into the real 15-class list at login AND on token decode, so clients stop seeing a literal `"All"` and `assert_class_allowed` stops rejecting real class names (Gotcha #21) |
+| **TEST re-homed onto the prod box (2026-10-19)** | ✅ Second instance at http://69.62.72.137/kisschool/admin/ provisioned by the now knob-driven scripts (own user/dir/unit :8001/DB, one include line in the enamfoss vhost); runs dev HEAD `8569103` (schema 0017); data cloned from prod by `/sync-test-data` (row counts identical, 0013→0017 migrated cleanly); staging APK v1.2.7 build 20 points at it. Prod + enamfoss verified unchanged (Gotcha #23) |
 
 ---
 
 ## Slash Commands (mirror uploadmytds)
 | Command | Script | Purpose |
 |---|---|---|
-| `/provision-test` | `scripts/provision/provision.sh` | One-time TEST server bootstrap (idempotent: prereqs / school user / dirs / MySQL DB+user / .env / systemd unit / nginx snippet) |
+| `/provision-test` | `scripts/provision/provision.sh` | One-time TEST-instance bootstrap on the prod box (idempotent: prereqs / `school-test` user / dirs / MySQL DB+user / .env / systemd unit / nginx snippet included from the enamfoss vhost) |
 | `/deploy-test` | `scripts/deploy/test/deploy-backend.sh` | Backend-only deploy to TEST |
 | `/deploy-test-frontend` | `scripts/deploy/test/deploy-frontend.sh` | Frontend-only (Vite build + rsync) |
 | `/deploy-test-all` | `scripts/deploy/test/deploy-all.sh` | Backend + frontend with snapshot + auto-rollback |
+| `/sync-test-data` | `scripts/deploy/test/sync-from-prod.sh` | Replace the TEST DB with a fresh prod clone (same box), migrate to TEST's code, restart. Destructive for TEST only |
 | `/deploy-prod` `/deploy-prod-frontend` `/deploy-prod-all` | `scripts/deploy/prod/*.sh` | PROD versions; require typing `DEPLOY PROD` to confirm. PROD `env.sh` must have CHANGE_ME placeholders replaced first. |
 | `/clean-logs` | local `rm -rf logs_backup_*` | Clean local log-backup dirs (after explicit y) |
-| `/release-android` | `scripts/build-android.sh` + `scripts/deploy/test/upload-apk.sh` (gated by `y/N`) | Build a fresh signed APK, then ask before uploading just the APK file to TEST. Skips the SPA rebuild — the web download link is already deployed |
+| `/release-android` | `scripts/build-android.sh {prod\|test}` + `scripts/deploy/<env>/upload-apk.sh` (gated by `y/N`) | Build a fresh signed APK for a flavor, then ask before uploading just the APK + manifest to that env (verifies HTTP 200 + byte size before arming the manifest). Skips the SPA rebuild |
 | `/check-logs` | `scripts/deploy/test/check-logs.sh` (also `prod/`) | Read-only log analysis: 6 sections (service status / journalctl / error.log tail / recent tracebacks / access.log tail / 4xx-5xx). Accepts `30m`, `2h`, `1d`. Nothing written, nothing downloaded — single SSH session straight to terminal |
 | `/save-session` | [commands/save-session.md](./commands/save-session.md) | Snapshot session context to `.claude/CLAUDE.md` + `SESSION_HISTORY_*`/`GOTCHAS_*` archives + `.claude/memory/`. Prompt-library v2026-08-31; the `## Project-Specific Notes` block (P1–P6) in that file is this project's local override set — preserved across prompt-library updates |
 | `/deep-analysis` | [commands/deep-analysis.md](./commands/deep-analysis.md) | Generate a multi-document onboarding knowledge base at `.claude/doc/deep-analysis/` (README + 00–10). Prompt-library v2026-08-31; `## Project-Specific Notes` (P1–P3) pre-fills the KIS domain context and the "verify CLAUDE.md against code" rule |
@@ -371,21 +372,19 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 
 Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` · `rollback.sh <timestamp>`. Same set under `scripts/deploy/prod/`. Plus `scripts/build-android.sh` (release APK build + copy to `frontend/public/downloads/`).
 
-## Server-side Layout (post-provisioning, on 104.237.5.113)
+## Server-side Layout (69.62.72.137 — two instances + the enamfoss Tomcat app)
 ```
-/opt/school-management/                 (chmod 755 school:school)
-├── app/                                rsynced from backend/
-│   └── .venv/                          created on first deploy
-├── frontend/dist/                      rsynced from frontend/dist/
-├── logs/                               gunicorn access/error logs
-├── backups/                            app_<ts>.tgz + db_<ts>.sql.gz (auto-pruned >30d)
-├── .env                                secrets (chmod 600 school:school)
-├── .my.cnf                             mysqldump credentials (chmod 600 school:school)
-└── .db_password                        DB password (chmod 600 root, kept for re-provision)
+/opt/school-management/            PROD  (755, school)          unit school-management       gunicorn 127.0.0.1:8000  DB school_management / school
+/opt/school-management-test/       TEST  (755, school-test)     unit school-management-test  gunicorn 127.0.0.1:8001  DB school_management_test / school_test
+  ├── app/ (+ .venv/)   frontend/dist/ (downloads/ = this env's APK + manifest)   logs/   backups/ (TEST 700)
+  └── .env (600)   .my.cnf (600)   .db_password (600 root)
+  (PROD also has public-site/dist/)
 
-/etc/systemd/system/school-management.service    gunicorn -w 2 :8000 (Restart=on-failure)
-/etc/nginx/snippets/school.conf                  /school/ alias + /school/api/ proxy
-                                                 included from `expressonly.in` SSL block in /etc/nginx/sites-enabled/test-angular
+/etc/nginx/conf.d/kisschool.conf                 PROD vhost (kisschool.in :80→:443, root layout)
+/etc/nginx/conf.d/enamfoss.conf                  enamfoss bare-IP :80 vhost — NOT ours, except ONE line:
+                                                 include /etc/nginx/snippets/school-management-test.conf;
+/etc/nginx/snippets/school-management-test.conf  TEST routes /kisschool/{api,admin,downloads}/
+/etc/nginx/backups/                              step-06 backups of edited nginx files
 ```
 
 ## Promoting test → prod (HISTORICAL — prod is live)
@@ -397,7 +396,7 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 4. `bash scripts/deploy/prod/deploy-all.sh` (every release).
 
 ## Next Steps (TODOs)
-0. **⚠️ Deploy migration 0013 + push `dev`.** Session 18's two commits (`03907d8` auth sentinel fix, `e7ffb6f` results aggregation) are committed on `dev` but **unpushed and undeployed** — nothing is live yet. Migration 0013 adds a column, so this needs `/deploy-test-all` (NOT `-frontend`), then `/deploy-prod-all` once verified. Prod and test are both on 0012 today.
+0. **Promote dev HEAD to prod.** Prod runs the Session 18 code at schema 0013 (verified 2026-10-19). dev HEAD (`8569103`: results engine v2, academic sessions, report card v2, background renders) adds migrations 0014–0017 — deployed to TEST and rehearsed cleanly on a fresh prod clone on 2026-10-19. Verify on http://69.62.72.137/kisschool/admin/, then `/deploy-prod-all`.
 1. **Spot-check the backfilled `term` values** after 0013 runs. The migration assigns `subject_exam_components.term` by `LIKE` on component names; any subject whose components were hand-renamed away from the seeded KIS patterns lands with `term = NULL`, which counts in **both** term scopes and silently inflates a Term-1/Term-2 total. Audit with `SELECT class_name, subject_name, component_name FROM subject_exam_components c JOIN class_subjects s ON s.id=c.class_subject_id WHERE c.term IS NULL AND c.max_marks > 0;` then fix per-row via the new Term column on `/class-subjects/:id`.
 2. **Verify the seeded exam pattern** — Session 13's `seed-defaults` materialised 127 subjects + 654 components hand-derived from the school's handwritten PDF. Some 9th–10th values are ambiguous (grand totals don't quite match 1900); super-admin should spot-check each class against the original sheet before relying on these for actual exams. Edit in [seed/exam_pattern.py](../backend/app/seed/exam_pattern.py) and re-seed on a fresh DB, or tweak per-row via the UI. Seed data now carries `term` as the 3rd tuple element.
 3. **Change default password** — `admin123` still the seed for admin on both servers; change via in-app Change Password. Super-admin password is no longer `super123` (unknown) — reset on both servers if needed (now identical test↔prod).

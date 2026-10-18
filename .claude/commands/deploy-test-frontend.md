@@ -1,6 +1,6 @@
 ---
 name: deploy-test-frontend
-description: Build the Vite React app and deploy frontend/dist/ to the TEST server (104.237.5.113).
+description: Build the Vite React app and deploy frontend/dist/ to the TEST instance (http://69.62.72.137/kisschool/admin/).
 ---
 
 # Deploy frontend → TEST
@@ -11,24 +11,26 @@ description: Build the Vite React app and deploy frontend/dist/ to the TEST serv
 bash scripts/deploy/test/deploy-frontend.sh
 ```
 
+(Prefix `SRC_ROOT=<clean export>` to ship committed code only — see `/deploy-test-all`.)
+
 ## Pre-flight
 
 - `git status` for `frontend/` — warn if dirty.
-- Confirm `frontend/package.json` and `frontend/vite.config.ts` exist.
 
 ## What the script does
 
 1. SSH preflight.
-2. Local: `npm ci && npm run build` (Vite, base `/school/`, output `frontend/dist/`).
-3. `rsync --delete frontend/dist/` → `/opt/school-management/frontend/dist/`.
-4. `chown -R school:school /opt/school-management/frontend`.
+2. Local: `npm ci && npm run build` (Vite, base `/kisschool/admin/`, output `frontend/dist/`).
+3. `rsync --delete frontend/dist/` (excluding `downloads/`) → `/opt/school-management-test/frontend/dist/`,
+   then publishes the staging APK + `app-version-test.json` if built locally.
+4. `chown -R school-test:school-test /opt/school-management-test/frontend`.
 5. nginx already serves the path — no restart needed.
 
 ## After running
 
 If exit 0:
-- `curl -sI https://expressonly.in/school/` → expect 200.
-- `curl -s https://expressonly.in/school/ | grep -q '<div id="root">'` to confirm SPA shell.
+- `curl -sI http://69.62.72.137/kisschool/admin/` → expect 200 + `Cache-Control: no-cache, must-revalidate`.
+- `curl -s http://69.62.72.137/kisschool/admin/ | grep -q '<div id="root">'` to confirm the SPA shell.
 
 If exit non-zero:
 - If `npm run build` failed, surface the TS errors.
@@ -36,6 +38,5 @@ If exit non-zero:
 
 ## Server
 
-- **IP:** `104.237.5.113`
-- **SSH key:** `~/.ssh/uploadmytds_test`
-- **URL:** `https://expressonly.in/school/`
+- **IP:** `69.62.72.137` · **SSH key:** `~/.ssh/enamfoss_prod`
+- **URL:** `http://69.62.72.137/kisschool/admin/`

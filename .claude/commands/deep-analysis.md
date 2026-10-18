@@ -14,8 +14,9 @@ When a project needs durable reference documentation, not a one-off summary.
 > Domain: K-12 school administration for ONE school — Khalsa International Senior
 > Secondary School, Jalalabad (Patiala, Punjab), affiliated to PSEB. Students,
 > attendance, marks/results, fees, notices, staff, branded PDF stationery.
-> Constraints: single-tenant; two shared VPS boxes (TEST under `/school/` on
-> expressonly.in, PROD at the root of kisschool.in); bilingual English + Gurmukhi
+> Constraints: single-tenant; one shared box 69.62.72.137 running two instances
+> (PROD at the root of kisschool.in, TEST under `/kisschool/` on the bare IP over
+> HTTP) next to an unrelated Tomcat app; bilingual English + Gurmukhi
 > Punjabi everywhere; PSEB-mandated print formats; MySQL is the only store (blobs
 > included); solo maintainer with AI assistance; no automated test suite.
 > Audience: the maintainer plus any future full-stack developer (Python/FastAPI,
