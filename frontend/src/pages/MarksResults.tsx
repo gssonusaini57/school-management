@@ -12,13 +12,10 @@ import { Printer, FileStack } from "lucide-react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { CLASSES } from "@/lib/utils";
+import { SessionSelect } from "@/components/SessionSelect";
+import { useCurrentSessionName } from "@/lib/session";
 import type { ClassResults, ResultScope } from "@/types/api";
 import { useTranslation } from "react-i18next";
-
-const defaultSession = () => {
-  const y = new Date().getFullYear();
-  return `${y}-${String((y + 1) % 100).padStart(2, "0")}`;
-};
 
 const SCOPES: { value: ResultScope; label: string }[] = [
   { value: "annual", label: "Annual (full year)" },
@@ -33,7 +30,9 @@ export default function MarksResults() {
   const { user } = useAuth();
   const allowed = user?.allowed_classes?.length ? user.allowed_classes : CLASSES;
   const [cls, setCls] = useState("");
-  const [session, setSession] = useState(defaultSession);
+  const [sessionPick, setSession] = useState("");
+  const currentSession = useCurrentSessionName();
+  const session = sessionPick || currentSession;
   const [scope, setScope] = useState<ResultScope>("annual");
 
   const resultsQ = useQuery<ClassResults>({
@@ -75,7 +74,7 @@ export default function MarksResults() {
             </Select>
           </div>
           <div className="space-y-1.5"><Label>Session</Label>
-            <Input value={session} onChange={(e) => setSession(e.target.value)} placeholder="2025-26" />
+            <SessionSelect value={session} onChange={setSession} />
           </div>
           <div className="space-y-1.5"><Label>Scope</Label>
             <Select value={scope} onValueChange={(v) => setScope(v as ResultScope)}>

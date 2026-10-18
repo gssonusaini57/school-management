@@ -94,7 +94,7 @@ function FeeSummary() {
   );
 }
 
-interface AttRow { class: string; date: string; present: number; absent: number; leave: number }
+interface AttRow { class: string; date: string; present: number; absent: number; leave: number; half_day?: number }
 function AttendanceMonthly() {
   const { data = [] } = useQuery<AttRow[]>({ queryKey: ["report", "attendance-monthly"], queryFn: () => api.get("/reports/attendance-monthly").then((r) => r.data) });
   return (
@@ -102,7 +102,7 @@ function AttendanceMonthly() {
       <CardHeader><CardTitle>Attendance report</CardTitle></CardHeader>
       <CardContent>
         <Table>
-          <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Present</TableHead><TableHead>Absent</TableHead><TableHead>Leave</TableHead><TableHead>Total</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Present</TableHead><TableHead>Absent</TableHead><TableHead>Leave</TableHead><TableHead>Half day</TableHead><TableHead>Total</TableHead></TableRow></TableHeader>
           <TableBody>
             {data.map((r, i) => (
               <TableRow key={i}>
@@ -110,7 +110,8 @@ function AttendanceMonthly() {
                 <TableCell className="text-emerald-600 font-bold">{r.present}</TableCell>
                 <TableCell className="text-red-600">{r.absent}</TableCell>
                 <TableCell className="text-amber-600">{r.leave}</TableCell>
-                <TableCell>{r.present + r.absent + r.leave}</TableCell>
+                <TableCell className="text-amber-600">{r.half_day ?? 0}</TableCell>
+                <TableCell>{r.present + r.absent + r.leave + (r.half_day ?? 0)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

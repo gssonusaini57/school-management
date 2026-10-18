@@ -18,13 +18,11 @@ import { useSSE } from "@/lib/sse";
 import { CLASSES } from "@/lib/utils";
 import { BulkImportDialog } from "@/components/BulkImportDialog";
 import { MARKS_TEMPLATE } from "@/lib/templates";
+import { SessionSelect } from "@/components/SessionSelect";
+import { useCurrentSessionName } from "@/lib/session";
+import { useMeta } from "@/lib/meta";
 import type { Student, ClassSubject, ClassSubjectDetail, MarksBatchDetail } from "@/types/api";
 import { useTranslation } from "react-i18next";
-
-const defaultSession = () => {
-  const y = new Date().getFullYear();
-  return `${y}-${String((y + 1) % 100).padStart(2, "0")}`;
-};
 
 const fmtTs = (v: string | null): string => {
   if (!v) return "—";
@@ -40,13 +38,17 @@ export default function MarksEntry() {
   const [cls, setCls] = useState("");
   const [subjectId, setSubjectId] = useState<string>("");
   const [componentId, setComponentId] = useState<string>("");
-  const [session, setSession] = useState(defaultSession);
+  // Empty until the user picks one; until then follow the server's current session.
+  const [sessionPick, setSession] = useState("");
+  const currentSession = useCurrentSessionName();
+  const session = sessionPick || currentSession;
   const [marks, setMarks] = useState<Record<number, string>>({});
   const [importOpen, setImportOpen] = useState(false);
   const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
   const [requestEditOpen, setRequestEditOpen] = useState(false);
   const [editReason, setEditReason] = useState("");
   const qc = useQueryClient();
+  const { grade_letters: gradeLetters } = useMeta();
 
   // ── Master-data queries ────────────────────────────────────────
   const subjectsQ = useQuery<ClassSubject[]>({
@@ -67,10 +69,8 @@ export default function MarksEntry() {
     enabled: !!cls,
   });
 
-  const eligibleSubjects = useMemo(
-    () => (subjectsQ.data ?? []).filter((s) => s.category !== "grading"),
-    [subjectsQ.data],
-  );
+  // Every subject: graded ones (Computer, P.E., …) take a letter per student.
+  const eligibleSubjects = useMemo(() => subjectsQ.data ?? [], [subjectsQ.data]);
 
   const selectedSubject = useMemo(
     () => eligibleSubjects.find((s) => String(s.id) === subjectId) ?? null,
@@ -88,6 +88,8 @@ export default function MarksEntry() {
   );
 
   const maxMarks = selectedComponent?.max_marks ?? 0;
+  // Max 0 = a graded exam component ("Term 1 Grade"): teachers pick a letter.
+  const isGraded = !!selectedComponent && maxMarks === 0;
 
   // ── Batch query (the load-existing-marks side) ─────────────────
   const batchEnabled = !!cls && !!selectedSubject && !!selectedComponent && !!session;
@@ -103,7 +105,7 @@ export default function MarksEntry() {
     }).then((r) => r.data),
     enabled: batchEnabled,
   });
-  useSSE("marks_batches", [["marks-batch"]]);
+  useSSE("marks-batches", [["marks-batch"]]);
 
   const batch = batchQ.data ?? null;
   const isLocked = batch?.status === "submitted";
@@ -117,12 +119,12 @@ export default function MarksEntry() {
   useEffect(() => {
     if (batch) {
       const next: Record<number, string> = {};
-      for (const row of batch.items) next[row.student_id] = String(row.marks);
+      for (const row of batch.items) next[row.student_id] = isGraded ? (row.grade ?? "") : String(row.marks);
       setMarks(next);
     } else if (batchQ.isFetched) {
       setMarks({});
     }
-  }, [batch?.id, batch?.updated_at, batchQ.isFetched]);
+  }, [batch?.id, batch?.updated_at, batchQ.isFetched, isGraded]);
 
   // ── Student sort: roll-first ───────────────────────────────────
   const sortedStudents = useMemo(() => {
@@ -153,14 +155,17 @@ export default function MarksEntry() {
     max_marks: maxMarks,
     items: Object.entries(marks)
       .filter(([, v]) => v !== "")
-      .map(([id, v]) => ({ student_id: Number(id), marks: Number(v) })),
+      .map(([id, v]) => (isGraded ? { student_id: Number(id), grade: v } : { student_id: Number(id), marks: Number(v) })),
   });
 
   const refetchBatch = () => qc.invalidateQueries({ queryKey: ["marks-batch", cls, selectedSubject?.subject_name, selectedComponent?.component_name, session] });
 
   const saveDraft = useMutation({
     mutationFn: () => api.post("/marks/batches", buildPayload()),
-    onSuccess: () => { toast("Draft saved", "success"); refetchBatch(); },
+    onSuccess: () => {
+      toast(isLocked ? "Changes saved (marks stay submitted)" : "Draft saved", "success");
+      refetchBatch();
+    },
     onError: (e) => toast(apiError(e), "error"),
   });
 
@@ -199,9 +204,9 @@ export default function MarksEntry() {
     [marks],
   );
   const overMaxCount = useMemo(() => {
-    if (!selectedComponent) return 0;
+    if (!selectedComponent || isGraded) return 0;
     return Object.values(marks).filter((v) => v !== "" && Number(v) > maxMarks).length;
-  }, [marks, maxMarks, selectedComponent]);
+  }, [marks, maxMarks, selectedComponent, isGraded]);
 
   const canSave = !!selectedSubject && !!selectedComponent && overMaxCount === 0 && !isLockedForMe && !hasPendingRequest;
   const canSubmit = canSave && enteredCount > 0;
@@ -211,20 +216,25 @@ export default function MarksEntry() {
     <div className="space-y-4 max-w-4xl">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <h1 className="font-display text-heading-lg text-deep-indigo">{t("portal.nav.marksEntry")}</h1>
-        <Button variant="outline" onClick={() => setImportOpen(true)}>
-          <FileSpreadsheet className="h-4 w-4" /> Bulk import
-        </Button>
+        {isAdmin && (
+          <Button variant="outline" onClick={() => setImportOpen(true)}>
+            <FileSpreadsheet className="h-4 w-4" /> Bulk import
+          </Button>
+        )}
       </div>
 
       <BulkImportDialog
         open={importOpen}
         onOpenChange={setImportOpen}
         title="Bulk import marks"
-        description="One row per (student × subject). Required: class_name, exam_type, subject, student_id, marks. Defaults: max_marks=100, session=blank. Bulk imports bypass the batch / lock workflow — use the form below for normal entry."
+        description="One row per student per exam. Required: class_name, subject, exam_type (an exam component from Class Subjects, e.g. P.T. First), session (e.g. 2026-27), student_id, and marks (or grade, A1–D, for graded exams such as Term 1 Grade). Max marks come from Class Subjects. Rows are saved as draft batches, exactly like this form; submitted (locked) batches are rejected."
         templateCsv={MARKS_TEMPLATE}
         templateFilename="marks-template.csv"
         uploadPath="/marks/bulk-import"
-        onSuccess={() => qc.invalidateQueries({ queryKey: ["marks"] })}
+        onSuccess={() => {
+          qc.invalidateQueries({ queryKey: ["marks-batch"] });
+          qc.invalidateQueries({ queryKey: ["results"] });
+        }}
       />
 
       <Card>
@@ -250,7 +260,8 @@ export default function MarksEntry() {
                   eligibleSubjects.map((s) => (
                     <SelectItem key={s.id} value={String(s.id)}>
                       {s.subject_name}
-                      {s.category === "co_curricular" && " — co-curricular"}
+                      {s.category === "co_curricular" && " — co-curricular (counted in total)"}
+                      {s.category === "grading" && " — graded"}
                     </SelectItem>
                   ))
                 )}
@@ -269,7 +280,7 @@ export default function MarksEntry() {
                 ) : (
                   components.map((c) => (
                     <SelectItem key={c.id} value={String(c.id)}>
-                      {c.component_name} — max {c.max_marks}
+                      {c.component_name} — {c.max_marks === 0 ? "grade" : `max ${c.max_marks}`}
                     </SelectItem>
                   ))
                 )}
@@ -278,11 +289,11 @@ export default function MarksEntry() {
           </div>
           <div className="space-y-1.5">
             <Label>Max marks <span className="text-muted-foreground">— auto from master</span></Label>
-            <Input value={selectedComponent ? String(maxMarks) : ""} readOnly disabled placeholder="—" />
+            <Input value={!selectedComponent ? "" : isGraded ? "Letter grade" : String(maxMarks)} readOnly disabled placeholder="—" />
           </div>
           <div className="space-y-1.5">
             <Label>Session</Label>
-            <Input value={session} onChange={(e) => setSession(e.target.value)} placeholder="2025-26" />
+            <SessionSelect value={session} onChange={setSession} />
           </div>
         </CardContent>
       </Card>
@@ -346,7 +357,7 @@ export default function MarksEntry() {
                   </Badge>
                 )}
                 {!batch && <Badge variant="outline">New</Badge>}
-                <Badge variant="outline">Max {maxMarks}</Badge>
+                <Badge variant="outline">{isGraded ? "Letter grade" : `Max ${maxMarks}`}</Badge>
                 {enteredCount > 0 && <span>{enteredCount} entered</span>}
                 {overMaxCount > 0 && <Badge variant="destructive">{overMaxCount} over max</Badge>}
               </div>
@@ -383,30 +394,50 @@ export default function MarksEntry() {
                           </div>
                         )}
                       </div>
-                      <NumberField
-                        className="w-28 text-right"
-                        placeholder="—"
-                        value={v}
-                        max={maxMarks}
-                        min={0}
-                        disabled={isLockedForMe || hasPendingRequest}
-                        invalid={v !== "" && (Number(v) > maxMarks || Number(v) < 0)}
-                        onChange={(next) => setMarks({ ...marks, [s.id]: next })}
-                      />
-                      <span className="text-xs text-muted-foreground w-12 shrink-0">/ {maxMarks}</span>
+                      {isGraded ? (
+                        <Select
+                          value={v || "none"}
+                          onValueChange={(next) => setMarks({ ...marks, [s.id]: next === "none" ? "" : next })}
+                          disabled={isLockedForMe || hasPendingRequest}
+                        >
+                          <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">—</SelectItem>
+                            {gradeLetters.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <NumberField
+                          className="w-28 text-right"
+                          placeholder="—"
+                          value={v}
+                          max={maxMarks}
+                          min={0}
+                          disabled={isLockedForMe || hasPendingRequest}
+                          invalid={v !== "" && (Number(v) > maxMarks || Number(v) < 0)}
+                          onChange={(next) => setMarks({ ...marks, [s.id]: next })}
+                        />
+                      )}
+                      <span className="text-xs text-muted-foreground w-12 shrink-0">{isGraded ? "" : `/ ${maxMarks}`}</span>
                     </div>
                   );
                 })}
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {!isLockedForMe && (
+                {!isLockedForMe && isLocked && (
+                  // Super-admin edits a submitted batch in place; it stays locked.
+                  <Button onClick={() => saveDraft.mutate()} disabled={!canSave || saveDraft.isPending}>
+                    <Save className="h-4 w-4" /> {saveDraft.isPending ? "Saving…" : "Save changes"}
+                  </Button>
+                )}
+                {!isLockedForMe && !isLocked && (
                   <>
                     <Button variant="outline" onClick={() => saveDraft.mutate()} disabled={!canSave || saveDraft.isPending}>
                       <Save className="h-4 w-4" /> {saveDraft.isPending ? "Saving…" : "Save draft"}
                     </Button>
                     <Button onClick={() => setSubmitConfirmOpen(true)} disabled={!canSubmit || submitFinal.isPending}>
-                      <Send className="h-4 w-4" /> {submitFinal.isPending ? "Submitting…" : isSuperAdmin && isLocked ? "Re-submit" : "Submit final"}
+                      <Send className="h-4 w-4" /> {submitFinal.isPending ? "Submitting…" : "Submit final"}
                     </Button>
                   </>
                 )}

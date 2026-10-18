@@ -32,9 +32,13 @@ export const CLASS_SUBJECTS_TEMPLATE = [
   "5th,Computer,ਕੰਪਿਊਟਰ,grading,11",
 ].join("\n");
 
+// exam_type is an exam component name from Class Subjects (e.g. "P.T. First",
+// "Semester First"); max marks are taken from that component on the server.
+// Graded exams (max 0, e.g. "Term 1 Grade") leave marks blank and fill grade.
 export const MARKS_TEMPLATE = [
-  "class_name,exam_type,subject,max_marks,session,student_id,marks",
-  "5th,Final / Annual,Mathematics,100,2025-26,1,85",
-  "5th,Final / Annual,Science,100,2025-26,1,90",
-  "5th,Final / Annual,Mathematics,100,2025-26,2,72",
+  "class_name,subject,exam_type,session,student_id,marks,grade",
+  "5th,Mathematics,P.T. First,2026-27,1,30,",
+  "5th,Hindi,P.T. First,2026-27,1,28,",
+  "5th,Mathematics,P.T. First,2026-27,2,25,",
+  "5th,Computer,Term 1 Grade,2026-27,1,,A2",
 ].join("\n");

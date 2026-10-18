@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
 import { api, apiError } from "@/lib/api";
 import { useSSE } from "@/lib/sse";
@@ -30,14 +31,17 @@ const TERM_OPTIONS: { value: string; label: string }[] = [
 ];
 
 interface DraftRow {
-  // Local id used only for React keys while editing — server ids are stripped
-  // on save because we PUT-replace the whole list.
+  // Local React key; `id` is the server component this row edits (null = new),
+  // sent on save so a rename carries the component's existing marks with it.
   key: string;
+  id: number | null;
   component_name: string;
   max_marks: string;
   order_index: string;
   term: string; // "both" | "1" | "2"
 }
+
+type Payload = { id: number | null; component_name: string; max_marks: number; order_index: number; term: number | null }[];
 
 const draftFromServer = (rows: ClassSubjectDetail["components"]): DraftRow[] =>
   rows
@@ -45,6 +49,7 @@ const draftFromServer = (rows: ClassSubjectDetail["components"]): DraftRow[] =>
     .sort((a, b) => a.order_index - b.order_index)
     .map((c, i) => ({
       key: `srv-${c.id}`,
+      id: c.id,
       component_name: c.component_name,
       max_marks: String(c.max_marks),
       order_index: String(c.order_index || i + 1),
@@ -53,6 +58,7 @@ const draftFromServer = (rows: ClassSubjectDetail["components"]): DraftRow[] =>
 
 const blankRow = (idx: number): DraftRow => ({
   key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+  id: null,
   component_name: "",
   max_marks: "0",
   order_index: String(idx),
@@ -66,6 +72,8 @@ export default function ClassSubjectDetail() {
   const navigate = useNavigate();
 
   const [draft, setDraft] = useState<DraftRow[]>([]);
+  // Set when the server refuses to delete components that already have marks.
+  const [forcePrompt, setForcePrompt] = useState<{ message: string; components: Payload } | null>(null);
 
   const subjectQ = useQuery<ClassSubjectDetail>({
     queryKey: ["class-subjects", subjectId],
@@ -79,20 +87,37 @@ export default function ClassSubjectDetail() {
   }, [subjectQ.data?.id, subjectQ.data?.updated_at]);
 
   const replace = useMutation({
-    mutationFn: (components: { component_name: string; max_marks: number; order_index: number; term: number | null }[]) =>
-      api.put(`/class-subjects/${subjectId}/components`, { components }),
+    mutationFn: ({ components, force }: { components: Payload; force?: boolean }) =>
+      api.put(`/class-subjects/${subjectId}/components`, { components }, { params: force ? { force: true } : undefined }),
     onSuccess: () => {
       toast("Exam components saved", "success");
+      setForcePrompt(null);
       qc.invalidateQueries({ queryKey: ["class-subjects", subjectId] });
       qc.invalidateQueries({ queryKey: ["class-subjects"] });
     },
-    onError: (e) => toast(apiError(e), "error"),
+    onError: (e, vars) => {
+      const status = (e as { response?: { status?: number } })?.response?.status;
+      const message = apiError(e);
+      if (status === 409 && !vars.force && message.includes("already have marks")) {
+        setForcePrompt({ message, components: vars.components });
+        return;
+      }
+      toast(message, "error");
+    },
   });
 
-  const totalMax = useMemo(
-    () => draft.reduce((acc, r) => acc + (Number(r.max_marks) || 0), 0),
-    [draft],
-  );
+  // Per-scope max totals: a "Both" component counts in Term 1 and in Term 2.
+  const totals = useMemo(() => {
+    let term1 = 0, term2 = 0, annual = 0, both = 0;
+    for (const r of draft) {
+      const m = Number(r.max_marks) || 0;
+      annual += m;
+      if (r.term !== "2") term1 += m;
+      if (r.term !== "1") term2 += m;
+      if (r.term === "both" && m > 0) both += 1;
+    }
+    return { term1, term2, annual, both };
+  }, [draft]);
 
   const isDirty = useMemo(() => {
     if (!subjectQ.data) return false;
@@ -104,7 +129,8 @@ export default function ClassSubjectDetail() {
       return s.component_name !== d.component_name
         || s.max_marks !== d.max_marks
         || s.order_index !== d.order_index
-        || s.term !== d.term;
+        || s.term !== d.term
+        || s.id !== d.id;
     });
   }, [draft, subjectQ.data]);
 
@@ -134,7 +160,7 @@ export default function ClassSubjectDetail() {
   };
 
   const save = () => {
-    const cleaned: { component_name: string; max_marks: number; order_index: number; term: number | null }[] = [];
+    const cleaned: Payload = [];
     const seen = new Set<string>();
     for (let i = 0; i < draft.length; i++) {
       const r = draft[i];
@@ -155,13 +181,14 @@ export default function ClassSubjectDetail() {
         return;
       }
       cleaned.push({
+        id: r.id,
         component_name: name,
         max_marks: marks,
         order_index: Number(r.order_index) || i + 1,
         term: r.term === "both" ? null : Number(r.term),
       });
     }
-    replace.mutate(cleaned);
+    replace.mutate({ components: cleaned });
   };
 
   if (subjectQ.isLoading) {
@@ -300,12 +327,19 @@ export default function ClassSubjectDetail() {
                   </TableRow>
                 ))}
                 <TableRow className="bg-cream/40">
-                  <TableCell colSpan={3} className="text-right font-medium">Total max marks</TableCell>
-                  <TableCell className="text-right font-bold">{totalMax}</TableCell>
-                  <TableCell colSpan={3}></TableCell>
+                  <TableCell colSpan={3} className="text-right font-medium">Max marks · Term 1 / Term 2 / Annual</TableCell>
+                  <TableCell colSpan={4} className="font-bold">
+                    {totals.term1} / {totals.term2} / {totals.annual}
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
+          )}
+          {totals.both > 0 && (
+            <p className="mt-3 text-xs text-amber-700">
+              {totals.both} component{totals.both === 1 ? " is" : "s are"} set to <b>Both</b>, so {totals.both === 1 ? "it counts" : "they count"} in Term 1 and again in Term 2.
+              Pick a single term unless that is intended.
+            </p>
           )}
           {isDirty && (
             <p className="mt-3 text-xs text-amber-700">
@@ -314,6 +348,29 @@ export default function ClassSubjectDetail() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!forcePrompt} onOpenChange={(o) => { if (!o) setForcePrompt(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete components that have marks?</DialogTitle>
+            <DialogDescription>{forcePrompt?.message}</DialogDescription>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Their marks stay in the database but no longer count in results or report cards.
+            To rename a component instead, edit its name in place rather than deleting and re-adding it.
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setForcePrompt(null)}>Keep them</Button>
+            <Button
+              variant="destructive"
+              disabled={replace.isPending}
+              onClick={() => forcePrompt && replace.mutate({ components: forcePrompt.components, force: true })}
+            >
+              Delete anyway
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

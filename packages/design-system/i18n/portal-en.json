@@ -57,7 +57,8 @@
       "mobileApps": "Mobile Apps",
       "deletionRequests": "Pending Deletions",
       "editRequests": "Edit Requests",
-      "classSubjects": "Class Subjects"
+      "classSubjects": "Class Subjects",
+      "sessions": "Sessions"
     },
     "login": {
       "signIn": "Sign in",
@@ -137,6 +138,26 @@
       "updated":  "Updated.",
       "error":    "Something went wrong.",
       "imported": "{{count}} rows imported."
+    },
+    "sessions": {
+      "title": "Academic sessions",
+      "subtitle": "School years and their term dates. Results, attendance totals and report cards count over these dates.",
+      "add": "Add session",
+      "edit": "Edit session",
+      "session": "Session",
+      "dates": "Session dates",
+      "current": "Current",
+      "makeCurrent": "Make this the current session",
+      "starts": "Session starts",
+      "ends": "Session ends",
+      "term1": "Term 1",
+      "term2": "Term 2",
+      "term1Start": "Term 1 starts",
+      "term1End": "Term 1 ends",
+      "term2Start": "Term 2 starts",
+      "term2End": "Term 2 ends",
+      "dialogHint": "Term 2 must start after Term 1 ends, and both terms must fall inside the session.",
+      "saved": "Session saved"
     }
   }
 }

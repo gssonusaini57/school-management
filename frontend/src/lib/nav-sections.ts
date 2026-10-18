@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, UserPlus, Users, ClipboardCheck, GraduationCap,
   Wallet, Megaphone, Briefcase, BarChart3, Smartphone,
-  FileText, Receipt, FileStack, ShieldAlert, FileEdit, BookOpen,
+  FileText, Receipt, FileStack, ShieldAlert, FileEdit, BookOpen, CalendarRange,
 } from "lucide-react";
 import type { MenuKey } from "@/lib/menus";
 import { canAccessMenu, type AuthUser } from "@/lib/auth";
@@ -36,6 +36,7 @@ export const SECTIONS: NavSection[] = [
       { to: "/marks/entry",    labelKey: "portal.nav.marksEntry",   icon: GraduationCap,  menuKey: "marks-entry" },
       { to: "/marks/results",  labelKey: "portal.nav.marksResults", icon: GraduationCap,  menuKey: "marks-results" },
       { to: "/class-subjects", labelKey: "portal.nav.classSubjects", icon: BookOpen,      superAdminOnly: true },
+      { to: "/sessions",       labelKey: "portal.nav.sessions",      icon: CalendarRange, superAdminOnly: true },
     ],
   },
   {

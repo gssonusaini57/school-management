@@ -179,12 +179,16 @@ export interface DeletionRequestItem {
 // ── Templated PDF flow ──────────────────────────────────────────────
 export type PdfTemplateKind = "report-card" | "pseb-admit-card";
 
+export type ReportLayout = "summary" | "components";
+
 export interface PdfTemplate {
   id: number;
   kind: PdfTemplateKind;
   class_name: string;
   session: string;
   term: string | null;
+  scope: ResultScope | null; // report cards: which results the card prints
+  layout: ReportLayout;
   version: number;
   data: Record<string, unknown>;
   created_at: string;
@@ -203,8 +207,31 @@ export interface PdfStudentDataRow {
 export interface PdfStudentRosterRow {
   id: number;
   name: string;
+  roll_no: string | null;
   has_data: boolean;
-  cached_pdf_id: number | null;
+  cached_pdf_id: number | null; // a PDF matching what the card would print now
+  stale_pdf_id: number | null;  // a PDF exists but something changed since
+  has_marks: boolean;
+  draft_marks: number;
+  provisional: boolean;
+  missing_dob: boolean;
+  has_photo: boolean;
+  has_remarks: boolean;
+  house: string | null;
+  rank: number | null;
+  total: number | null;
+  max: number | null;
+  percentage: number | null;
+  attendance_pct: number | null;
+  error: string | null; // why a card can't be produced yet
+}
+
+export interface PdfRoster {
+  template_id: number;
+  scope: ResultScope | null;
+  class_size: number;
+  warnings: string[];
+  students: PdfStudentRosterRow[];
 }
 
 export interface PdfRenderResultRow {
@@ -212,6 +239,52 @@ export interface PdfRenderResultRow {
   status: "cached" | "rendered" | "error";
   pdf_id: number | null;
   error: string | null;
+  warnings?: string[];
+}
+
+export interface RenderJob {
+  id: number;
+  template_id: number;
+  status: "queued" | "running" | "done" | "failed" | "cancelled";
+  total: number;
+  done_count: number;
+  error_count: number;
+  requested_by: string;
+  error: string | null;
+  created_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  results: PdfRenderResultRow[];
+}
+
+export interface Bilingual {
+  en: string;
+  pa?: string | null;
+}
+
+/** pdf_templates.data for report cards (backend: ReportCardTemplateData). */
+export interface ReportCardTemplateData {
+  signatures: { classTeacher?: string | null; examIncharge?: string | null; principal?: string | null };
+  showAttendance: boolean;
+  showRank: boolean;
+  showPhoto: boolean;
+  showGradingScale: boolean;
+  includeDrafts: boolean;
+  promotionRule: { passPct: number; conditionalMaxFails: number };
+  remarksDefault: Bilingual | null;
+}
+
+/** pdf_student_data.data for report cards (backend: ReportCardStudentData). */
+export interface ReportCardStudentData {
+  remarks?: Bilingual | null;
+  house?: string | null;
+  rank?: number | null;
+  classSize?: number | null;
+  attendancePct?: number | null;
+  workingDays?: number | null;
+  daysPresent?: number | null;
+  promotion?: string | null;
+  admissionNo?: string | null;
 }
 
 // ── Class-subjects master ─────────────────────────────────────────
@@ -245,6 +318,15 @@ export interface ClassSubjectDetail extends ClassSubject {
 
 // ── Aggregated results (GET /marks/results) ──────────────────────
 export type ResultScope = "term1" | "term2" | "annual";
+export type BatchStatus = "submitted" | "draft" | "none";
+export type CellStatus = "complete" | "partial" | "missing" | "none";
+
+export interface ComponentInfo {
+  component_name: string;
+  group: string; // "Semester First — Written" → "Semester First"
+  term: number | null;
+  max: number;
+}
 
 export interface SubjectColumn {
   subject_name: string;
@@ -252,6 +334,25 @@ export interface SubjectColumn {
   category: SubjectCategory;
   order_index: number;
   max: number; // scope max = sum of in-scope component max marks
+  is_grading: boolean; // letter-graded subject (max 0)
+  batch_status: BatchStatus;
+  components: ComponentInfo[];
+}
+
+export interface ComponentMark extends ComponentInfo {
+  marks: number | null;
+  grade_letter: string | null;
+  batch_status: "submitted" | "draft" | null;
+  counted: boolean;
+}
+
+export interface ResultCell {
+  key: string;
+  obtained: number;
+  max: number;
+  marked: number;
+  total: number;
+  status: CellStatus;
 }
 
 export interface SubjectResult {
@@ -262,17 +363,46 @@ export interface SubjectResult {
   percentage: number | null;
   grade: string | null;
   status: "complete" | "partial" | "missing";
+  is_grading: boolean;
+  grade_letter: string | null;
+  term_letters: Record<string, string>;
+  batch_status: BatchStatus;
+  components_total: number;
+  components_marked: number;
+  components: ComponentMark[];
+  cells: ResultCell[];
+}
+
+export interface AttendanceSummary {
+  working_days: number;
+  days_present: number;
+  pct: number | null;
+  counts: Record<string, number>;
 }
 
 export interface StudentResult {
   student_id: number;
   name: string;
   roll_no: string | null;
+  status: string;
   subjects: SubjectResult[];
   total_obtained: number;
   total_max: number;
   percentage: number | null;
   grade: string | null;
+  has_marks: boolean;
+  rank: number | null;
+  pass_status: "pass" | "fail" | "incomplete" | null;
+  failed_subjects: string[];
+  promotion: string | null;
+  draft_components: number;
+  attendance: AttendanceSummary | null;
+}
+
+export interface GroupColumn {
+  key: string;
+  term: number | null;
+  order_index: number;
 }
 
 export interface ClassResults {
@@ -281,6 +411,15 @@ export interface ClassResults {
   scope: ResultScope;
   subject_columns: SubjectColumn[];
   students: StudentResult[];
+  groups: GroupColumn[];
+  class_size: number;
+  ranked_count: number;
+  include_drafts: boolean;
+  has_drafts: boolean;
+  complete: boolean;
+  engine_version: number;
+  session_dates: { start: string; end: string } | null;
+  warnings: string[];
 }
 
 // ── Marks batch + edit-request workflow ──────────────────────────
@@ -291,6 +430,7 @@ export interface MarksBatchItem {
   id: number;
   student_id: number;
   marks: number;
+  grade: string | null; // letter for graded (max 0) exam components
 }
 
 export interface MarksBatch {
@@ -330,4 +470,33 @@ export interface MarksEditRequestItem {
   reviewed_at: string | null;
   reviewed_by: string | null;
   reject_reason: string | null;
+}
+
+// ── Academic sessions (GET /sessions) ────────────────────────────
+export interface AcademicSession {
+  id: number;
+  session: string; // "2026-27"
+  starts_on: string; // ISO dates
+  ends_on: string;
+  term1_start: string;
+  term1_end: string;
+  term2_start: string;
+  term2_end: string;
+  is_current: boolean;
+  updated_at: string | null;
+  updated_by: string;
+}
+
+// ── Reference data (GET /meta) ───────────────────────────────────
+export interface Meta {
+  classes: string[];
+  grade_bands: { grade: string; min_pct: number }[];
+  grade_legend: { grade: string; range: string }[];
+  grade_letters: string[];
+  houses: string[];
+  promotion_values: string[];
+  pass_pct: number;
+  conditional_max_fails: number;
+  scopes: ResultScope[];
+  menu_keys: string[];
 }

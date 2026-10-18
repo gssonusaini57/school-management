@@ -14,6 +14,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "@/components/ui/toaster";
 import { api, apiError } from "@/lib/api";
 import { CLASSES } from "@/lib/utils";
+import { SessionSelect } from "@/components/SessionSelect";
+import { useCurrentSessionName } from "@/lib/session";
 import type { PdfTemplate, PdfTemplateKind } from "@/types/api";
 
 const KIND_LABEL: Record<PdfTemplateKind, string> = {
@@ -121,12 +123,12 @@ export default function Templates() {
 function NewTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (b: boolean) => void }) {
   const nav = useNavigate();
   const qc = useQueryClient();
-  const currentYear = new Date().getFullYear();
-  const defaultSession = `${currentYear}-${String((currentYear + 1) % 100).padStart(2, "0")}`;
+  const currentSession = useCurrentSessionName();
 
   const [kind, setKind] = useState<PdfTemplateKind>("report-card");
   const [klass, setKlass] = useState<string>("");
-  const [session, setSession] = useState<string>(defaultSession);
+  const [sessionPick, setSession] = useState<string>("");
+  const session = sessionPick || currentSession;
   const [term, setTerm] = useState<string>("Term II");
 
   const create = useMutation({
@@ -185,7 +187,7 @@ function NewTemplateDialog({ open, onOpenChange }: { open: boolean; onOpenChange
           </div>
           <div className="space-y-1.5">
             <Label>Session</Label>
-            <Input value={session} onChange={(e) => setSession(e.target.value)} placeholder="2025-26" />
+            <SessionSelect value={session} onChange={setSession} />
           </div>
           {kind === "report-card" && (
             <div className="space-y-1.5">

@@ -29,7 +29,7 @@ export default function DeletionRequests() {
     queryFn: () => api.get("/admin/deletion-requests").then((r) => r.data),
   });
   // SSE: any change on students/staff or the queue invalidates.
-  useSSE("deletion_requests", [["deletion-requests"], ["students"], ["staff"]]);
+  useSSE("deletion-requests", [["deletion-requests"], ["students"], ["staff"]]);
 
   const pending = useMemo(
     () => (data?.items ?? []).filter((r) => r.status === "pending_delete"),

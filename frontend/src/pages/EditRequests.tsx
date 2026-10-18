@@ -34,7 +34,7 @@ export default function EditRequests() {
     queryKey: ["edit-requests"],
     queryFn: () => api.get("/admin/edit-requests").then((r) => r.data),
   });
-  useSSE("edit_requests", [["edit-requests"], ["students"], ["student"]]);
+  useSSE("edit-requests", [["edit-requests"], ["students"], ["student"]]);
 
   const pending = useMemo(
     () => (data?.items ?? []).filter((r) => r.status === "pending"),
@@ -90,7 +90,7 @@ export default function EditRequests() {
     queryKey: ["marks-edit-requests"],
     queryFn: () => api.get("/admin/marks-edit-requests").then((r) => r.data),
   });
-  useSSE("marks_edit_requests", [["marks-edit-requests"], ["marks-batch"]]);
+  useSSE("marks-edit-requests", [["marks-edit-requests"], ["marks-batch"]]);
 
   const marksPending = useMemo(
     () => (marksQ.data?.items ?? []).filter((r) => r.status === "pending"),

@@ -22,6 +22,7 @@ import DeletionRequests from "@/pages/DeletionRequests";
 import EditRequests from "@/pages/EditRequests";
 import ClassSubjects from "@/pages/ClassSubjects";
 import ClassSubjectDetail from "@/pages/ClassSubjectDetail";
+import Sessions from "@/pages/Sessions";
 import { Layout } from "@/components/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
@@ -59,6 +60,7 @@ export default function App() {
           <Route path="/edit-requests"     element={<ProtectedRoute superAdminOnly><EditRequests /></ProtectedRoute>} />
           <Route path="/class-subjects"     element={<ProtectedRoute superAdminOnly><ClassSubjects /></ProtectedRoute>} />
           <Route path="/class-subjects/:id" element={<ProtectedRoute superAdminOnly><ClassSubjectDetail /></ProtectedRoute>} />
+          <Route path="/sessions"           element={<ProtectedRoute superAdminOnly><Sessions /></ProtectedRoute>} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

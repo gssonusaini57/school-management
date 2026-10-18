@@ -13,6 +13,7 @@ import { toast } from "@/components/ui/toaster";
 import { api, apiError } from "@/lib/api";
 import { useSSE } from "@/lib/sse";
 import { CLASSES, formatCurrency } from "@/lib/utils";
+import { defaultSessionName } from "@/lib/session";
 import type { FeePayment, Student } from "@/types/api";
 import { useTranslation } from "react-i18next";
 
@@ -29,7 +30,8 @@ export default function Fees() {
   const [cls, setCls] = useState("");
   const [studentId, setStudentId] = useState<string>("");
   const [month, setMonth] = useState(MONTHS[new Date().getMonth() < 3 ? new Date().getMonth() + 9 : new Date().getMonth() - 3]);
-  const [year, setYear] = useState(`${new Date().getFullYear()}-${String((new Date().getFullYear() + 1) % 100).padStart(2, "0")}`);
+  // Academic year (April rollover): a February payment belongs to the year that began last April.
+  const [year, setYear] = useState(defaultSessionName);
   const [amount, setAmount] = useState("");
   const [date, setDate] = useState(today);
   const [receipt, setReceipt] = useState("");
