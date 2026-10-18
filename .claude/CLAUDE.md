@@ -2,7 +2,7 @@
 **Last Updated:** 2026-10-18 | **Sessions:** 18 (1–12 archived) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in (served at the domain ROOT) **and** TEST at https://expressonly.in/school/. Android teacher app ships as **`in.kisschool`** (prod/staging flavors + force-update gate), currently **v1.2.5 build 18**. Session 18 added: **term-scoped result aggregation** (migration 0013) shared by the results table and report-card PDFs, plus the **"All" class-sentinel expansion** fix — both committed on `dev`, **not yet deployed**.
 > **Admin logins (both servers):** admin `nsnishasaini57@gmail.com / admin123` · super-admin `gssonusaini57@gmail.com / <changed — not super123>`. Staff log in by email-or-phone + password. Test & prod share identical admin/super-admin password hashes + SMTP creds.
 
-> Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test*`, `/deploy-prod*` (incl. `/deploy-prod-public-site`), `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`. Android APK build: `bash scripts/build-android.sh {prod|test}` (local, needs keystore).
+> Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test*`, `/deploy-prod*` (incl. `/deploy-prod-public-site`), `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`, `/deep-analysis`. Android APK build: `bash scripts/build-android.sh {prod|test}` (local, needs keystore).
 
 ---
 
@@ -365,6 +365,7 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 | `/release-android` | `scripts/build-android.sh` + `scripts/deploy/test/upload-apk.sh` (gated by `y/N`) | Build a fresh signed APK, then ask before uploading just the APK file to TEST. Skips the SPA rebuild — the web download link is already deployed |
 | `/check-logs` | `scripts/deploy/test/check-logs.sh` (also `prod/`) | Read-only log analysis: 6 sections (service status / journalctl / error.log tail / recent tracebacks / access.log tail / 4xx-5xx). Accepts `30m`, `2h`, `1d`. Nothing written, nothing downloaded — single SSH session straight to terminal |
 | `/save-session` | [commands/save-session.md](./commands/save-session.md) | Snapshot session context to `.claude/CLAUDE.md` + `SESSION_HISTORY_*`/`GOTCHAS_*` archives + `.claude/memory/`. Prompt-library v2026-08-31; the `## Project-Specific Notes` block (P1–P6) in that file is this project's local override set — preserved across prompt-library updates |
+| `/deep-analysis` | [commands/deep-analysis.md](./commands/deep-analysis.md) | Generate a multi-document onboarding knowledge base at `.claude/doc/deep-analysis/` (README + 00–10). Prompt-library v2026-08-31; `## Project-Specific Notes` (P1–P3) pre-fills the KIS domain context and the "verify CLAUDE.md against code" rule |
 
 **Fresh-clone setup:** `git config core.hooksPath .githooks` (arms the no-AI-attribution commit hook — Gotcha #22; local config, not carried by clone).
 
