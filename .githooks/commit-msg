@@ -1,0 +1,9 @@
+#!/bin/sh
+# Reject AI attribution trailers. $1 is the file holding the commit message.
+# Covers commit, amend, merge, rebase, cherry-pick and squash — every path that
+# writes a commit message, whoever or whatever drives it.
+#
+# Deliberate escape hatch: `git commit --no-verify` skips this (as it skips all
+# hooks). That is git's design, not a gap worth fighting.
+exec < /dev/null
+"$(dirname "$0")/no-ai-attribution.sh" strict < "$1"
