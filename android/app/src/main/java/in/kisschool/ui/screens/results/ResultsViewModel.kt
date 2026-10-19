@@ -70,9 +70,12 @@ data class ResultsUiState(
         get() = selectedStudentId?.let { id -> results?.students?.firstOrNull { it.studentId == id } }
 }
 
-/** True when the student has at least one mark or letter in the scope (v1 servers have no has_marks). */
+/**
+ * True when the student has at least one mark or letter in the scope (v1 servers have no
+ * has_marks). An optional subject the student doesn't take (not_taken) never counts.
+ */
 internal fun StudentResultDto.hasAnyMarks(): Boolean =
-    hasMarks || subjects.any { it.status != "missing" }
+    hasMarks || subjects.any { it.status != "missing" && !it.notTaken }
 
 class ResultsViewModel(
     private val resultsRepo: ResultsRepository,

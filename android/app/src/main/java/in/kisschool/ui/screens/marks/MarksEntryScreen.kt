@@ -197,7 +197,16 @@ fun MarksEntryScreen(vm: MarksEntryViewModel, onBack: () -> Unit) {
             }
 
             // ── Roster ──────────────────────────────────────────────────────
-            if (s.ready && !s.marksLoaded && !s.loadingBatch) {
+            if (s.noTakers) {
+                // An optional subject (11th/12th Mathematics) nobody takes yet: no one to enter marks for.
+                item {
+                    Text(
+                        if (s.isSuperAdmin) "No student takes this subject yet. Tick the students who take it on Class Subjects on the website."
+                        else "No student takes this subject yet. Ask the super-admin to tick them on the website.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else if (s.ready && !s.marksLoaded && !s.loadingBatch) {
                 // A save from an empty roster would delete the marks already saved, so the
                 // rows wait until this selection's marks have loaded.
                 item {
@@ -207,9 +216,11 @@ fun MarksEntryScreen(vm: MarksEntryViewModel, onBack: () -> Unit) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            } else if (s.ready && s.students.isNotEmpty()) {
+            } else if (s.ready && s.roster.isNotEmpty()) {
+                if (s.optional) item { OptionalNote(s.roster.size) }
                 item { HorizontalDivider() }
-                items(s.students, key = { it.id }) { stu ->
+                // An optional subject lists only the students taking it; only their marks are saved.
+                items(s.roster, key = { it.id }) { stu ->
                     if (s.isGraded) {
                         GradeRow(
                             student = stu,
@@ -247,7 +258,7 @@ fun MarksEntryScreen(vm: MarksEntryViewModel, onBack: () -> Unit) {
             item { ErrorBanner(s.error) }
             s.message?.let { msg -> item { Banner(msg, warn = true, success = true) } }
 
-            if (s.ready) item {
+            if (s.ready && !s.noTakers) item {
                 Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     when {
                         // This selection's saved marks aren't on screen yet (loading, failed, or a
@@ -352,6 +363,17 @@ fun MarksEntryScreen(vm: MarksEntryViewModel, onBack: () -> Unit) {
             dismissButton = { TextButton(onClick = { showRequest = false }) { Text("Cancel") } }
         )
     }
+}
+
+/** Above an optional subject's roster: why only some of the class is listed. */
+@Composable
+private fun OptionalNote(count: Int) {
+    Text(
+        if (count == 1) "Optional subject: only the 1 student taking it is listed."
+        else "Optional subject: only the $count students taking it are listed.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable

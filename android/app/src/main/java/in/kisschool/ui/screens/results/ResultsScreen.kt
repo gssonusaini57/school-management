@@ -47,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -75,6 +77,8 @@ private val PCT_W = 60.dp
 private val GRADE_W = 52.dp
 private val RANK_W = 52.dp
 private val HEADER_H = 70.dp
+/** Extra header height for the "Optional" tag under an optional subject's name. */
+private val TAG_H = 16.dp
 private val ROW_H = 44.dp
 
 /** 45.0 → "45", 45.25 → "45.3"; locale-independent so digits never change with the phone's language. */
@@ -91,7 +95,7 @@ private fun SubjectColumnDto.graded(): Boolean = isGrading || max <= 0.0
 
 /** True when the student has a numeric mark in the scope (totals, % and grade mean something). */
 private fun StudentResultDto.hasNumericMarks(): Boolean =
-    hasMarks || subjects.any { it.max > 0.0 && it.status != "missing" }
+    hasMarks || subjects.any { it.max > 0.0 && it.status != "missing" && !it.notTaken }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -227,7 +231,10 @@ private fun ResultsContent(r: ClassResultsDto, scope: ResultScope, onRowClick: (
             NoteText("Ranks provisional: some marks are still missing or in draft.", warn = true)
         }
         r.warnings.filter { it.isNotBlank() }.take(3).forEach { NoteText(it) }
-        Legend(showDraft = r.hasDrafts || r.subjectColumns.any { it.batchStatus == "draft" })
+        Legend(
+            showDraft = r.hasDrafts || r.subjectColumns.any { it.batchStatus == "draft" },
+            showNotTaken = r.students.any { st -> st.subjects.any { it.notTaken } },
+        )
         ResultsTable(r, onRowClick)
         if (r.subjectColumns.size > 2) {
             Text(
@@ -246,19 +253,20 @@ private fun ResultsTable(r: ClassResultsDto, onRowClick: (Long) -> Unit) {
     val stripe = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
     val shape = RoundedCornerShape(8.dp)
     fun rowBg(i: Int) = if (i % 2 == 1) stripe else Color.Transparent
+    val headerH = if (r.subjectColumns.any { it.isOptional }) HEADER_H + TAG_H else HEADER_H
 
     // Every row has a fixed height, so the table's height is known up front. Setting it
     // gives the divider (fillMaxHeight) a bounded height inside the vertical scroll.
     Row(
         Modifier
             .fillMaxWidth()
-            .height(HEADER_H + ROW_H * r.students.size)
+            .height(headerH + ROW_H * r.students.size)
             .clip(shape)
             .border(1.dp, outline, shape),
     ) {
         // Frozen columns: roll + name stay put while the marks scroll sideways.
         Column(Modifier.width(ROLL_W + NAME_W)) {
-            Row(Modifier.height(HEADER_H).fillMaxWidth().background(headerBg), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.height(headerH).fillMaxWidth().background(headerBg), verticalAlignment = Alignment.CenterVertically) {
                 HeaderText("Roll", ROLL_W)
                 HeaderText("Name", NAME_W, align = TextAlign.Start)
             }
@@ -291,7 +299,7 @@ private fun ResultsTable(r: ClassResultsDto, onRowClick: (Long) -> Unit) {
         }
         VerticalDivider(color = outline)
         Column(Modifier.weight(1f).horizontalScroll(rememberScrollState())) {
-            Row(Modifier.height(HEADER_H).background(headerBg)) {
+            Row(Modifier.height(headerH).background(headerBg)) {
                 r.subjectColumns.forEach { SubjectHeader(it) }
                 HeaderText("Total", TOTAL_W, Modifier.fillMaxHeight())
                 HeaderText("%", PCT_W, Modifier.fillMaxHeight())
@@ -357,6 +365,7 @@ private fun SubjectHeader(col: SubjectColumnDto) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (col.batchStatus == "draft") DraftBadge()
+        if (col.isOptional) OptionalTag(Modifier.padding(top = 2.dp))
     }
 }
 
@@ -364,6 +373,8 @@ private fun SubjectHeader(col: SubjectColumnDto) {
 private fun SubjectCell(col: SubjectColumnDto, sub: SubjectResultDto?) {
     Box(Modifier.width(SUBJ_W).fillMaxHeight(), contentAlignment = Alignment.Center) {
         when {
+            // An optional subject this student doesn't take: never a 0, never counted.
+            sub?.notTaken == true -> NotTaken()
             sub == null || sub.status == "missing" -> Dash()
             col.graded() -> MarkValue(sub.gradeLetter?.ifBlank { null } ?: "—", partial = sub.status == "partial")
             else -> MarkValue(fmtNum(sub.obtained), partial = sub.status == "partial")
@@ -400,28 +411,49 @@ private fun Dash() {
     Text("—", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
+/** An optional subject the student doesn't take: muted N/A (the legend explains it). */
 @Composable
-private fun DraftBadge(modifier: Modifier = Modifier) {
+private fun NotTaken() {
     Text(
-        "Draft",
-        modifier = modifier
-            .border(1.dp, Amber, RoundedCornerShape(4.dp))
-            .padding(horizontal = 4.dp),
-        color = Amber,
-        fontSize = 9.sp,
-        lineHeight = 12.sp,
-        fontWeight = FontWeight.SemiBold,
+        "N/A",
+        modifier = Modifier.semantics { contentDescription = "Not taken (optional subject)" },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
 @Composable
-private fun Legend(showDraft: Boolean) {
+private fun Tag(text: String, color: Color, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        modifier = modifier
+            .border(1.dp, color, RoundedCornerShape(4.dp))
+            .padding(horizontal = 4.dp),
+        color = color,
+        fontSize = 9.sp,
+        lineHeight = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        maxLines = 1,
+    )
+}
+
+@Composable
+private fun DraftBadge(modifier: Modifier = Modifier) = Tag("Draft", Amber, modifier)
+
+/** An optional subject: taken only by the students enrolled on it, and never counted for passing. */
+@Composable
+private fun OptionalTag(modifier: Modifier = Modifier) =
+    Tag("Optional", MaterialTheme.colorScheme.onSurfaceVariant, modifier)
+
+@Composable
+private fun Legend(showDraft: Boolean, showNotTaken: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(6.dp).clip(CircleShape).background(Amber))
         Text(
             buildString {
                 append(" some exams missing   — not entered")
                 if (showDraft) append("   Draft = not submitted yet")
+                if (showNotTaken) append("   N/A = optional subject not taken")
             },
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -583,6 +615,7 @@ private fun ReportCardButton(enabled: Boolean, busy: Boolean, onClick: () -> Uni
 @Composable
 private fun SubjectBlock(col: SubjectColumnDto, sub: SubjectResultDto?) {
     val graded = col.graded()
+    val notTaken = sub?.notTaken == true
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -591,16 +624,31 @@ private fun SubjectBlock(col: SubjectColumnDto, sub: SubjectResultDto?) {
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.SemiBold,
             )
-            val summary = when {
-                sub == null || sub.status == "missing" -> "—"
-                graded -> sub.gradeLetter?.ifBlank { null } ?: "—"
-                // A subject's grade only once all its exams are in, as on the report card:
-                // the marks so far over the whole max would understate it.
-                else -> "${fmtNum(sub.obtained)}/${fmtNum(sub.max)}" +
-                    (sub.grade?.takeIf { sub.status == "complete" && it.isNotBlank() }?.let { " · $it" } ?: "")
+            if (notTaken) {
+                NotTaken()
+            } else {
+                // Taken: counts in the totals like any subject, but never in passing.
+                if (col.isOptional) OptionalTag(Modifier.padding(end = 6.dp))
+                val summary = when {
+                    sub == null || sub.status == "missing" -> "—"
+                    graded -> sub.gradeLetter?.ifBlank { null } ?: "—"
+                    // A subject's grade only once all its exams are in, as on the report card:
+                    // the marks so far over the whole max would understate it.
+                    else -> "${fmtNum(sub.obtained)}/${fmtNum(sub.max)}" +
+                        (sub.grade?.takeIf { sub.status == "complete" && it.isNotBlank() }?.let { " · $it" } ?: "")
+                }
+                MarkValue(summary, partial = sub?.status == "partial")
             }
-            MarkValue(summary, partial = sub?.status == "partial")
         }
+        if (notTaken) {
+            Text(
+                "Not taken (optional subject)",
+                modifier = Modifier.padding(start = 12.dp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        // A not_taken subject has no components.
         sub?.components.orEmpty().forEach { c ->
             Row(Modifier.padding(start = 12.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(

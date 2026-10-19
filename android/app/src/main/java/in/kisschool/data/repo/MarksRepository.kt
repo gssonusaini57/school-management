@@ -6,6 +6,7 @@ import `in`.kisschool.data.api.dto.BatchSaveBody
 import `in`.kisschool.data.api.dto.ClassSubjectDetailDto
 import `in`.kisschool.data.api.dto.ClassSubjectDto
 import `in`.kisschool.data.api.dto.RequestEditBody
+import `in`.kisschool.data.api.dto.SubjectEnrollmentsDto
 
 class MarksRepository(private val api: ApiService) {
 
@@ -18,6 +19,10 @@ class MarksRepository(private val api: ApiService) {
 
     suspend fun subjectDetail(subjectId: Long): ClassSubjectDetailDto =
         api.classSubjectDetail(subjectId)
+
+    /** Who takes a subject now; only asked for an optional subject (the server is new enough). */
+    suspend fun enrollments(subjectId: Long): SubjectEnrollmentsDto =
+        api.subjectEnrollments(subjectId)
 
     /** Load the batch for the (class, subject, exam_type, session) tuple, or null. */
     suspend fun getBatch(

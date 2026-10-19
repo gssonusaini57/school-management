@@ -28,6 +28,7 @@ import `in`.kisschool.data.api.dto.RequestEditBody
 import `in`.kisschool.data.api.dto.StudentDto
 import `in`.kisschool.data.api.dto.StudentPageDto
 import `in`.kisschool.data.api.dto.StudentUpdateDto
+import `in`.kisschool.data.api.dto.SubjectEnrollmentsDto
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
@@ -95,6 +96,10 @@ interface ApiService {
 
     @GET("class-subjects/{id}")
     suspend fun classSubjectDetail(@Path("id") id: Long): ClassSubjectDetailDto
+
+    /** Who takes a subject (an optional subject's students). Not on servers before optional subjects. */
+    @GET("class-subjects/{id}/enrollments")
+    suspend fun subjectEnrollments(@Path("id") id: Long): SubjectEnrollmentsDto
 
     // ── Marks batches (draft → submit → lock → request-edit) ────────────────
     @GET("marks/batches")

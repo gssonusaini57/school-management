@@ -9,6 +9,7 @@ import `in`.kisschool.data.api.dto.ClassSubjectDto
 import `in`.kisschool.data.api.dto.ExamComponentDto
 import `in`.kisschool.data.api.dto.MarkItemIn
 import `in`.kisschool.data.api.dto.StudentDto
+import `in`.kisschool.data.api.dto.SubjectEnrollmentsDto
 import `in`.kisschool.data.repo.ApiException
 import `in`.kisschool.data.repo.MarksRepository
 import `in`.kisschool.data.repo.MetaRepository
@@ -32,13 +33,28 @@ private fun entriesOf(batch: BatchDetailDto?, graded: Boolean): Map<Long, String
         row.studentId to if (graded) row.grade.orEmpty() else row.marks.toString()
     }
 
+/** Who takes [this] subject: null when the whole class does, else an optional subject's enrolled students. */
+private fun ClassSubjectDto.takers(): Set<Long>? = if (isOptional) enrolledStudentIds.toSet() else null
+
+/** [s] with who takes subject [subjectId] as the server has it now. */
+private fun withTakers(s: MarksUiState, subjectId: Long, isOptional: Boolean, studentIds: List<Long>): MarksUiState {
+    fun fresh(sub: ClassSubjectDto) =
+        if (sub.id == subjectId) sub.copy(isOptional = isOptional, enrolledStudentIds = studentIds) else sub
+    return s.copy(subjects = s.subjects.map(::fresh), subject = s.subject?.let(::fresh))
+}
+
 /**
- * [s] with the subject and its tests as Class Subjects has them now, keeping the
- * selected test by id (null when it was removed).
+ * [s] with the subject (its name and who takes it) and its tests as Class Subjects has
+ * them now, keeping the selected test by id (null when it was removed).
  */
 private fun withTests(s: MarksUiState, detail: ClassSubjectDetailDto): MarksUiState {
     val tests = detail.components.sortedBy { it.orderIndex }
-    fun renamed(sub: ClassSubjectDto) = if (sub.id == detail.id) sub.copy(subjectName = detail.subjectName) else sub
+    fun renamed(sub: ClassSubjectDto) = if (sub.id == detail.id) {
+        sub.copy(
+            subjectName = detail.subjectName,
+            isOptional = detail.isOptional, enrolledStudentIds = detail.enrolledStudentIds,
+        )
+    } else sub
     return s.copy(
         subjects = s.subjects.map(::renamed),
         subject = s.subject?.let(::renamed),
@@ -56,6 +72,28 @@ private fun Exception.testsChanged(): Boolean {
     val e = this as? ApiException ?: return false
     val msg = e.message.orEmpty()
     return e.code == 400 && (msg.startsWith("Max marks for") || msg.contains("is not an exam component"))
+}
+
+/**
+ * The 422 for a save that carried marks for students who don't take an optional subject
+ * ("… don't take Mathematics (an optional subject). …"): the subject became optional, or
+ * who takes it changed, after this screen loaded it.
+ */
+private fun Exception.notTaken(): Boolean {
+    val e = this as? ApiException ?: return false
+    return e.code == 422 && e.message.orEmpty().contains("(an optional subject)")
+}
+
+/** Why a save didn't go ahead: who takes [subject] changed on the website (the list on screen is the new one). */
+private fun takersChangedMessage(subject: String, now: SubjectEnrollmentsDto): String {
+    if (!now.isOptional) {
+        return "$subject is no longer an optional subject, so the whole class is listed now. Check the marks, then save again."
+    }
+    return when (val n = now.studentIds.size) {
+        0 -> "Who takes $subject was changed on the website: no student takes it now, so there are no marks to save."
+        1 -> "Who takes $subject was changed on the website: 1 student takes it now. Check the list, then save again."
+        else -> "Who takes $subject was changed on the website: $n students take it now. Check the list, then save again."
+    }
 }
 
 data class MarksUiState(
@@ -98,10 +136,26 @@ data class MarksUiState(
     val lockedForMe: Boolean get() = locked && !isSuperAdmin
     val pending: Boolean get() = batch?.pendingEditRequestId != null
     val editable: Boolean get() = !lockedForMe && !pending
-    val enteredCount: Int get() = marks.values.count { it.isNotBlank() }
+    /**
+     * Who takes the selected subject: null when the whole class does, else the students
+     * enrolled on an optional subject (11th/12th Mathematics). Only they are listed, and a
+     * save carries only their marks: the server refuses marks for anyone else and leaves
+     * other students' saved rows alone.
+     */
+    val takers: Set<Long>? get() = subject?.takers()
+    val optional: Boolean get() = takers != null
+    /** An optional subject no student takes yet: there is nobody to enter marks for. */
+    val noTakers: Boolean get() = takers?.isEmpty() == true
+    /** The students marks are entered for, in roll order: the class, or an optional subject's takers. */
+    val roster: List<StudentDto> get() = takers?.let { t -> students.filter { it.id in t } } ?: students
+    /** The entries a save carries: all of [marks], or only an optional subject's takers'. */
+    val entries: Map<Long, String> get() = forTakers(marks)
+    private fun forTakers(m: Map<Long, String>): Map<Long, String> =
+        takers?.let { t -> m.filterKeys { it in t } } ?: m
+    val enteredCount: Int get() = entries.values.count { it.isNotBlank() }
     val overMaxCount: Int
         get() = if (isGraded) 0
-        else marks.values.count { it.isNotBlank() && (it.toIntOrNull() ?: Int.MAX_VALUE) > maxMarks }
+        else entries.values.count { it.isNotBlank() && (it.toIntOrNull() ?: Int.MAX_VALUE) > maxMarks }
     /** The batch the selection names; null until class, subject, test and session are all set. */
     val key: BatchKey?
         get() {
@@ -115,7 +169,7 @@ data class MarksUiState(
     val marksLoaded: Boolean get() = !loadingBatch && loadedKey != null && loadedKey == key
     /** Rows take input only once this selection's saved marks are on screen. */
     val canEdit: Boolean get() = marksLoaded && editable && !busy
-    val canSave: Boolean get() = canEdit && overMaxCount == 0
+    val canSave: Boolean get() = canEdit && overMaxCount == 0 && !noTakers
     val canSubmit: Boolean get() = canSave && !locked && enteredCount > 0
     /**
      * Marks typed on screen that aren't saved yet. Changing class, subject, test or
@@ -123,7 +177,7 @@ data class MarksUiState(
      */
     val dirty: Boolean
         get() = marksLoaded &&
-            marks.filterValues { it.isNotBlank() } != entriesOf(batch, isGraded).filterValues { it.isNotBlank() }
+            entries.filterValues { it.isNotBlank() } != forTakers(entriesOf(batch, isGraded)).filterValues { it.isNotBlank() }
 }
 
 /** Which batch on-screen marks belong to: class, subject, test (exam component) and session. */
@@ -232,7 +286,9 @@ class MarksEntryViewModel(
                 val detail = marksRepo.subjectDetail(s.id)
                 set {
                     if (it.subject?.id != s.id) it
-                    else it.copy(components = detail.components.sortedBy { c -> c.orderIndex })
+                    // Who takes it as of now, too: the class's subject list may be older.
+                    else withTakers(it, s.id, detail.isOptional, detail.enrolledStudentIds)
+                        .copy(components = detail.components.sortedBy { c -> c.orderIndex })
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -318,7 +374,7 @@ class MarksEntryViewModel(
     }
 
     private fun buildBody(s: MarksUiState): BatchSaveBody {
-        val items = s.marks.filter { it.value.isNotBlank() }.mapNotNull { (id, v) ->
+        val items = s.entries.filter { it.value.isNotBlank() }.mapNotNull { (id, v) ->
             if (s.isGraded) MarkItemIn(studentId = id, grade = v)
             else v.toIntOrNull()?.let { MarkItemIn(studentId = id, marks = it) }
         }
@@ -343,13 +399,17 @@ class MarksEntryViewModel(
         set { it.copy(busy = true, error = null, message = null) }
         viewModelScope.launch {
             try {
+                if (takersChanged(key, s.subject)) return@launch
                 val saved = marksRepo.saveBatch(body)
                 applySaved(key, saved, if (wasLocked) "Changes saved (marks stay submitted)" else "Draft saved")
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (e.testsChanged()) afterTestsChanged(key, e, "Save failed")
-                else set { failedSave(it, key, e, "Save failed") }
+                when {
+                    e.testsChanged() -> afterTestsChanged(key, e, "Save failed")
+                    e.notTaken() -> afterTakersRefused(key, e, "Save failed")
+                    else -> set { failedSave(it, key, e, "Save failed") }
+                }
             }
         }
     }
@@ -362,6 +422,7 @@ class MarksEntryViewModel(
         set { it.copy(busy = true, error = null, message = null) }
         viewModelScope.launch {
             try {
+                if (takersChanged(key, s.subject)) return@launch
                 val saved = marksRepo.saveBatch(body)   // capture latest edits first
                 // Keep the saved draft now: if the lock below fails, the next save or submit
                 // must name this batch and its revision, not the copy the screen had before.
@@ -371,8 +432,11 @@ class MarksEntryViewModel(
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                if (e.testsChanged()) afterTestsChanged(key, e, "Submit failed")
-                else set { failedSave(it, key, e, "Submit failed") }
+                when {
+                    e.testsChanged() -> afterTestsChanged(key, e, "Submit failed")
+                    e.notTaken() -> afterTakersRefused(key, e, "Submit failed")
+                    else -> set { failedSave(it, key, e, "Submit failed") }
+                }
             }
         }
     }
@@ -458,6 +522,52 @@ class MarksEntryViewModel(
                 error = "Class Subjects changed after this test was picked: " + changes.joinToString("; ") + ". " +
                     if (reload) "Load the marks again, check them, then save." else "Check the marks, then save again."
             )
+        }
+    }
+
+    /**
+     * Before saving an optional subject. A save carries only the students listed as taking
+     * it, and the server removes the saved marks of any student taking it whom a save leaves
+     * out; who takes it can change on the website while this screen is open. So ask who
+     * takes it now: when that changed, show the current list instead of saving and return
+     * true. A subject the screen has as taken by the whole class needs no check (marks for
+     * a student who doesn't take it are refused, see [afterTakersRefused]).
+     */
+    private suspend fun takersChanged(key: BatchKey, subject: ClassSubjectDto?): Boolean {
+        val sub = subject?.takeIf { it.id == key.subjectId && it.isOptional } ?: return false
+        val now = marksRepo.enrollments(sub.id)
+        if (now.isOptional && now.studentIds.toSet() == sub.enrolledStudentIds.toSet()) return false
+        set {
+            if (it.key != key) it.copy(busy = false)
+            else withTakers(it, sub.id, now.isOptional, now.studentIds)
+                .copy(busy = false, error = takersChangedMessage(sub.subjectName, now))
+        }
+        return true
+    }
+
+    /**
+     * A save refused (422) because it carried marks for students who don't take an
+     * optional subject (see [notTaken]). Ask who takes it now, so only they are listed
+     * and sent; the marks typed for them stay.
+     */
+    private suspend fun afterTakersRefused(key: BatchKey, e: Exception, fallback: String) {
+        val now = try {
+            marksRepo.enrollments(key.subjectId)
+        } catch (c: CancellationException) {
+            throw c
+        } catch (_: Exception) {
+            null
+        }
+        set {
+            val msg = e.userMessage(fallback)
+            when {
+                it.key != key -> it.copy(busy = false)
+                now == null -> it.copy(busy = false, error = msg)
+                else -> withTakers(it, key.subjectId, now.isOptional, now.studentIds).copy(
+                    busy = false,
+                    error = "$msg The list now shows only the students taking it. Check the marks, then save again.",
+                )
+            }
         }
     }
 

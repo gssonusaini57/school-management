@@ -37,6 +37,11 @@ data class SubjectColumnDto(
     /** Worst status over the in-scope batches: submitted | draft | none. */
     @SerializedName("batch_status") val batchStatus: String = "none",
     val components: List<ComponentInfoDto> = emptyList(),
+    /**
+     * Taken only by the students enrolled on it (11th/12th Mathematics); everyone else's
+     * result for it has status "not_taken". It never counts towards passing.
+     */
+    @SerializedName("is_optional") val isOptional: Boolean = false,
 )
 
 /** Per-exam column of the "components" layout (an exam group, or a whole term on Annual). */
@@ -81,8 +86,14 @@ data class SubjectResultDto(
     val percentage: Double? = null,
     /** Null until every in-scope exam of the subject is in (as on the report card); null for graded subjects. */
     val grade: String? = null,
-    val status: String = "missing",             // complete | partial | missing
+    /**
+     * complete | partial | missing, or not_taken: an optional subject this student doesn't
+     * take. A not_taken subject carries nothing (obtained 0, max 0, no components) and the
+     * server leaves it out of the student's totals, grade and completeness. Show N/A.
+     */
+    val status: String = "missing",
     @SerializedName("is_grading") val isGrading: Boolean = false,
+    @SerializedName("is_optional") val isOptional: Boolean = false,
     /** Graded subjects: the letter for this scope (the latest term's on Annual). */
     @SerializedName("grade_letter") val gradeLetter: String? = null,
     /** Graded subjects: {"1": "A2", "2": "B1"} (JSON object keys are strings). */
@@ -92,7 +103,10 @@ data class SubjectResultDto(
     @SerializedName("components_marked") val componentsMarked: Int = 0,
     val components: List<ComponentMarkDto> = emptyList(),
     val cells: List<ResultCellDto> = emptyList(),
-)
+) {
+    /** An optional subject the student doesn't take: shown as N/A, never counted (no backing field, so not JSON). */
+    val notTaken: Boolean get() = status == "not_taken"
+}
 
 /** Attendance over the scope's dates (non-holiday days; a half day counts 0.5). */
 data class AttendanceSummaryDto(
@@ -115,7 +129,10 @@ data class StudentResultDto(
     /** Null while any subject in the scope is incomplete (as on the report card). */
     val grade: String? = null,
     @SerializedName("has_marks") val hasMarks: Boolean = false,
-    /** Competition rank (1, 2, 2, 4) on total marks; null when the student has no marks. */
+    /**
+     * Competition rank (1, 2, 2, 4) on the exact percentage (older servers: on total marks,
+     * the same order in a class without optional subjects); null when the student has no marks.
+     */
     val rank: Int? = null,
     @SerializedName("pass_status") val passStatus: String? = null,      // pass | fail | incomplete
     @SerializedName("failed_subjects") val failedSubjects: List<String> = emptyList(),
