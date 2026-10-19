@@ -122,3 +122,9 @@ import { T, BilingualHeading, BilingualBody } from "@/components/T";
 ## When updating the handoff
 
 If the handoff zip ever updates, regenerate via the `node -e` script in `packages/design-system/README.md`. Do not hand-edit the en/pa JSON drift across the two — they must stay in lockstep on every key.
+
+## Android app (Session 19)
+- Palette lives in `android/app/src/main/java/in/kisschool/ui/theme/Theme.kt`: `KisColors` (light + dark values; screens read `KISTheme.colors`, never raw `Color(0x…)` that assumes a light background) and one accent per module via `KisModule` → `ModuleAccent(fg, container, strip)` — Attendance khalsa-blue, Students teal, Marks violet, Results gold (raw `#F5C518` never as text on light), Approvals red, Notices amber, Fees green, Staff slate. Icons: `KisIcons`.
+- **Light is the default theme** (owner-approved look: navy/blue gradient behind a light card, dark-blue school name); Settings offers Light / Dark / Same as phone. Every screen has the navy top bar (`kisTopAppBarColors()`) so status-bar icons stay white.
+- Playfair Display Bold is bundled (`res/font/playfair_display_bold.ttf`, OFL text in `assets/fonts/`) — greeting, school name and drawer header only; everything else default sans.
+- Attendance bands: ≥ 90 % `present`, 75–89 % `leave` (amber), < 75 % `absent` (75 % = PSEB eligibility line), unmarked `noStatus`.

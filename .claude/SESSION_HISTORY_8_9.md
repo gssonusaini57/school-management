@@ -65,3 +65,37 @@ the Session 13 archive sweep. Linked from CLAUDE.md → ## Session History.
 **Verified E2E:** render → cached on 2nd call → PATCH bumps version → new render+pdf_id → DELETE cascades cache → legacy POST 410. Bundle: 866 KB JS / 267 KB gz. Snapshot: `app_20260508_180215.tgz`.
 
 **Bug-fixes during the session:** WeasyPrint footer collapse (Gotcha #14), logo aspect (15), router ordering (13), SQLAlchemy Enum attribute-vs-value (12), admin password SSH-reset (user-authorised).
+
+
+---
+
+## Appendix — the CLAUDE.md "Design system" section as it stood on 2026-10-19 (condensed there in the Session 19 save)
+
+### Design system (KIS brand handoff — Session 8 shipped)
+
+Handoff package at [_handoff/khalsa-international-handoff/](../_handoff/khalsa-international-handoff/). Tokens / fonts / bilingual i18n / brand SVGs mirrored at [packages/design-system/](../packages/design-system/). The React portal, the static public site at `public-site/`, and the WeasyPrint PDF templates all share the same palette and fonts (Playfair Display · Cinzel · Cormorant Garamond · Manrope · Noto Sans Gurmukhi).
+
+**For implementation rules (tokens / i18n / currency-date / Punjabi-fallback) read the skill at [.claude/skills/kis-design-system/SKILL.md](./skills/kis-design-system/SKILL.md) before editing any UI or copy.**
+
+**Surfaces (delivered):**
+- Public marketing site → static HTML via Eleventy + Tailwind CLI in `public-site/`, deployed to the PROD root (kisschool.in). TEST has no public site. (Separate from the React app.)
+- Staff portal at `/admin/` (PROD) · `/kisschool/admin/` (TEST) → retrofitted to KIS palette + bilingual scaffolding.
+- Print PDFs → Python WeasyPrint pipeline in `backend/app/pdf/`. **Sprint 5 polished + shipped Session 8**: 6 doc kinds (letterhead-a/b, fee-receipt, salary-slip, report-card, pseb-admit-card) with shared brand frame (tri-band, Cinzel motto footer, watermark crest). Footer pinned via `position: fixed` (Gotcha #14).
+- **NEW Session 8: class-templated bulk PDF flow** for `report-card` and `pseb-admit-card` — admin saves per-class config once, fills per-student data in a spreadsheet, bulk-renders with server-side cache keyed on `(kind, student_id, template_id, template_version)`. Editing a template bumps the version and auto-invalidates the cache.
+- Parent mobile app — **still deferred**.
+
+**Migration status (Sprint 1 = foundation, Sprint 6 = final report):**
+
+| Track | Status |
+|---|---|
+| Sprint 1 — `packages/design-system/`, fonts, i18n libs in portal | ✅ shipped |
+| Sprint 2 — Restyle React portal shadcn primitives to KIS tokens | ✅ shipped |
+| Sprint 3 — Static public site (Eleventy, en+pa, 9 pages) | ✅ shipped |
+| Sprint 4 — Bilingual the staff portal (en+pa across 12 pages) | 🟡 partial — login + sidebar + new Templates page bilingual; per-page table headers + form labels TODO |
+| Sprint 5 — Print PDF templates (WeasyPrint, 6 templates) | ✅ shipped |
+| Sprint 6 — STATUS.md + Lighthouse + axe report | ❌ pending |
+| **Sprint 7 (new)** — Class-templated bulk PDF flow with cache | ✅ shipped Session 8 |
+
+Active plan file: `/Users/manjeetsaini/.claude/plans/reactive-chasing-crab.md` (currently holds Sprint 7 — the templated-PDF spec).
+
+---

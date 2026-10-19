@@ -1,39 +1,18 @@
 # Project Memory
-**Last Updated:** 2026-10-19 | **Sessions:** 18 (1–12 archived) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in (served at the domain ROOT) **and** TEST at http://69.62.72.137/kisschool/admin/ — since 2026-10-19 a **second instance on the prod box** (plain HTTP, no public site, data = prod clone; Gotcha #23). Android teacher app ships as **`in.kisschool`** (prod/staging flavors + force-update gate): prod **v1.2.6 build 19**, staging **v1.2.7 build 20**. Prod runs the Session 18 code at schema **0013** (verified 2026-10-19); dev HEAD adds 0014–0017, already rehearsed on the TEST prod-clone.
-> **Admin logins (both instances):** admin `gssonusaini57@gmail.com` · super-admin `khalsainternationalschool@gmail.com` (hardcoded `ADMIN_EMAIL`/`SUPER_ADMIN_EMAIL` in auth.py since a20133c). Passwords are user-known only — `admin123` is rejected on prod (verified 2026-10-19). Staff log in by email-or-phone + password. TEST's DB is a prod clone, so every hash matches prod; TEST has no SMTP (email off).
+**Last Updated:** 2026-10-19 | **Sessions:** 19 (1–16 archived or in memory; 18–19 detail in archives) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in (still `54db9cd`, schema **0013**, Android **v1.2.6 build 19**) **and** TEST at http://69.62.72.137/kisschool/admin/ (second instance on the prod box, Gotcha #23) running dev `a71d7b7`, schema **0021** — Results v2, optional subjects, role dashboards, stay-signed-in — with staging app **v1.3.3 build 24**. **Promoting 0014–0021 + app 1.3.x to prod awaits the owner's go-ahead.**
+> **Admin logins (both instances):** admin `gssonusaini57@gmail.com` · super-admin `khalsainternationalschool@gmail.com` (hardcoded `ADMIN_EMAIL`/`SUPER_ADMIN_EMAIL` in auth.py since a20133c). Passwords are user-known only — `admin123` is rejected on prod (verified 2026-10-19). Staff log in by email-or-phone + password. TEST's DB is a prod clone, so every hash matches prod; TEST has no SMTP (email off). On TEST every active staff member also has an admin-set *temporary* password (value user-known, never recorded) for teacher-view testing; `/sync-test-data` wipes it.
 
 > Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test*`, `/sync-test-data`, `/deploy-prod*` (incl. `/deploy-prod-public-site`), `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`, `/deep-analysis`. Android APK build: `bash scripts/build-android.sh {prod|test}` (local, needs keystore).
 
 ---
 
-## Design system (KIS brand handoff — Session 8 shipped)
+## Design system (KIS brand handoff)
 
-Handoff package at [_handoff/khalsa-international-handoff/](../_handoff/khalsa-international-handoff/). Tokens / fonts / bilingual i18n / brand SVGs mirrored at [packages/design-system/](../packages/design-system/). The React portal, the static public site at `public-site/`, and the WeasyPrint PDF templates all share the same palette and fonts (Playfair Display · Cinzel · Cormorant Garamond · Manrope · Noto Sans Gurmukhi).
+Handoff package at [_handoff/khalsa-international-handoff/](../_handoff/khalsa-international-handoff/); tokens / fonts / bilingual i18n / brand SVGs mirrored at [packages/design-system/](../packages/design-system/) (`tokens.css` is generated — never hand-edit). One palette across the React portal, the Eleventy public site (`public-site/`, PROD root only), the WeasyPrint PDFs (`backend/app/pdf/`) and, since Session 19, the Android app: khalsa-blue `#0E2F8E` · royal-gold `#F5C518` · sangat-red `#E11D2C` · vasant-cream `#FFF6CC` · deep-indigo `#08205C`; fonts Playfair Display · Cinzel · Cormorant Garamond · Manrope · Noto Sans Gurmukhi.
 
-**For implementation rules (tokens / i18n / currency-date / Punjabi-fallback) read the skill at [.claude/skills/kis-design-system/SKILL.md](./skills/kis-design-system/SKILL.md) before editing any UI or copy.**
+**For implementation rules (tokens / i18n / currency-date / Punjabi-fallback / Android palette) read [.claude/skills/kis-design-system/SKILL.md](./skills/kis-design-system/SKILL.md) before editing any UI or copy.**
 
-**Surfaces (delivered):**
-- Public marketing site → static HTML via Eleventy + Tailwind CLI in `public-site/`, deployed to the PROD root (kisschool.in). TEST has no public site. (Separate from the React app.)
-- Staff portal at `/admin/` (PROD) · `/kisschool/admin/` (TEST) → retrofitted to KIS palette + bilingual scaffolding.
-- Print PDFs → Python WeasyPrint pipeline in `backend/app/pdf/`. **Sprint 5 polished + shipped Session 8**: 6 doc kinds (letterhead-a/b, fee-receipt, salary-slip, report-card, pseb-admit-card) with shared brand frame (tri-band, Cinzel motto footer, watermark crest). Footer pinned via `position: fixed` (Gotcha #14).
-- **NEW Session 8: class-templated bulk PDF flow** for `report-card` and `pseb-admit-card` — admin saves per-class config once, fills per-student data in a spreadsheet, bulk-renders with server-side cache keyed on `(kind, student_id, template_id, template_version)`. Editing a template bumps the version and auto-invalidates the cache.
-- Parent mobile app — **still deferred**.
-
-**Migration status (Sprint 1 = foundation, Sprint 6 = final report):**
-
-| Track | Status |
-|---|---|
-| Sprint 1 — `packages/design-system/`, fonts, i18n libs in portal | ✅ shipped |
-| Sprint 2 — Restyle React portal shadcn primitives to KIS tokens | ✅ shipped |
-| Sprint 3 — Static public site (Eleventy, en+pa, 9 pages) | ✅ shipped |
-| Sprint 4 — Bilingual the staff portal (en+pa across 12 pages) | 🟡 partial — login + sidebar + new Templates page bilingual; per-page table headers + form labels TODO |
-| Sprint 5 — Print PDF templates (WeasyPrint, 6 templates) | ✅ shipped |
-| Sprint 6 — STATUS.md + Lighthouse + axe report | ❌ pending |
-| **Sprint 7 (new)** — Class-templated bulk PDF flow with cache | ✅ shipped Session 8 |
-
-Active plan file: `/Users/manjeetsaini/.claude/plans/reactive-chasing-crab.md` (currently holds Sprint 7 — the templated-PDF spec).
-
----
+Sprints 1–3, 5, 7 ✅ · Sprint 4 (bilingual portal) 🟡 new pages bilingual, older Students/Attendance/Fees/Staff/Reports labels English-only · Sprint 6 (STATUS.md + Lighthouse + axe) ❌ · parent app deferred. The sprint table and the class-templated PDF notes → [SESSION_HISTORY_8_9.md](./SESSION_HISTORY_8_9.md) (appendix).
 
 ## Project Overview
 **KIS School Management Portal** — Internal web app for KIS (a single school).
@@ -42,6 +21,12 @@ Used daily by administrators and teachers to manage students, attendance, marks,
 **Status (post-migration scaffold):** Firebase fully ripped out. New stack:
 - **Backend:** FastAPI + MySQL (test VPS reuses uploadmytds's MySQL instance)
 - **Frontend:** React + Vite + TypeScript + Tailwind + shadcn/ui
+- **Sessions & meta (Session 19):** `GET /api/sessions` · `GET /api/sessions/current` · `GET /api/sessions/defaults?session=` (super-admin) · `POST /api/sessions` + `PATCH /api/sessions/{id}` (super-admin) · `GET /api/meta` (grade letters/bands, houses, classes)
+- **Results v2:** `GET /api/marks/results?class=&session=&scope=term1|term2|annual&include_drafts=` (menu `marks-results`; exam groups, rank by exact %, attendance, `not_taken` for optional subjects) · `GET /api/marks/batches/summary?session=[&class=]` (submitted/draft/missing per class·subject·exam) · `POST /api/marks/batches` takes `base_batch_id` + `base_revision` (409 on a stale screen; saves without them may not remove saved marks)
+- **Optional subjects:** `GET/PUT /api/class-subjects/{id}/enrollments` (PUT super-admin); class-subject responses carry `is_optional` + `enrolled_student_ids`
+- **Attendance summaries:** `GET /api/attendance/class-summary?from=&to=` (per class, ≤ 92 days, half day = 0.5, caller's classes only) · `GET /api/attendance/marked-dates?class=&from=&to=` · `GET /api/attendance/today-summary`
+- **Report cards v2:** `GET /api/pdf/templates/resolve?kind&class&session&scope` · `POST /api/pdf/templates/bulk-create` · `GET /api/pdf/templates/{id}/roster` · `GET …/{id}/preview` · `POST /api/pdf/templates/{id}/render-jobs` → `GET /api/pdf/render-jobs/{id}` (+ `/cancel`, `/zip`, `/zip/inline?token=`)
+- **Stay signed in (Session 19):** `POST /api/auth/login` + `remember`, `device{name,platform}` → `refresh_token` (app) or HttpOnly cookie `kis_refresh` (web) · `POST /api/auth/refresh` (rotates) · `POST /api/auth/logout` (Bearer optional) · `GET/DELETE /api/auth/sessions[/{id}]` · `DELETE /api/staff/{id}/sessions` (admin) — Gotcha #25
 - **Realtime:** Server-Sent Events (no Firebase listeners)
 - **Auth:** JWT with bcrypt-hashed credentials (admin password + staff access codes)
 - **Hosting:** PROD `https://kisschool.in` and TEST `http://69.62.72.137/kisschool/` — two instances on one VPS `69.62.72.137`
@@ -70,83 +55,31 @@ Used daily by administrators and teachers to manage students, attendance, marks,
 ## Repo Layout
 ```
 school-management/
-├── backend/                      # FastAPI app
+├── backend/                      FastAPI (Python 3.12)
 │   ├── app/
-│   │   ├── main.py               # FastAPI entry, mounts /api/* routers
-│   │   ├── config.py             # pydantic-settings .env loader
-│   │   ├── db.py                 # SQLAlchemy engine + session factory
-│   │   ├── security.py           # bcrypt + JWT helpers
-│   │   ├── deps.py               # current_user / require_admin / class scope
-│   │   ├── events.py             # in-process pub/sub broker for SSE
-│   │   ├── models/               # SQLAlchemy ORM (admin/staff/student/document/attendance/marks/fee/notice)
-│   │   ├── schemas/              # Pydantic request/response models
-│   │   └── routers/              # auth, students, files, attendance, marks, fees, notices, staff, reports, stream, health
-│   ├── alembic/versions/         # Migrations (0001_initial.py = baseline)
-│   ├── alembic.ini, alembic/env.py
-│   ├── requirements.txt          # FastAPI, SQLAlchemy, Alembic, PyJWT, passlib, sse-starlette, etc.
-│   └── pyproject.toml
-├── frontend/                     # React SPA
-│   ├── src/
-│   │   ├── main.tsx              # QueryClient + BrowserRouter
-│   │   ├── App.tsx               # Routes (Login + protected Layout)
-│   │   ├── components/
-│   │   │   ├── Layout.tsx        # Sidebar + topbar
-│   │   │   ├── ProtectedRoute.tsx
-│   │   │   ├── ChangePasswordDialog.tsx
-│   │   │   └── ui/               # shadcn primitives
-│   │   ├── pages/
-│   │   │   ├── Login, Dashboard, Admissions, Students, StudentDetail
-│   │   │   ├── Attendance, MarksEntry, MarksResults, Fees
-│   │   │   └── Notices, Staff, Reports
-│   │   ├── lib/
-│   │   │   ├── api.ts            # axios instance + Bearer + 401 redirect
-│   │   │   ├── auth.ts           # token + user helpers (useAuth hook)
-│   │   │   ├── sse.ts            # useSSE(channel, invalidationKeys)
-│   │   │   ├── compress.ts       # client-side image compression (900px JPEG q=0.75)
-│   │   │   └── utils.ts          # cn(), CLASSES, COLORS, formatDate, formatCurrency
-│   │   ├── types/api.ts          # mirrors backend Pydantic schemas
-│   │   └── styles/globals.css    # Tailwind base + CSS vars
-│   ├── vite.config.ts            # base = VITE_BASE (default "/kisschool/admin/"), dev proxy /api → :8000
-│   ├── tailwind.config.ts
-│   ├── tsconfig.json             # path alias @/* → src/*
-│   ├── .env.production           # VITE_API_URL=/kisschool/api (deploys export the real value)
-│   ├── .env.development          # VITE_API_URL=/api
-│   └── package.json
-├── ios/                          # Native SwiftUI teacher app (Session 7) — XcodeGen-driven, .xcodeproj NOT committed
-│   ├── project.yml                    # XcodeGen single source of truth
-│   ├── version.xcconfig               # MARKETING_VERSION + CURRENT_PROJECT_VERSION
-│   ├── KisAttendance/
-│   │   ├── App/KisAttendanceApp.swift
-│   │   ├── Data/{ApiClient,AuthStore,Models}.swift   # URLSession + Keychain + Codable DTOs
-│   │   ├── UI/{AppRoot, Login, Home, Attendance, History, Students}/*.swift
-│   │   └── Resources/{Info.plist, Assets.xcassets}
-│   ├── scripts/build-ios.sh           # auto-bumps build #, runs xcodegen, archives, exports .ipa
-│   └── README.md                      # setup + distribution paths (TestFlight / Ad Hoc / App Store)
-├── android/                      # Native Kotlin + Jetpack Compose teacher app (Session 6)
-│   ├── app/src/main/java/com/expressonly/kisattendance/
-│   │   ├── MainActivity.kt + KisApp.kt
-│   │   ├── data/{api,auth,repo}/      # Retrofit + EncryptedSharedPreferences + repos
-│   │   ├── di/AppContainer.kt         # manual DI (no Hilt — keeps APK ~3 MB)
-│   │   └── ui/{theme,nav,components,screens/{login,home,attendance,history,students,studentdetail}}
-│   ├── app/src/main/res/             # adaptive icons (vector), Material3 XML theme, network_security_config
-│   ├── app/build.gradle.kts          # AGP 8.5.2, Kotlin 2.0.21, Compose BOM 2024.10.01, minSdk 26 / targetSdk 34
-│   ├── keystore/                     # GITIGNORED — kis-release.jks + keystore.properties
-│   └── README.md                     # build + sign + sideload instructions
-├── deploy/
-│   ├── school-management.service # systemd unit TEMPLATE (__APP_ROOT__ / __APP_USER__ / __APP_PORT__)
-│   ├── nginx.kisschool.conf      # PROD vhost (kisschool.in, root layout → :8000)
-│   ├── nginx.school-test.conf    # TEST snippet TEMPLATE (/kisschool/… → :8001), included from the enamfoss vhost
-│   └── .env.example              # DATABASE_URL, JWT_SECRET, CORS_ORIGINS, APP_BASE_URL, SMTP (prod only)
-├── scripts/build-android.sh      # build signed APK + copy to frontend/public/downloads/
-├── scripts/deploy/{common,test,prod}/ # env.sh knobs + lib.sh; deploy-*, upload-apk, check-logs, … (+ test/sync-from-prod.sh)
-├── _archive/
-│   └── index.firebase.html       # OLD Firebase single-file app (reference only)
-├── .gitignore
-├── README.md
-└── .claude/CLAUDE.md             # this file
+│   │   ├── main.py config.py db.py security.py deps.py events.py constants.py permissions.py notifications.py
+│   │   ├── models/ schemas/ routers/   auth students attendance marks marks_batches class_subjects sessions meta
+│   │   │                               pdf pdf_templates pdf_render_jobs fees notices staff reports stream files
+│   │   │                               edit_requests deletion_requests health
+│   │   ├── services/             results (pure engine) · report_cards · attendance_summary · sessions · roster
+│   │   │                         · marks_batches · enrollments · render_jobs · device_sessions
+│   │   ├── pdf/                  WeasyPrint builder, labels, templates/*.html.j2 (Gotchas #10, #24)
+│   │   ├── jobs/render_job.py    detached bulk report-card runner · seed/exam_pattern.py
+│   ├── alembic/versions/         0001 … 0021 (see Database Schema)
+│   └── tests/                    pytest on in-memory SQLite (conftest.py, factories.py) — 261 tests
+├── frontend/src/                 React 18 + Vite: pages/ components/ (report-cards/, ClassAttendanceCard/Chart …)
+│                                 lib/ (api auth sse pdf session unsaved …) types/api.ts
+├── android/                      Kotlin/Compose `in.kisschool` — app/src/main/java/in/kisschool/{data/{api,auth,repo,settings},
+│                                 di, ui/{theme,nav,components,lock,update,screens/*}, util}; version.properties; keystore/ (gitignored)
+├── ios/                          SwiftUI scaffold (XcodeGen) — far behind Android
+├── packages/design-system/       tokens.css (generated) · i18n/portal-{en,pa}.json · brand/
+├── public-site/                  Eleventy marketing site (PROD root)
+├── deploy/                       systemd unit + nginx TEMPLATES, .env.example
+├── scripts/                      build-android.sh · deploy/{common,test,prod}/ · provision/ (Gotcha #23)
+├── docs/ROADMAP.md               future work (not scheduled)
+├── _handoff/ _archive/           brand handoff package · old Firebase index.html
+└── .claude/                      CLAUDE.md, SESSION_HISTORY_*/GOTCHAS_* archives, commands/, skills/, memory/ (= auto-memory)
 ```
-
----
 
 ## Live URLs
 **PROD — kisschool.in (served at ROOT; shared box `69.62.72.137`, key `~/.ssh/enamfoss_prod`, coexists with the enamfoss Tomcat app):**
@@ -161,7 +94,7 @@ school-management/
 - **Students:** `GET/POST /api/students`, `GET/PATCH/DELETE /api/students/{id}`
 - **Documents:** `POST /api/students/{id}/documents/{photo|dob_cert|aadhar}` (multipart), `GET /api/files/students/{id}/{kind}` (Bearer) or `…/inline?token=` (for `<img>` tags)
 - **Attendance:** `GET /api/attendance?class=&date=`, `PUT /api/attendance`, `GET /api/attendance/today-summary`
-- **Marks (legacy free-text):** `POST /api/marks/bulk` + `POST /api/marks/bulk-import` (CSV) write `batch_id=NULL` rows. `GET /api/marks?class=&exam_type=` still pivots all rows for MarksResults.
+- **Marks (legacy):** `POST /api/marks/bulk` → **410 Gone**; `POST /api/marks/bulk-import` (admin, CSV with `session`) routes rows through the batch upsert. `GET /api/marks?class=&exam_type=` still pivots raw rows.
 - **Marks (Session 13 batched workflow):**
   - `GET /api/marks/batches?class=&subject=&exam_type=&session=` — single batch + items, or null
   - `POST /api/marks/batches` — upsert (creates draft if absent; refuses submitted batch for non-super-admin → 409)
@@ -210,8 +143,16 @@ school-management/
 | **subject_exam_components (Session 13)** | id BIGINT | (class_subject_id, component_name) UNIQUE; `max_marks`, `order_index`; CASCADE on subject delete |
 | **marks_batches (Session 13)** | id BIGINT | (class_name, subject, exam_type, session) UNIQUE; `max_marks`, `status` ENUM('draft','submitted'), `created_by`, `submitted_at/by` |
 | **marks_edit_requests (Session 13)** | id BIGINT | FK batch_id CASCADE; INDEX(batch_id, status); `requested_by_role` ENUM, `reason` TEXT NOT NULL, `status` ENUM('pending','approved','rejected'), `reviewed_at/by/reject_reason` |
+| **academic_sessions (0014)** | id | `session` UNIQUE (e.g. `2026-27`), starts_on/ends_on, term1_start/end, term2_start/end, `is_current` |
+| marks.grade (0015) | — | VARCHAR(4) letter (A1…D) for grading components (max 0) |
+| pdf_templates.scope / layout (0016) | — | scope `term1`/`term2`/`annual`; layout `summary`/`components` |
+| **pdf_render_jobs (0017)** | id | template FK CASCADE, status queued→running→done/failed/cancelled, student_ids/results JSON, counters, heartbeat_at, worker_pid |
+| marks_batches.revision (0018) | — | INT bumped on every write to the batch; a stale `base_revision` → 409 |
+| *(0019, data only)* | — | cleared the v1 per-student report-card overrides |
+| class_subjects.is_optional + **subject_enrollments (0020)** | id | (class_subject_id, student_id) UNIQUE, FK CASCADE both — who takes an optional subject |
+| **device_sessions (0021)** | id | account_type + account_ref (= JWT sub), token_hash UNIQUE (sha256), family_id, platform, via, expires_at (30 d sliding), absolute_expires_at (180 d), rotated_at/replaced_by_id, revoked_at/revoked_reason (Gotcha #25) |
 
-All migrations live under `backend/alembic/versions/`. `0001_initial.py` is the baseline; `0008_class_subjects.py` + `0009_marks_batches_edit_requests.py` are the Session 13 additions. **Never** call `metadata.create_all()`; always use `alembic upgrade head`.
+All migrations live under `backend/alembic/versions/` (`0001_initial` … `0021_device_sessions`: 0008–0009 Session 13, 0010–0011 Session 16, 0012 Session 17, 0013 Session 18, 0014–0021 Session 19). **Prod is at 0013, TEST at 0021.** **Never** call `metadata.create_all()` outside tests; always `alembic upgrade head`.
 
 ---
 
@@ -225,11 +166,15 @@ Cheat sheet: [scripts/README.md](../scripts/README.md). Every server resource (i
 
 **TEST data:** `bash scripts/deploy/test/sync-from-prod.sh` (`/sync-test-data`) — dumps prod (`--single-transaction`, no locks) on the box → replaces `school_management_test` → `alembic upgrade head` with TEST's code → restart.
 
+**Working-copy deploys and APK publishing:** Gotcha #23. **Promoting to prod:** `bash scripts/deploy/prod/backup-db.sh` then `/deploy-prod-all`; the historical first-time prod steps → [SESSION_HISTORY_16.md](./SESSION_HISTORY_16.md) (appendix).
+
 ---
 
 ## Frontend Routes
 SPA mounted at `VITE_BASE` (`/admin/` prod · `/kisschool/admin/` test). Routes:
-`/login` (public) · `/dashboard` · `/admissions` · `/students` · `/students/:id?edit=1` · `/attendance` · `/marks/entry` · `/marks/results` · `/fees` (admin) · `/notices` · `/staff` (admin) · `/reports` (admin) · `/letterheads` (admin) · `/salary-slips` (admin) · `/templates` (admin) · `/templates/:id` (admin) · `/class-subjects` (super-admin) · `/class-subjects/:id` (super-admin) · `/deletion-requests` (super-admin) · `/edit-requests` (super-admin — student + marks tabs) · `/mobile-apps`
+`/login` (public) · `/dashboard` · `/admissions` · `/students` · `/students/:id?edit=1` · `/attendance` · `/marks/entry` · `/marks/results` · `/fees` (admin) · `/notices` · `/staff` (admin) · `/reports` (admin) · `/letterheads` (admin) · `/salary-slips` (admin) · `/templates` (admin) · `/templates/:id` (admin) · `/class-subjects` (super-admin) · `/class-subjects/:id` (super-admin) · `/sessions` (super-admin) · `/deletion-requests` (super-admin) · `/edit-requests` (super-admin — student + marks tabs) · `/mobile-apps`
+
+Results has a `?tab=report-cards` tab; the Dashboard shows the admin marked/pending classes pie (`?attendance=pending|marked|holiday`) and the class-wise attendance chart for every role.
 
 Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master, Session 13) · Administration · **Stationery** (Letterheads / Salary Slips / Templates) · Resources. The `Templates` page replaced the old single-shot `/pseb-admit-card` (Session 8); the per-row report-card download on MarksResults is gone, replaced by a banner pointing at /templates.
 
@@ -284,6 +229,8 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 
 16. **Android R8/ProGuard keep rule must track the package name.** `app/proguard-rules.pro` keeps Gson DTOs by package: `-keep class in.kisschool.data.api.dto.** { *; }`. When the package was renamed `com.expressonly.kisattendance → in.kisschool`, the old keep rule matched nothing → R8 obfuscated DTO field names in the **release** build only → the app sent login as `{"<garbled>":…}` → backend `422` (and every API call broke). Debug builds (no minify) hid it. Fix: keep rule on the new package **plus** `-keepclassmembers,allowobfuscation class * { @com.google.gson.annotations.SerializedName <fields>; }`. Verify via `app/build/outputs/mapping/<flavor>Release/mapping.txt` — the DTO class should map to itself.
 
+    **Refinement (Session 19):** anything persisted as JSON outside `data/api/dto` (e.g. the saved-accounts list in `data/auth/AccountStore.kt`) is renamed by R8 in release builds — store it with `org.json` and explicit keys, never Gson, or saved data vanishes after an app update. Per release: every `in.kisschool.data.api.dto.* -> ` line in `mapping.txt` must map to itself.
+
 17. **`frontend/vite.config.js` is a committed `tsc` artifact and Vite prefers `.js` over `.ts`.** `npm run build` (= `tsc -b && vite build`) regenerates it from `vite.config.ts`, but a bare `npx vite build` uses the STALE `.js`. Base path is build-time parametrized: `vite.config.ts` reads `process.env.VITE_BASE ?? "/kisschool/admin/"`; `VITE_API_URL` is shell-exported (overrides `.env.production`); favicon uses a `%BASE_URL%` placeholder substituted by a `transformIndexHtml` plugin (a plain relative favicon 404s on SPA deep links). `scripts/deploy/<env>/env.sh` sets `VITE_BASE`/`VITE_API_URL`/`SITE_BASE_PATH`/`HEALTH_PATH`/`SITE_URL_PATH` (test → `/kisschool/...` on `http://69.62.72.137`, prod → root). **To typecheck without building, run `npx tsc -b`** — `npx tsc -b --noEmit` fails on this repo's project-references setup with `TS6310: Referenced project 'tsconfig.node.json' may not disable emit`. See [[feedback_vite_base_parametrization]].
 
 18. **`GET /api/students` is paginated** (`{items,total,page,page_size}`) — clients must read `.items`. The Android app's bare-`List<StudentDto>` DTO silently broke against the live backend until fixed with a `StudentPageDto` wrapper. Also: `in` is a Kotlin hard keyword, so the `in.kisschool` package must be backtick-escaped (`` `in`.kisschool ``) in every `package`/`import` (Gradle `namespace`/`applicationId` strings don't); and AGP forbids a product-flavor name starting with `test` → the staging flavor is named `staging` with `applicationIdSuffix = ".test"`.
@@ -292,14 +239,17 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 
 20. **A cache key must cover EVERY input, not just the versioned one.** `pdf_cache` was keyed on `(kind, student_id, template_id, template_version)` — but a report card is also rendered from the `marks` table and `pdf_student_data`, and editing those does **not** bump `template.version`. Result: correct a student's marks, re-render, and the API happily serves the stale cached PDF. Fix (migration 0013): `pdf_cache.source_hash` = sha1 of the sorted `subject|exam_type|marks|max_marks` tuples plus the JSON-sorted student data; the lookup matches on it alongside the version, so any marks edit misses and re-renders. Consequence for the code shape: `render_or_cache` must now **gather its render inputs BEFORE the cache lookup** (the hash needs them), which inverts the old "check cache first, load nothing on a hit" ordering — a hit now costs two cheap SELECTs. Existing rows have `source_hash IS NULL` and miss exactly once. **General rule for this repo: before caching a derived artifact, enumerate every table it reads and make sure each one is either in the key or hashed into it.**
 
+    **Refinement (Session 19):** report cards now hash the final template payload (`services/report_cards.payload_hash`) together with `REPORT_CARD_TEMPLATE_REVISION` and `RESULTS_ENGINE_VERSION` — bump the template revision whenever `report-card.html.j2` changes (it is 4 after the photo/spacing fix, Gotcha #24), or cached cards keep the old look.
+
 21. **"Every class" is stored as a single literal sentinel row `class_name="All"`, so every consumer must expand it.** `staff_classes` holds one row with the string `"All"` rather than 15 rows (the staff bulk-import writes it; the frontend collapses a full selection back to `["All"]`). That literal leaked into the JWT `allowed_classes` claim and out through `GET /api/auth/me`, so the Android app and the web class pickers rendered a bogus "All" option, and `assert_class_allowed` rejected every *real* class name for those users. Fix: [backend/app/constants.py](../backend/app/constants.py) owns the canonical `CLASSES` list (mirrors `CLASSES` in [frontend/src/lib/utils.ts](../frontend/src/lib/utils.ts) and the Android list — **keep all three in sync**) plus `expand_classes` / `is_all_sentinel`. Expansion happens in **two** places on purpose: at login before the token is minted, and again in `deps._parse` on decode — the second one is what repairs tokens issued before the fix, which stay valid for up to 8h. `assert_class_allowed` also short-circuits on the sentinel as a belt-and-braces guard. **If you add a third client that reads `allowed_classes`, it gets concrete names — never special-case the string `"All"` again.**
+
+    **Refinement (Session 19):** admins and the super-admin carry an EMPTY `allowed_classes`, so clients must use the all-classes rule (`AuthRepository.visibleClasses` on Android, `isAdmin ? CLASSES : allowed_classes` on the web), never the raw list — Take attendance / Past attendance / Students showed "No classes assigned" for admins. Server side, list endpoints use `deps.classes_in_scope(user)`: the old `if user.role == "staff" and user.allowed_classes:` filter let a teacher with NO classes see every class's attendance totals and every student.
 
 22. **No AI attribution on commits or PRs — enforced in three layers, because settings alone cannot do it.** `attribution: {commit:"", pr:"", sessionUrl:false}` in `~/.claude/settings.json` *and* [.claude/settings.json](./settings.json) stops Claude Code's **automatic** trailer — but it does not stop an agent that types `Co-Authored-By:` into a commit message itself when some prompt tells it to (exactly what happened in Session 18). So:
     - **[.githooks/no-ai-attribution.sh](../.githooks/no-ai-attribution.sh)** — the single place the rule lives. Reads text on stdin, exit 1 if it finds an AI co-author/assisted-by trailer, a "generated with <AI>" line, a bot address like `noreply@anthropic.com`, or a `Claude-Session:` trailer. Extend the `AI_NAMES` alternation to cover a new model. `strict` mode anchors to line start (commit messages); `loose` also matches mid-line (one-line `git commit -m`) and **fails closed** — a commit message that merely quotes a trailer is rejected too, on purpose.
     - **[.githooks/commit-msg](../.githooks/commit-msg)** — the real backstop. Fires on commit / amend / merge / rebase / cherry-pick / squash, whoever drives it (agent, IDE, you). **Needs `git config core.hooksPath .githooks` once per clone** — `core.hooksPath` is local config and is NOT committed, so a fresh clone has no enforcement until you run it.
     - **`PreToolUse` Bash hook** in [.claude/settings.json](./settings.json), filtered by `if: "Bash(git commit *)"` / `"Bash(gh pr *)"` — fails fast with the reason before the command runs, and is the only layer that covers a `gh pr create --body`, which git hooks never see.
     - Escape hatch is `git commit --no-verify` (git skips all hooks); that's git's design, not a hole worth closing. Verified end-to-end: a real commit carrying the trailer is rejected with HEAD unchanged, the same message clean commits fine.
-
 
 23. **Two instances on one box: every server resource is an env.sh knob.** Since 2026-10-19 PROD (`/opt/school-management`, user `school`, unit `school-management`, :8000, DB/user `school_management`/`school`) and TEST (`/opt/school-management-test`, `school-test`, `school-management-test`, :8001, `school_management_test`/`school_test`) share 69.62.72.137. `scripts/deploy/<env>/env.sh` is the only place those values live; `lib.sh` hands them to its quoted `<<'REMOTE'` heredocs as env assignments (`$(remote_env) bash -s`), and the `deploy/` templates use `__TOKEN__` placeholders rendered by `render_template` — never `envsubst`, which would blank nginx's `$host`/`$uri`. Rendering the unit with prod values is byte-identical to the live prod unit (checked by diff). Traps found on the way:
     - **`mysqldump` as an app user needs `--no-tablespaces`** — MySQL 8 wants PROCESS for tablespace metadata; without the flag the dump still completes but prints an access-denied error.
@@ -309,49 +259,28 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
     - **Plain-HTTP TEST:** the staging Android flavor needs `android/app/src/staging/res/xml/network_security_config.xml` (cleartext for `69.62.72.137` only). Resource shrinking renames it inside the APK (e.g. `res/8G.xml`), so verify by content, not path. Browsers also block `navigator.clipboard` on HTTP origins, and Chrome warns on HTTP APK downloads.
 
 ---
+    - **Deploying the working copy** (deploy → test → commit) without touching the repo: `SRC_ROOT=$(mktemp -d) && rsync -a --exclude node_modules --exclude dist --exclude .venv --exclude __pycache__ --exclude '*.tsbuildinfo' --exclude 'public/downloads' backend frontend packages "$SRC_ROOT/" && SRC_ROOT=$SRC_ROOT bash scripts/deploy/test/deploy-all.sh`. Every deploy re-publishes the repo's `frontend/public/downloads/<env APK>` + manifest, so build a new APK *after* deploying. TEST-only `.env` knob: `AUTH_COOKIE_PATH=/kisschool/api/auth` (Gotcha #25).
 
-## Status (after this session)
+24. **WeasyPrint (63.x) ignores flex `gap`, and a `width/height: 100%` image inside a flex box collapses to nothing.** The report card's student photo never printed and the tiles, logo and grading scale touched their neighbours. Fix (Session 19, template revision 4): space flex children with margins (`.row > * + * { margin-left: … }`) and give images explicit pixel sizes (`display:block; width:74px; height:92px; object-fit:cover`). Check a rendered PDF with `pdfimages -list` (the photo must be listed). Locally WeasyPrint only finds Homebrew's Pango with `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib` — skill `sample-report-cards` renders made-up sample cards with the real code.
+
+25. **Stay signed in (device sessions, migration 0021).** Access JWTs stay 1 hour (`JWT_EXPIRY_HOURS=1`); refresh tokens live 30 days sliding / 180 days absolute in `device_sessions` (sha256-hashed). Every `/auth/refresh` **rotates** the token, and presenting an already-rotated token revokes its whole family (replay) — except within 60 s while its successor is still unused (a lost response). So clients must (a) persist the new refresh token before using the new access token and (b) single-flight refreshes (web: one shared promise in `lib/api.ts` + a bootstrap gate in `App.tsx`; Android: OkHttp `Authenticator` with a lock). The web gets an HttpOnly `SameSite=Strict` cookie whose `Path` must equal the browser path of `/auth`: default `/api/auth` (prod), **TEST `.env` sets `AUTH_COOKIE_PATH=/kisschool/api/auth`** — otherwise the browser never sends it. Password change/reset, temp-password clear and staff deletion revoke sessions (`services/device_sessions.revoke_sessions_hook`, never raises). SSE/inline URLs carry the 1-hour token as `?token=`, so EventSources are recreated when it changes. Android unlock = `BiometricPrompt` with `BIOMETRIC_WEAK | DEVICE_CREDENTIAL` (face unlock on most phones is class 2), no CryptoObject; `MainActivity` must be a `FragmentActivity`.
+
+## Status
 | Area | Status |
 |---|---|
-| Backend FastAPI app | ✅ Code complete + 4 bulk-import endpoints, AST clean |
-| SQLAlchemy models / Alembic baseline | ✅ All 8 entities, `0001_initial` applied on test |
-| Auth (JWT + bcrypt + admin seed) | ✅ |
-| Routers (auth/students/files/att/marks/fees/notices/staff/reports/stream/health) | ✅ |
-| Bulk import (`/api/{students,attendance,staff,marks}/bulk-import`) | ✅ Shared `_bulk.py` helper |
-| SSE pub/sub broker | ✅ |
-| React frontend | ✅ 12 pages + Layout + ProtectedRoute, BrowserRouter `basename="/school"`, builds clean (206 KB gz) |
-| Form validation (Admissions + StudentDetail edit) | ✅ phone/aadhar regex, Title-Case names, religion dropdown, DOB bounds + auto-picker, fee leading-zero fix |
-| Bulk import UI (Students / Attendance / Staff / Marks Entry) | ✅ Shared `BulkImportDialog` + templates, inline error banner + table, error report CSV |
-| shadcn UI primitives | ✅ Button focus ring, Select tabIndex + visible ring, Dialog/Table/Toast/etc. |
-| Server provisioning (idempotent) | ✅ `bash scripts/provision/provision.sh` |
-| Test deploy | ✅ Live at http://69.62.72.137/kisschool/admin/ (second instance on the prod box since 2026-10-19; prod logins) |
-| Reusable deploy framework (test ↔ prod parity) | ✅ `scripts/deploy/{common,test,prod}/` + `scripts/provision/` + `.claude/commands/` |
-| Firebase configs deleted, old `index.html` archived | ✅ |
-| Modern popover date pickers (replaces native `<input type="date">` everywhere) | ✅ Session 6 — react-day-picker v9 + custom shadcn `DatePicker` on 4 sites (Admissions DOB, StudentDetail DOB, Fees, Attendance) |
-| Android teacher attendance app | ✅ Session 6 — Kotlin/Compose, signed v2/v3 release APK (2.9 MB), live at /school/downloads/kis-attendance.apk + "Download for Android" link on web Login |
-| Android version mechanism | ✅ Session 6 follow-up — `android/version.properties` + auto-bump `versionCode` in `build-android.sh`; in-app: small footer on Login + "About" dialog from Home menu (both read `BuildConfig`). Currently shipping `v1.0.0 build 2` |
-| `/release-android` slash command + APK-only upload script | ✅ Session 6 follow-up — builds, asks `y/N`, then rsyncs ONLY the APK (no SPA rebuild). `scripts/deploy/test/upload-apk.sh` |
-| iOS app scaffold (SwiftUI + XcodeGen) | ✅ Session 7 — `ios/` mirrors `android/`: 6 screens (Login/Home/TakeAttendance/History/Students/StudentDetail), URLSession+async/await, Keychain auth store, 401→logout. Compiles+runs in Xcode after `brew install xcodegen && xcodegen`. **Distribution requires Apple Dev account** ($99/yr) — no APK-style sideload on iOS |
-| `Mobile Apps` page in web SPA (`/mobile-apps`) | ✅ Session 7 — **LIVE on TEST** at /school/mobile-apps. Sidebar entry under "Resources" section. Two cards: Android (Available, direct APK link) + iOS (Coming soon, TestFlight invite). Replaces the link that was on Login. Login page is now form-only |
-| KIS design retrofit (tokens/fonts/i18n/brand) | ✅ Session 8 — `packages/design-system/` shared by React portal + Eleventy public-site + WeasyPrint PDFs. nginx 4-location longest-prefix routing. Public site at /school/, admin at /school/admin/ |
-| 6 brand-styled WeasyPrint PDFs (letterheads + fee-receipt + report-card + salary-slip + pseb-admit-card) | ✅ Session 8 — shared `_base.html.j2` with tri-band header + Cinzel motto footer (`position: fixed`) + watermark crest. Bilingual everywhere |
-| Admin generation pages (Letterheads + Salary Slips) | ✅ Session 8 — single-shot form → POST `/api/pdf/{kind}` → blob download |
-| **Class-templated bulk PDF flow with cache** | ✅ Session 8 — 3 new tables (`pdf_templates`, `pdf_student_data`, `pdf_cache`); admin Templates page with 3-section detail (template form, per-student spreadsheet, bulk-render). Cache keyed by `(kind, student_id, template_id, template_version)`. Editing a template bumps version → cache auto-invalidates. Live and verified end-to-end |
-| **Soft-delete + super-admin approval workflow (Session 9)** | ✅ Session 9 — migration `0003_soft_delete_workflow`; new `super_admin_auth` singleton + 6 status columns on students/staff. Routes: `/api/admin/deletion-requests` (list/approve/restore/purge). UI: `/deletion-requests` page (super-admin), badge + reason dialog in Students/Staff pages. Permission matrix: staff/admin → request, super-admin → archive directly + approve/purge. Restore is admin OR super-admin |
-| `/check-logs` slash command (Session 9) | ✅ Read-only 6-section SSH log streamer with shorthand windows (`30m`/`2h`/`1d`). Test + Prod variants |
-| LogRecord `name` collision bug (Session 9) | ✅ Fixed — see Gotcha #12. Was crashing student-create + delete responses for ~8 days |
-| **Dual-mode navigation (Session 12)** | ✅ Top-bar mode (default) with 5 section dropdowns + Sidebar mode (legacy). Hamburger toggles modes on desktop, opens drawer on mobile. `useNavMode` persists choice to `localStorage`. Logout button + user-menu dropdown live in slim topbar. Sidebar/TopNav/Layout split into 3 components consuming a shared `SECTIONS` registry at [lib/nav-sections.ts](../frontend/src/lib/nav-sections.ts) |
-| **Class Subjects master + per-subject exam-component editor (Session 13)** | ✅ Migration 0008; super-admin CRUD at `/class-subjects` + spreadsheet-style component editor at `/class-subjects/:id`; "Seed KIS default pattern" one-click materialises 127 subjects + 654 components from the school's exam-pattern sheet across Nursery–12th. Bulk CSV import, category enum, FK CASCADE on component delete |
-| **MarksEntry master-bound + per-student validation + roll/parent display (Session 13)** | ✅ Dropdowns bind to class_subjects + subject_exam_components, max marks auto-filled read-only. Server enforces `0 ≤ marks ≤ max_marks` on `POST /marks/bulk` + bulk-import. Student rows show `<roll>  <name>  · S/o <father>` sorted by roll# numerically — disambiguates duplicate names |
-| **Marks draft → submit → lock → edit-request workflow (Session 13)** | ✅ Migration 0009; new `marks_batches` + `marks_edit_requests`. 3-state MarksEntry (New/Draft → Submitted+locked → Submitted+pending). Tabbed `/edit-requests` (Student edits / Marks edits) with auto-switch to non-empty queue. Approve flips batch back to draft (no timer); required reason on request; new shadcn `Tabs` primitive |
-| **NumberField + global spinner removal + hard-clamp (Session 13)** | ✅ [components/ui/number-field.tsx](../frontend/src/components/ui/number-field.tsx) stores state as string (empty allowed), rejects keystrokes that exceed `max`/`min`, red border on invalid. Spinner arrows hidden globally on `<Input type="number">` — kills the "100 → 31" bug (Gotcha #13) |
-| **Auto cache-bust on deploy (Session 13)** | ✅ Vite injects `__BUILD_ID__` + emits `dist/version.json`; `useVersionCheck()` polls every 5 min while visible and reloads with `?_v=<ts>` query bust on mismatch. nginx serves `index.html` + `version.json` with `Cache-Control: no-cache, must-revalidate`. No more "need a hard refresh after deploy" (Gotcha #15) |
-| **Attendance half-day / holiday / clear-day + in-app approvals (Session 17)** | ✅ Migration 0012 widens `attendance_records.status` ENUM to add `H` + adds `attendance.is_holiday`; `PUT /attendance` takes `is_holiday`, new `DELETE /attendance?class=&date=`, `marked-dates` returns `{dates, holidays}`. Android gained a super-admin `ApprovalsScreen` (student-edit / marks-edit / deletion queues) and became role-aware. Shipped in APK v1.2.4 build 17; current APK **v1.2.5 build 18** |
-| **Term-scoped result aggregation (Session 18)** | ✅ **Live on prod** (verified 2026-10-19: prod DB at 0013, `services/results.py` deployed). Migration 0013 adds `subject_exam_components.term` (1/2/NULL=both), widens `marks.exam_type` 60→80, adds `pdf_cache.source_hash`. New [app/services/results.py](../backend/app/services/results.py) is the single roll-up engine behind both `GET /api/marks/results` and the report-card PDF builder. MarksResults page rebuilt around class+session+scope; ClassSubjectDetail gained a Term column |
-| **"All" class-sentinel expansion (Session 18)** | ✅ **Live on prod** (verified 2026-10-19: `constants.py` with `expand_classes` deployed). New [app/constants.py](../backend/app/constants.py) expands the `staff_classes` `"All"` sentinel into the real 15-class list at login AND on token decode, so clients stop seeing a literal `"All"` and `assert_class_allowed` stops rejecting real class names (Gotcha #21) |
-| **TEST re-homed onto the prod box (2026-10-19)** | ✅ Second instance at http://69.62.72.137/kisschool/admin/ provisioned by the now knob-driven scripts (own user/dir/unit :8001/DB, one include line in the enamfoss vhost); runs dev HEAD `8569103` (schema 0017); data cloned from prod by `/sync-test-data` (row counts identical, 0013→0017 migrated cleanly); staging APK v1.2.7 build 20 points at it. Prod + enamfoss verified unchanged (Gotcha #23) |
-
----
+| Core platform: FastAPI routers, SQLAlchemy 2 + Alembic, JWT + bcrypt, SSE broker, React SPA (top-bar/sidebar nav, DatePicker, NumberField, bulk CSV import, validation, auto cache-bust) | ✅ Sessions 3–13 (Gotchas #13, #15) |
+| Deploy framework (snapshot + auto-rollback, slash commands, idempotent provisioning; two instances on one box) | ✅ (Gotcha #23) |
+| PROD https://kisschool.in | ✅ live on `54db9cd`, schema **0013**, Android prod **v1.2.6 build 19** — 0014–0021 + app 1.3.x await the owner's go-ahead |
+| TEST http://69.62.72.137/kisschool/admin/ | ✅ dev `a71d7b7`, schema **0021**, staging app **v1.3.3 build 24**; prod-clone data (synced 2026-10-19) |
+| Class-templated PDFs + cache, soft-delete workflow, staff auth (email/phone, temp + forgot password), class-subjects master, marks draft/lock workflow | ✅ Sessions 8–16 |
+| Term-scoped results engine + "All" class sentinel | ✅ on prod (0013) (Gotchas #20, #21) |
+| **Results module v2** — sessions, letter grades, rank/attendance, report card v2 (layouts, overrides, photo), background renders + ZIP, revision guard, cross-check fixes | ✅ on TEST (0014–0019) |
+| **Optional subjects** (11th/12th Mathematics) | ✅ on TEST (0020); real takers not ticked yet |
+| **Role dashboards + brand look** (web pie + class-wise chart; Android drawer, module colours, theme option, Notices) | ✅ on TEST |
+| **Stay signed in** (device sessions, web Remember me, Android fingerprint/face + saved accounts) | ✅ on TEST (0021) — phone check of the biometric flow pending |
+| Android teacher app `in.kisschool` (flavors, force-update gate, attendance incl. half day/holiday, approvals, marks entry, results/report cards) | ✅ (Gotchas #2, #7, #16, #18) |
+| iOS scaffold | 🟡 builds in Xcode only; far behind Android; needs the Apple Developer Program |
+| Bilingual portal (Sprint 4) | 🟡 new pages bilingual; older page labels and every Android string English-only |
 
 ## Slash Commands (mirror uploadmytds)
 | Command | Script | Purpose |
@@ -367,6 +296,9 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 | `/check-logs` | `scripts/deploy/test/check-logs.sh` (also `prod/`) | Read-only log analysis: 6 sections (service status / journalctl / error.log tail / recent tracebacks / access.log tail / 4xx-5xx). Accepts `30m`, `2h`, `1d`. Nothing written, nothing downloaded — single SSH session straight to terminal |
 | `/save-session` | [commands/save-session.md](./commands/save-session.md) | Snapshot session context to `.claude/CLAUDE.md` + `SESSION_HISTORY_*`/`GOTCHAS_*` archives + `.claude/memory/`. Prompt-library v2026-08-31; the `## Project-Specific Notes` block (P1–P6) in that file is this project's local override set — preserved across prompt-library updates |
 | `/deep-analysis` | [commands/deep-analysis.md](./commands/deep-analysis.md) | Generate a multi-document onboarding knowledge base at `.claude/doc/deep-analysis/` (README + 00–10). Prompt-library v2026-08-31; `## Project-Specific Notes` (P1–P3) pre-fills the KIS domain context and the "verify CLAUDE.md against code" rule |
+| `test-verification` *(skill)* | [skills/test-verification/SKILL.md](./skills/test-verification/SKILL.md) | Verify a TEST deploy: on-box smoke (26 checks), API checks (results, dashboards, stay-signed-in) and headless-Chrome browser checks — logins from env vars only |
+| `sample-report-cards` *(skill)* | [skills/sample-report-cards/SKILL.md](./skills/sample-report-cards/SKILL.md) | Render sample report-card PNGs from a made-up class with the real code (local WeasyPrint) for design reviews |
+| `kis-design-system` *(skill)* | [skills/kis-design-system/SKILL.md](./skills/kis-design-system/SKILL.md) | Brand tokens, i18n and Punjabi rules for any UI/copy edit (portal, public site, PDFs, Android) |
 
 **Fresh-clone setup:** `git config core.hooksPath .githooks` (arms the no-AI-attribution commit hook — Gotcha #22; local config, not carried by clone).
 
@@ -387,35 +319,21 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 /etc/nginx/backups/                              step-06 backups of edited nginx files
 ```
 
-## Promoting test → prod (HISTORICAL — prod is live)
-> Kept for reference only. Prod went live in Session 16; deploy with `scripts/deploy/prod/*` + key `~/.ssh/enamfoss_prod`, or the `/deploy-prod*` commands.
-
-1. Edit `scripts/deploy/prod/env.sh` (replace `CHANGE_ME_PROD_IP`, `CHANGE_ME_PROD_DOMAIN`).
-2. `ssh-keygen -t ed25519 -f ~/.ssh/school-management_prod` then `ssh-copy-id` to prod box.
-3. `SERVER=<prod-ip> SSH_KEY=~/.ssh/school-management_prod DOMAIN=<prod-domain> bash scripts/provision/provision.sh` (one-time).
-4. `bash scripts/deploy/prod/deploy-all.sh` (every release).
-
 ## Next Steps (TODOs)
-0. **Promote dev HEAD to prod.** Prod runs the Session 18 code at schema 0013 (verified 2026-10-19). dev HEAD (`8569103`: results engine v2, academic sessions, report card v2, background renders) adds migrations 0014–0017 — deployed to TEST and rehearsed cleanly on a fresh prod clone on 2026-10-19. Verify on http://69.62.72.137/kisschool/admin/, then `/deploy-prod-all`.
-1. **Spot-check the backfilled `term` values** after 0013 runs. The migration assigns `subject_exam_components.term` by `LIKE` on component names; any subject whose components were hand-renamed away from the seeded KIS patterns lands with `term = NULL`, which counts in **both** term scopes and silently inflates a Term-1/Term-2 total. Audit with `SELECT class_name, subject_name, component_name FROM subject_exam_components c JOIN class_subjects s ON s.id=c.class_subject_id WHERE c.term IS NULL AND c.max_marks > 0;` then fix per-row via the new Term column on `/class-subjects/:id`.
-2. **Verify the seeded exam pattern** — Session 13's `seed-defaults` materialised 127 subjects + 654 components hand-derived from the school's handwritten PDF. Some 9th–10th values are ambiguous (grand totals don't quite match 1900); super-admin should spot-check each class against the original sheet before relying on these for actual exams. Edit in [seed/exam_pattern.py](../backend/app/seed/exam_pattern.py) and re-seed on a fresh DB, or tweak per-row via the UI. Seed data now carries `term` as the 3rd tuple element.
-3. **Change default password** — `admin123` still the seed for admin on both servers; change via in-app Change Password. Super-admin password is no longer `super123` (unknown) — reset on both servers if needed (now identical test↔prod).
-4. **MarksResults: batch-status badges** — `/marks/results` deliberately includes **draft** marks with no batch-status filter, so a teacher can't tell which subjects are still unsubmitted. Surface the `marks_batches.status` per subject column. (The true-`%` + session-filter half of the old "MarksResults v2" item shipped in Session 18.)
-5. **Optional: backfill legacy `marks.batch_id`** — pre-Session-13 mark rows have NULL `batch_id` (and likely duplicates from re-saves). One-shot script grouped by `(class, subject, exam_type, session)` to create draft batches + reassign rows would let teachers manage old data through the new lock workflow. Currently they're tolerated as read-only legacy. Note these rows also don't match any component name, so `/marks/results` ignores them entirely.
-6. **Downscale the Android document-photo upload** — web compresses to ~900px JPEG q=0.75 via `lib/compress.ts`; the app still uploads the original camera file into a `LONGBLOB`.
-7. **Polish per-page bilingual** (Sprint 4 partial) — login + sidebar + Templates + Deletion Requests bilingual; Students/Attendance/Marks/Fees/Staff/Reports table headers + form labels still English-only. Wrap with `<T k="…">` and add keys under `portal.<page>.*`. The new MarksResults scope/session controls are English-only too.
-8. **Sprint 6 — STATUS.md + Lighthouse + axe** — final design-handoff report.
-9. **Verify iOS build locally** — install Xcode + `brew install xcodegen`, then `cd ios && xcodegen && open KisAttendance.xcodeproj`. SwiftUI source compiled by Claude only. **iOS is now well behind**: it has none of Sessions 14–18 (force-update gate, dashboard, half-day/holiday attendance, approvals portal, marks entry).
-10. **Decide on Apple Developer Program** ($99/yr) — gates iOS distribution. Once enrolled, flip `method=app-store` in [ios/scripts/build-ios.sh](../ios/scripts/build-ios.sh) and update the iOS card on `/mobile-apps`.
-11. **Auto DB backup** — APScheduler in `app/main.py` lifespan or server cron `mysqldump school_management | gzip > /opt/school-management/backups/$(date +%F).sql.gz` every 24h.
-12. **Bulk-import attendance UX** — wide-format template that pre-fills the student roster.
-13. **Code-split frontend** — bundle now 965 KB / 293 KB gz; Chart.js ~half. Lazy-load report + template + class-subjects routes if pages keep growing.
-14. **Templated PDF v2 follow-ups** — async render with SSE progress events for >30-student bulk runs; ZIP-of-many download; orphan-cache cleanup cron; allow class-scoped Staff to *render* (not edit) templates. Note `render_or_cache` now does two extra SELECTs even on a cache hit (it must hash the marks) — worth folding into the async path.
-15. **Optional later:** Redis pub/sub for SSE if scaling to >1 gunicorn worker; rate limiting on `/auth/login`; structured JSON logging.
-
-> Resolved and removed this session: *"Migration for `admission_no`/`admission_id`/`roll_no`"* (shipped as `0004_student_admission_roll.py`) and *"Push `dev` (79b9eed + 60133ff)"* (both pushed; `origin/dev` is current through `d17113c`).
-
----
+0. **Promote to prod — only with the owner's explicit go-ahead.** Prod runs `54db9cd` (schema 0013). `bash scripts/deploy/prod/backup-db.sh`, set `CORS_ORIGINS` explicitly in prod `.env` first (wildcard + credentials reflects any Origin), then `/deploy-prod-all` (runs 0014–0021, all rehearsed on the TEST prod clone; prod keeps the default `AUTH_COOKIE_PATH=/api/auth`). Smoke after: `/api/health`, `/api/sessions/current`, one `/marks/results`, one report-card render, `/check-logs`.
+1. **Prod Android release before 1 Jan 2027.** Build 19 derives the session name from the calendar year, so from January it asks for `2027-28` and the server refuses its marks. Release the 1.3.x prod flavor with `/release-android prod` (force-updates every phone — schedule outside marks-entry hours). Until then build 19 works but still logs out hourly and can't remove saved marks (409, by design).
+2. **Owner's phone checks on TEST app 1.3.3:** "Sign in faster" popup → fingerprint/face unlock after reopening, Switch account between super-admin/admin/teacher, Settings (App lock, signed-in devices), dark theme, both role dashboards (pie → Pending/Marked lists).
+3. **Optional subjects:** the super-admin ticks the real Mathematics takers in 11th and 12th (Class Subjects → Mathematics) — on TEST now, on prod after deploy.
+4. **Awaiting the principal:** renaming mistyped exam names in 11th/12th English ("PT First" → "P.T. First", "P.T Second" → "P.T. Second") — do NOT apply, not even on TEST. Also raise: only 6 of 15 classes marked attendance in October 2026; 4 marks batches are still drafts (left off report cards until submitted).
+5. **Auth follow-ups:** nginx `limit_req` on `/api/auth/login` + `/api/auth/refresh` in both vhosts (prod vhost is hand-installed); `AUTH_COOKIE_PATH` into `deploy/.env.example` + provision step 04 (peer-owned scripts — coordinate); once every phone is on 1.3.x, shorten `JWT_EXPIRY_HOURS` to 15–30 min; a web page for signed-in devices and the admin "sign out a lost phone" action (API exists).
+6. **Verify the seeded exam pattern** for 9th–10th (some values ambiguous against the handwritten sheet) — super-admin spot-check on `/class-subjects/:id`.
+7. **Roadmap first five** ([docs/ROADMAP.md](../docs/ROADMAP.md)): nightly off-box backups (none exist today) · fee structure + dues ledger · WhatsApp/SMS notices · offline-first attendance · session-end promotion workflow (before March 2027). Deferred small items are listed there too.
+8. **Bilingual polish:** older portal pages (Students/Attendance/Fees/Staff/Reports) and all Android strings (none are in resources; add `values-pa`).
+9. **Sprint 6** — STATUS.md + Lighthouse + axe report.
+10. **iOS** has none of Sessions 14–19; Apple Developer Program ($99/yr) gates distribution.
+11. **Code-split the frontend** (bundle ≈ 1.4 MB) — lazy-load reports/templates/class-subjects routes.
+12. Downscale the Android document-photo upload (web compresses to ~900 px JPEG; the app uploads the original).
+13. Optional later: Redis pub/sub for SSE if the instance runs more than one worker process for live updates; structured JSON logging.
 
 ## Session History
 
@@ -428,56 +346,45 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 > Sessions 8 (KIS design + templated PDFs) + 9 (soft-delete workflow + /check-logs) → [SESSION_HISTORY_8_9.md](./SESSION_HISTORY_8_9.md)
 > Session 10 (staff email/phone+password auth) + 11 (useBlocker fix) — see memory `project_staff_auth_revamp` / `feedback_useblocker_data_router`
 > Session 12 (top-bar nav) → [SESSION_HISTORY_12.md](./SESSION_HISTORY_12.md)
+> Session 13 (Class Subjects master + marks draft/submit/lock/edit-request workflow + auto cache-bust) → [SESSION_HISTORY_13.md](./SESSION_HISTORY_13.md)
 > Session 14 (Android force-update gate) + 15 (Android dashboard + back-dated attendance, v1.2.3) + 17 (attendance half-day/holiday/clear-day + in-app approvals portal, v1.2.4) — see memory `project_android_force_update` / `project_android_dashboard_attendance`
+> Session 16 (PROD launch at kisschool.in + `in.kisschool` rebrand + temp/forgot password; historical promote-to-prod steps) → [SESSION_HISTORY_16.md](./SESSION_HISTORY_16.md)
+> Session 18 (term-scoped results engine + "All" sentinel) → [SESSION_HISTORY_18.md](./SESSION_HISTORY_18.md) · Session 19 full detail → [SESSION_HISTORY_19.md](./SESSION_HISTORY_19.md)
 
-### Session 18 — 2026-10-18 · Term-scoped result aggregation + the "All" class-sentinel fix
+### Sessions 18–19 — 2026-10-18 → 2026-10-19 · Results module v2, end to end (on TEST)
 
-**Branch:** `dev` · **Commits:** `03907d8`, `e7ffb6f` — **unpushed, undeployed.**
+**Branch:** `dev` · prod untouched (`54db9cd`, schema 0013) · TEST = dev `a71d7b7`.
+- **Session 18:** one pure engine (`services/results.py`) for the results table and the report card, component `term` (0013), marks-aware PDF cache (Gotcha #20), "All" class-sentinel expansion (Gotcha #21) — live on prod.
+- **Session 19 (plan phases 0–6):** academic sessions (0014), letter grades (0015), report card v2 with `summary`/`components` layouts and computed rank/attendance (0016), background render jobs + ZIP (0017). A 58-item cross-check added the batch **revision** guard (0018: stale screen → 409; app builds 19/20 can't remove saved marks), cleared v1 card overrides (0019), integer-only marks, grades null until complete, `includeDrafts` super-admin-only, Force re-render admin-only.
+- **Optional subjects** (0020) for 11th/12th Mathematics: `not_taken` for non-takers, never blocks promotion, rank by exact %; on TEST both are optional with no takers ticked.
+- From the principal's sample review: photos now print and flex spacing works (Gotcha #24). Results opens on Term 1 while Term 2 is empty. Policy confirmed — memory `project_results_policy`; exam-name renames still await the principal.
+- Verified on TEST: pytest ✓, smoke 26/26, optional 12/12, browser checks as super-admin/admin/teacher (skill `test-verification`).
 
-**What this session actually was:** the working tree already held ~450 lines of uncommitted work across 14 files plus 4 new ones. The session's job was to read it, verify it, split it into coherent commits, and record it. No new feature code was written here.
+### Session 19 — 2026-10-19 · Role dashboards, brand look, app theme
 
-**(A) `fix(auth)` — the `"All"` class sentinel (`03907d8`).** Staff assigned every class are stored as ONE `staff_classes` row with the literal string `"All"`, and that literal was reaching the JWT and `GET /auth/me`. Consequences: the Android app and web class pickers showed a bogus "All" entry, and `assert_class_allowed` rejected every real class name for those users. New [backend/app/constants.py](../backend/app/constants.py) holds the canonical `CLASSES` list + `expand_classes` / `is_all_sentinel`; expansion runs at login *and* again in `deps._parse` on decode (that second one repairs the up-to-8h-valid tokens issued before the fix). See Gotcha #21.
+**Branch:** `dev` · on TEST · commits `8fb38a7` (server) · `3ef6c60` (web) · `63e10d8`/`134d271`/`af44687`/`1ffe380` (app) · `4ad7e96` (roadmap).
+- Server: `GET /attendance/class-summary` and `GET /marks/batches/summary`; scope holes closed (Gotcha #21: teachers with no classes, unscoped `GET /fees`); attendance CSV onto a holiday clears the flag.
+- Web dashboard: admin marked/pending/holiday classes pie → class lists; class-wise attendance chart for every role (Today/Week/Month, ≥ 90 / 75–89 / < 75 bands, 75 % PSEB line).
+- Android: admins see every class; ☰ drawer; admin and teacher dashboards (classes pie → `classes-today/{kind}` lists, donut, class-wise bars, approvals/session, marks progress, fees, notices…); module colours (`KisModule`), gradient headers, Playfair Display Bold, `KisIcons`, Notices; theme Light (default) / Dark / Same as phone with a readable dark palette.
+- [docs/ROADMAP.md](../docs/ROADMAP.md): ~25 future features, the first five, deferred items.
 
-**(B) `feat(results)` — component-aware, term-scoped aggregation (`e7ffb6f`, 16 files).** Marks are entered per exam *component* ("P.T. First", "Semester Second — Practical"), but both the results table and the report card flattened them per subject with no notion of term, and MarksResults still filtered on a hardcoded free-text exam list divorced from the class-subjects master.
-- **Migration [0013_component_term.py](../backend/alembic/versions/0013_component_term.py):** `subject_exam_components.term` SMALLINT NULL (1 | 2 | NULL=both), backfilled by `LIKE` on the known KIS component-name patterns — with **exact** matches on `Oral I` / `Term 1` so they don't swallow `Oral II` / `Term 10`. Also widens `marks.exam_type` 60→80 (it stores a `component_name`, already VARCHAR(80)) and adds `pdf_cache.source_hash`.
-- **New [backend/app/services/results.py](../backend/app/services/results.py)** — pure functions, no DB. One engine rolls component marks up to per-subject totals within a scope (`term1` / `term2` / `annual`), then to grand total + grade. Consumed by BOTH the new `GET /api/marks/results` and `build_report_card_payload`, so the printed card and the screen can no longer disagree; `grade_for` moved here out of `pdf/builder.py`. Marks match components on `(subject, exam_type)` — legacy rows whose `exam_type` isn't a current component name simply don't match and are ignored.
-- **Marks-aware PDF cache:** editing marks doesn't bump `template.version`, so a cached report card used to survive a correction. `render_or_cache` now hashes the marks + per-student data it renders from, keys the cache on that too, and gathers its inputs *before* the lookup. See Gotcha #20.
-- **Frontend:** MarksResults moved from class+exam to class+session+scope against the new endpoint (shows a real `%`, not the old max=100/subject assumption); ClassSubjectDetail gained a Term column using `"both"` as the sentinel for NULL (radix `Select` forbids an empty item value); `types/api.ts` gained the `ClassResults` family.
+### Session 19 — 2026-10-19 · Stay signed in (device sessions, web Remember me, fingerprint/face app sign-in)
 
-**Verification run:** Python AST parse clean across `backend/`; `npx tsc -b` clean (note `--noEmit` fails on this repo — folded into Gotcha #17). Confirmed `/marks/results` can't be shadowed: `marks.py` has no `/marks/{param}` route and `marks_batches` uses an explicit `/marks/batches` prefix (Gotcha #9 pattern checked, not triggered).
+**Branch:** `dev` · on TEST (0021) · commits `b211a3e` (server) · `c686312` (web) · `6916304` + `a71d7b7` (app 1.3.3 build 24).
+- Cause: 1-hour JWTs and no server session state → the password every hour, app and web.
+- Server: `device_sessions`, rotating refresh tokens (replay → family revoked; 60-s lost-response grace), `/auth/refresh`, `/auth/logout`, `/auth/sessions`, admin lost-phone revoke, revocation on password change/reset, temp-password clear and staff deletion, 429 after 10 failed logins; 32 tests. Rules: Gotcha #25.
+- Web: Remember me → HttpOnly cookie; bootstrap + single-flight refresh; SSE reconnects with the new token; Logout ends the server session.
+- Android: "Sign in faster next time?" → App lock (fingerprint, face or phone PIN) on open and after 15 min away; several saved accounts, Switch account, Settings (theme, App lock, signed-in devices); new deps biometric/fragment-ktx/lifecycle-process.
+- Verified on TEST: 11 API + 5 browser checks. **Biometric flow not yet run on a phone (owner).**
 
-**Also corrected in the record:** TODO "migration for `admission_no`/`admission_id`/`roll_no`" was already shipped as `0004_student_admission_roll.py`; Session 16's "push `dev`" is done (`origin/dev` current through `d17113c`); the Status table's LogRecord row pointed at Gotcha #16, which is now the R8 keep-rule item — the LogRecord gotcha is #12.
+## Active MCP Servers
+None configured (no `.mcp.json`).
 
-### Session 16 — 2026-06-06 · PROD launch at kisschool.in + Android `in.kisschool` rebrand + temp-password + forgot-password
+## Active Hooks
+`.claude/settings.json` → `PreToolUse` on Bash, filtered `Bash(git commit *)` and `Bash(gh pr *)`: pipes the command through `.githooks/no-ai-attribution.sh loose` and blocks it on an AI attribution trailer (Gotcha #22). The git `commit-msg` hook in `.githooks/` is the backstop (`git config core.hooksPath .githooks` once per clone).
 
-**Focus:** Stand up a dedicated production environment and a batch of cross-cutting features.
-
-**(A) PROD at kisschool.in (served at ROOT).** New dedicated domain on a SHARED box `69.62.72.137` (key `~/.ssh/enamfoss_prod`) that already runs a Java/Tomcat "enamfoss" app (bare-IP vhost). Installed MySQL 8 + certbot; new **standalone** nginx vhost [deploy/nginx.kisschool.conf](../deploy/nginx.kisschool.conf) (`/`=public site, `/admin/`=SPA, `/api/`=FastAPI, `/downloads/`). **Base-path parametrized** so one source ships to TEST (`/school/...`) and PROD (root): `VITE_BASE`/`VITE_API_URL`/`SITE_BASE_PATH`/`HEALTH_PATH`/`SITE_URL_PATH` in `scripts/deploy/<env>/env.sh`, consumed by `common/lib.sh`; `vite.config.ts` base + `public-site/src/_data/site.cjs` basePath read env (test defaults) — see Gotcha #17. Filled `scripts/deploy/prod/env.sh`; added `scripts/deploy/prod/{deploy-public-site,upload-apk}.sh`. **Migrated master data** test→prod (staff+staff_classes, students+documents, class_subjects+subject_exam_components) via streamed mysqldump.
-
-**(B) Android `in.kisschool` rebrand + features.** Package renamed `com.expressonly.kisattendance → in.kisschool` (backtick-escaped `in` keyword everywhere). **Product flavors** `prod` (`in.kisschool`, kisschool.in/api) + `staging` (`in.kisschool.test`, expressonly.in/school/api) via `BuildConfig.API_BASE_URL`; `build-android.sh {prod|test}` + force-update gate ([release-android](./commands/release-android.md) publishes `app-version.json`). New app screens: **Login** redesigned to match web (gradient/crest/remember-me + Forgot-password link); **Edit Student** (full validation + staff edit-request workflow) with **document upload/preview** (Coil, photo/dob_cert/aadhar); **Marks Entry** (draft→submit→lock→request-edit). Fixed `/students` pagination DTO (Gotcha #18) and the **R8 keep-rule → login 422** bug (Gotcha #16). Both APKs rebuilt + deployed per server.
-
-**(C) Auth: temp-password + forgot-password + gmail admin logins.** Admin/super-admin login identifiers → `nsnishasaini57@gmail.com` / `gssonusaini57@gmail.com`. **Migration 0010** staff `temp_password_hash` (admin-set 2nd credential, web Staff page; login accepts real-OR-temp). **Migration 0011** `password_reset_tokens` — forgot/reset works for admin/super-admin/staff; SMTP (Zoho `info@kisschool.in`) + `APP_BASE_URL=https://kisschool.in/admin` configured on prod; fixed web ForgotPassword form to POST `{identifier}`. See Gotcha #19. Copied admin/super-admin password hashes test→prod so both match.
-
-**Deploys:** prod provisioned + `deploy-prod-all`/`-frontend`/`-backend`/`-public-site`; test brought to parity (`deploy-test-all` + frontend). Migrations on prod: …→0009→0010→0011. **Commits:** `79b9eed` (big), `60133ff` (forgot-form fix) on `dev` — since pushed; `origin/dev` is current through `d17113c`.
-
-### Session 13 — 2026-05-24 · Class Subjects master + Marks draft/submit/lock/edit-request workflow + auto cache-bust
-
-**Focus:** Three independent features that landed in a single multi-stage session.
-
-**(A) Class Subjects master + per-subject exam-component editor** ([migration 0008](../backend/alembic/versions/0008_class_subjects.py)) — super-admin owns a `(class, subject)` master plus a nested `(component_name, max_marks, order)` editor per subject. Migration adds `class_subjects` (with `category` ENUM `academic|co_curricular|grading`) + `subject_exam_components` (FK CASCADE on subject delete). Backend: [routers/class_subjects.py](../backend/app/routers/class_subjects.py) ships subject CRUD + bulk-import + nested component CRUD + a `PUT /{id}/components` atomic-replace endpoint for the spreadsheet editor. Seed module [seed/exam_pattern.py](../backend/app/seed/exam_pattern.py) materialises the school's full handwritten exam pattern — **127 subjects, 654 components** across Nursery → 12th, including practical splits (Maths/Science 70W+10P in 6–10, Phy.Edu 50W+30P in 11–12), Punjabi-PT=25 in 9–10, co-curricular sets for NUR/LKG/UKG. Frontend: [pages/ClassSubjects.tsx](../frontend/src/pages/ClassSubjects.tsx) list page with "Seed KIS default pattern" button + [pages/ClassSubjectDetail.tsx](../frontend/src/pages/ClassSubjectDetail.tsx) spreadsheet editor. Nav entry under Academic, super-admin-only.
-
-**(B) Marks Entry: master-binding + draft → submit → lock → edit-request workflow** ([migration 0009](../backend/alembic/versions/0009_marks_batches_edit_requests.py)) — MarksEntry was rewritten in two passes. First pass made class/subject/test all dropdowns bound to the new master, with auto-filled read-only max marks and per-student validation (`marks ≤ max_marks` on client + server). Then the draft/lock workflow: new `marks_batches` table keyed on `(class, subject, exam_type, session)` with `status ∈ {draft, submitted}` + `submitted_at/by`; `marks.batch_id` FK with **UNIQUE(batch_id, student_id)** giving free upsert (Gotcha #14); new `marks_edit_requests` table mirroring `student_edit_requests`. Router [routers/marks_batches.py](../backend/app/routers/marks_batches.py): `GET /marks/batches?class=&subject=&exam_type=&session=` returns batch+items or null; `POST /marks/batches` upserts (refuses submitted batch for non-super-admin); `POST /{id}/submit` locks; `POST /{id}/request-edit` enqueues a request with required reason; super-admin queue under `/admin/marks-edit-requests`. Approve flips batch back to `draft` indefinitely (no timer, teacher re-submits manually); reject keeps it locked with reason banner. Frontend: 3-state MarksEntry (New/Draft → Submitted+locked → Submitted+pending) + tabbed [pages/EditRequests.tsx](../frontend/src/pages/EditRequests.tsx) — "Student edits" tab unchanged, new "Marks edits" tab with same review-modal UX, default tab auto-switches to whichever queue has pending items. New shadcn `Tabs` primitive at [components/ui/tabs.tsx](../frontend/src/components/ui/tabs.tsx). Bulk-import endpoint `POST /marks/bulk-import` stays as a legacy free-text path (writes `batch_id IS NULL`).
-
-**(C) NumberField + auto cache-bust** — two cross-cutting UX fixes. `NumberField` ([components/ui/number-field.tsx](../frontend/src/components/ui/number-field.tsx)) wraps `<Input type="number">` with empty-string-friendly state + hard-clamp-on-keystroke (rejects values > max or < min) — fixes the "100 → 31" teacher bug (Gotcha #13). Spinner arrows hidden globally in [input.tsx](../frontend/src/components/ui/input.tsx). Auto cache-bust ([vite.config.ts](../frontend/vite.config.ts) + [lib/version.ts](../frontend/src/lib/version.ts) + nginx) means deploys propagate to open browser tabs within 5 minutes without hard-refresh (Gotcha #15).
-
-**Display polish:** MarksEntry student rows now show `<roll#>  <name>  · S/o <father>`, sorted by roll# numerically — disambiguates duplicate names (e.g. two "Manveer Singh" in L.K.G).
-
-**Deploys:** four `/deploy-test-frontend` for incremental rollouts + two `/deploy-test-all` for migration 0008 and 0009. Snapshots retained: `app_20260523_220103.tgz`, `app_20260523_222025.tgz`, `app_20260524_000020.tgz`. Bundle: 949–965 KB JS / 288–293 KB gz (+18 KB gz total this session: NumberField + tabs primitive + version probe + marks workflow). nginx snippet hot-applied via SSH (user-authorised). Migration 0009 ran cleanly: `0008_class_subjects → 0009_marks_batches_edit_requests`.
-
-**Plan file:** `/Users/manjeetsaini/.claude/plans/add-draft-functionaly-to-merry-popcorn.md` (approved + executed).
-
-
----
+## Active Subagents
+None configured (no `.claude/agents/`). Multi-agent work uses ad-hoc Workflow scripts — pacing rules in memory `feedback_usage_pacing`.
 
 ## Documentation
 - Old single-file Firebase app (read-only reference): [_archive/index.firebase.html](../_archive/index.firebase.html)
@@ -487,5 +394,6 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 - FastAPI: https://fastapi.tiangolo.com/
 - Alembic: https://alembic.sqlalchemy.org/
 - Architecture plan: [/Users/manjeetsaini/.claude/plans/create-a-deep-plan-snug-tome.md](/Users/manjeetsaini/.claude/plans/create-a-deep-plan-snug-tome.md)
+- Future work (not scheduled): [docs/ROADMAP.md](../docs/ROADMAP.md) · session archives: `.claude/SESSION_HISTORY_*.md`, `.claude/GOTCHAS_*.md`
 
 > Context usage guide: 0–60% work freely | 60–70% monitor usage | 70–80% run /compact | 80%+ run /clear (mandatory)

@@ -30,3 +30,5 @@ Each command's markdown spec describes pre-flight checks, what to run, and what 
 - Same set under `scripts/deploy/prod/`.
 
 **How to apply:** When the user types one of these slash commands, follow the markdown spec exactly. The pre-flight and post-deploy verification steps are not optional.
+
+**Skills (`.claude/skills/`):** `kis-design-system` (brand/i18n rules incl. the Android palette), `test-verification` (TEST smoke + API + headless-Chrome checks, logins via env vars only — added 2026-10-19), `sample-report-cards` (made-up sample report-card PNGs with the real code — added 2026-10-19). `/release-android` gained Session 19 notes (deploy before build, exact versionName trick, mapping check).

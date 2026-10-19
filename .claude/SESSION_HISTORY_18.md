@@ -1,0 +1,19 @@
+# Session 18 — 2026-10-18 · Term-scoped result aggregation + the "All" class-sentinel fix
+
+**Branch:** `dev` · **Commits:** `03907d8`, `e7ffb6f` — **unpushed, undeployed.**
+
+**What this session actually was:** the working tree already held ~450 lines of uncommitted work across 14 files plus 4 new ones. The session's job was to read it, verify it, split it into coherent commits, and record it. No new feature code was written here.
+
+**(A) `fix(auth)` — the `"All"` class sentinel (`03907d8`).** Staff assigned every class are stored as ONE `staff_classes` row with the literal string `"All"`, and that literal was reaching the JWT and `GET /auth/me`. Consequences: the Android app and web class pickers showed a bogus "All" entry, and `assert_class_allowed` rejected every real class name for those users. New [backend/app/constants.py](../backend/app/constants.py) holds the canonical `CLASSES` list + `expand_classes` / `is_all_sentinel`; expansion runs at login *and* again in `deps._parse` on decode (that second one repairs the up-to-8h-valid tokens issued before the fix). See Gotcha #21.
+
+**(B) `feat(results)` — component-aware, term-scoped aggregation (`e7ffb6f`, 16 files).** Marks are entered per exam *component* ("P.T. First", "Semester Second — Practical"), but both the results table and the report card flattened them per subject with no notion of term, and MarksResults still filtered on a hardcoded free-text exam list divorced from the class-subjects master.
+- **Migration [0013_component_term.py](../backend/alembic/versions/0013_component_term.py):** `subject_exam_components.term` SMALLINT NULL (1 | 2 | NULL=both), backfilled by `LIKE` on the known KIS component-name patterns — with **exact** matches on `Oral I` / `Term 1` so they don't swallow `Oral II` / `Term 10`. Also widens `marks.exam_type` 60→80 (it stores a `component_name`, already VARCHAR(80)) and adds `pdf_cache.source_hash`.
+- **New [backend/app/services/results.py](../backend/app/services/results.py)** — pure functions, no DB. One engine rolls component marks up to per-subject totals within a scope (`term1` / `term2` / `annual`), then to grand total + grade. Consumed by BOTH the new `GET /api/marks/results` and `build_report_card_payload`, so the printed card and the screen can no longer disagree; `grade_for` moved here out of `pdf/builder.py`. Marks match components on `(subject, exam_type)` — legacy rows whose `exam_type` isn't a current component name simply don't match and are ignored.
+- **Marks-aware PDF cache:** editing marks doesn't bump `template.version`, so a cached report card used to survive a correction. `render_or_cache` now hashes the marks + per-student data it renders from, keys the cache on that too, and gathers its inputs *before* the lookup. See Gotcha #20.
+- **Frontend:** MarksResults moved from class+exam to class+session+scope against the new endpoint (shows a real `%`, not the old max=100/subject assumption); ClassSubjectDetail gained a Term column using `"both"` as the sentinel for NULL (radix `Select` forbids an empty item value); `types/api.ts` gained the `ClassResults` family.
+
+**Verification run:** Python AST parse clean across `backend/`; `npx tsc -b` clean (note `--noEmit` fails on this repo — folded into Gotcha #17). Confirmed `/marks/results` can't be shadowed: `marks.py` has no `/marks/{param}` route and `marks_batches` uses an explicit `/marks/batches` prefix (Gotcha #9 pattern checked, not triggered).
+
+**Also corrected in the record:** TODO "migration for `admission_no`/`admission_id`/`roll_no`" was already shipped as `0004_student_admission_roll.py`; Session 16's "push `dev`" is done (`origin/dev` current through `d17113c`); the Status table's LogRecord row pointed at Gotcha #16, which is now the R8 keep-rule item — the LogRecord gotcha is #12.
+
+> Clubbed inline into "Sessions 18–19 · Results module v2" on 2026-10-19; this file keeps the original Session 18 narrative.

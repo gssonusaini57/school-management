@@ -127,3 +127,9 @@ byte size** before publishing the manifest, and prints the live manifest.
   separately — those rebuild the SPA and publish **only that env's** APK + manifest from
   `frontend/public/downloads/` (test → `kis-attendance-test.apk`, prod → `kis-attendance.apk`)
   under the stable name; they never delete a server's APK when the local one is missing.
+
+## Notes (Session 19)
+- **Deploy before you build.** Every `/deploy-test*` re-publishes the repo's `frontend/public/downloads/<env APK>` + manifest; build the new APK after the deploy (or the deploy republishes the previous one — harmless if it is the same build).
+- **Landing on an exact versionName:** the build bumps the patch (`X.Y.Z → X.Y.Z+1`). To ship exactly `1.4.0`, set `versionName=1.4.-1` first (bash arithmetic turns it into `1.4.0`); commit `android/version.properties` after the build (`chore(android): TEST app X.Y.Z (build N)`).
+- **Release-build check:** every `in.kisschool.data.api.dto.* -> ` line in `app/build/outputs/mapping/<flavor>Release/mapping.txt` must map to itself; data persisted outside the dto package (saved accounts) uses org.json, not Gson (Gotcha #16).
+- Each TEST upload force-updates every phone with the TEST app (`min_version_code` = the new build); a prod upload does the same for every teacher — prod only with the owner's explicit go-ahead.
