@@ -33,7 +33,10 @@ import `in`.kisschool.ui.components.DateField
 import `in`.kisschool.ui.components.EmptyState
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
+import `in`.kisschool.ui.components.ModuleTopBarTitle
 import `in`.kisschool.ui.theme.KISTheme
+import `in`.kisschool.ui.theme.KisIcons
+import `in`.kisschool.ui.theme.KisModule
 import `in`.kisschool.ui.theme.kisTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -44,7 +47,7 @@ fun HistoryScreen(vm: HistoryViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Past attendance") },
+                title = { ModuleTopBarTitle("Past attendance", KisModule.Attendance, KisIcons.PastAttendance) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -113,6 +116,7 @@ private fun StatusBadge(code: String) {
         "P" -> statusColors.present to "Present"
         "A" -> statusColors.absent to "Absent"
         "L" -> statusColors.leave to "Leave"
+        "H" -> statusColors.halfDay to "Half day"
         else -> statusColors.noStatus to "—"
     }
     Row(verticalAlignment = Alignment.CenterVertically) {

@@ -10,12 +10,6 @@ import java.util.Calendar
  * Title-Case / digits-only / "N/A"-sentinel transforms, same DOB bounds).
  */
 
-val CLASSES: List<String> = listOf(
-    "Nursery", "L.K.G", "U.K.G",
-    "1st", "2nd", "3rd", "4th", "5th", "6th",
-    "7th", "8th", "9th", "10th", "11th", "12th",
-)
-
 val RELIGIONS: List<String> = listOf(
     "Hindu", "Muslim", "Sikh", "Christian", "Jain", "Buddhist", "Parsi", "Other",
 )

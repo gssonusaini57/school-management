@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="kis_primary">#0F3460</color>
+    <!-- Khalsa blue: the launch window's status bar, matching the Compose top bars. -->
+    <color name="kis_primary">#0E2F8E</color>
     <color name="kis_primary_dark">#08203E</color>
     <color name="kis_secondary">#16C172</color>
     <color name="kis_background">#F8FAFC</color>

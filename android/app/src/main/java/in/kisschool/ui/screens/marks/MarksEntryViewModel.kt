@@ -16,7 +16,7 @@ import `in`.kisschool.data.repo.MetaRepository
 import `in`.kisschool.data.repo.SessionRepository
 import `in`.kisschool.data.repo.StudentRepository
 import `in`.kisschool.data.repo.userMessage
-import `in`.kisschool.ui.screens.studentedit.CLASSES
+import `in`.kisschool.data.CLASSES
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -191,6 +191,8 @@ class MarksEntryViewModel(
     /** Classes to offer: every class for admins, else the staff member's own (possibly none). */
     classOptions: List<String>,
     isSuperAdmin: Boolean = false,
+    /** The class to open on (a dashboard row's); ignored when it isn't offered. */
+    initialClass: String? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -221,6 +223,11 @@ class MarksEntryViewModel(
             val letters = metaRepo.gradeLetters()
             set { it.copy(gradeLetters = letters) }
         }
+    }
+
+    init {
+        // Opened from the dashboard for a class: start on it (its subjects and roster load as usual).
+        initialClass?.takeIf { it in classOptions }?.let { setClass(it) }
     }
 
     /**

@@ -63,7 +63,10 @@ import `in`.kisschool.ui.components.ClassDropdown
 import `in`.kisschool.ui.components.EmptyState
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
+import `in`.kisschool.ui.components.ModuleTopBarTitle
 import `in`.kisschool.ui.theme.KISTheme
+import `in`.kisschool.ui.theme.KisIcons
+import `in`.kisschool.ui.theme.KisModule
 import `in`.kisschool.ui.theme.kisTopAppBarColors
 import `in`.kisschool.ui.theme.SheetSystemBarsFollowAppTheme
 import kotlin.math.abs
@@ -115,7 +118,7 @@ fun ResultsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Results & report cards") },
+                title = { ModuleTopBarTitle("Results & report cards", KisModule.Results, KisIcons.Results) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

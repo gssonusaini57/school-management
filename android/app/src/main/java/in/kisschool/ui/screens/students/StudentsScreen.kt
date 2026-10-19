@@ -31,6 +31,9 @@ import `in`.kisschool.ui.components.ClassDropdown
 import `in`.kisschool.ui.components.EmptyState
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
+import `in`.kisschool.ui.components.ModuleTopBarTitle
+import `in`.kisschool.ui.theme.KisIcons
+import `in`.kisschool.ui.theme.KisModule
 import `in`.kisschool.ui.theme.kisTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +48,7 @@ fun StudentsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Students") },
+                title = { ModuleTopBarTitle("Students", KisModule.Students, KisIcons.Students) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

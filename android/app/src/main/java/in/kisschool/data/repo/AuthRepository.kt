@@ -1,5 +1,6 @@
 package `in`.kisschool.data.repo
 
+import `in`.kisschool.data.CLASSES
 import `in`.kisschool.data.api.ApiService
 import `in`.kisschool.data.api.dto.ChangePasswordRequest
 import `in`.kisschool.data.api.dto.ForgotPasswordRequest
@@ -19,6 +20,21 @@ class AuthRepository(
     val isAdmin: Boolean get() = role == "admin" || role == "super_admin"
     val isSuperAdmin: Boolean get() = role == "super_admin"
     val allowedMenus: List<String>? get() = tokenStore.allowedMenus
+
+    /**
+     * The classes every class picker offers this user: the dashboard, Take and Past
+     * attendance, Students, Marks entry and Results. Admins and super-admins carry an
+     * empty allowed_classes and see every class; a staff member sees their own, which may
+     * be none (the screens then say "No classes assigned"), so emptiness alone can't tell
+     * the two apart. A role not stored yet (an install that logged in before the app kept
+     * it, until /auth/me fills it in) keeps the old any-empty-means-all rule.
+     */
+    val visibleClasses: List<String>
+        get() = when {
+            isAdmin -> CLASSES
+            role == null -> allowedClasses.ifEmpty { CLASSES }
+            else -> allowedClasses
+        }
 
     /**
      * True once a login or /auth/me has answered in this process. From then on, menus

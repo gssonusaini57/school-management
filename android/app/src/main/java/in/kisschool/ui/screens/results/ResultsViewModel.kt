@@ -82,12 +82,14 @@ class ResultsViewModel(
     private val sessionRepo: SessionRepository,
     private val reportCardRepo: ReportCardRepository,
     classOptions: List<String>,
+    /** The class to open on (e.g. a dashboard row's); the first class when it isn't offered. */
+    initialClass: String? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
         ResultsUiState(
             classOptions = classOptions,
-            cls = classOptions.firstOrNull(),
+            cls = initialClass?.takeIf { it in classOptions } ?: classOptions.firstOrNull(),
             scope = ResultScope.of(SessionRepository.termScopeFor(null)),
             // The first load waits for the session list; show a spinner, not "pick a class".
             loading = classOptions.isNotEmpty(),

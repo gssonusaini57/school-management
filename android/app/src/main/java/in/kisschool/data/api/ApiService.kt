@@ -2,6 +2,10 @@ package `in`.kisschool.data.api
 
 import `in`.kisschool.data.api.dto.AcademicSessionDto
 import `in`.kisschool.data.api.dto.AttendanceDto
+import `in`.kisschool.data.api.dto.BatchSummaryDto
+import `in`.kisschool.data.api.dto.ClassAttendanceSummaryDto
+import `in`.kisschool.data.api.dto.FeePaymentDto
+import `in`.kisschool.data.api.dto.StaffSummaryDto
 import `in`.kisschool.data.api.dto.ClassResultsDto
 import `in`.kisschool.data.api.dto.MetaDto
 import `in`.kisschool.data.api.dto.PdfTemplateDto
@@ -24,6 +28,7 @@ import `in`.kisschool.data.api.dto.MarksEditRequestListDto
 import `in`.kisschool.data.api.dto.RejectBody
 import `in`.kisschool.data.api.dto.MarkedDatesDto
 import `in`.kisschool.data.api.dto.MeResponse
+import `in`.kisschool.data.api.dto.NoticeDto
 import `in`.kisschool.data.api.dto.RequestEditBody
 import `in`.kisschool.data.api.dto.StudentDto
 import `in`.kisschool.data.api.dto.StudentPageDto
@@ -59,6 +64,13 @@ interface ApiService {
         @Query("class") className: String,
         @Query("page_size") pageSize: Int = 500
     ): StudentPageDto
+
+    /**
+     * A page of every student the caller may see, for its `total` (the dashboard asks for
+     * one row). Archived students are left out, as on the roster.
+     */
+    @GET("students")
+    suspend fun studentsPage(@Query("page_size") pageSize: Int = 1): Response<StudentPageDto>
 
     // Single student — returns FULL pending-edit metadata (pendingEditRequestId +
     // requester/timestamp) that the list endpoint omits. Staff-callable (scoped
@@ -116,6 +128,17 @@ interface ApiService {
     @POST("marks/batches/{id}/submit")
     suspend fun submitMarksBatch(@Path("id") id: Long): Response<BatchDetailDto>
 
+    /**
+     * Marks progress for a session: every exam component of every class subject in scope
+     * with its batch's status. [className] null = every class the caller may see. Absent
+     * on servers older than the dashboard (404).
+     */
+    @GET("marks/batches/summary")
+    suspend fun marksBatchesSummary(
+        @Query("session") session: String,
+        @Query("class") className: String? = null,
+    ): Response<BatchSummaryDto>
+
     @POST("marks/batches/{id}/request-edit")
     suspend fun requestMarksEdit(
         @Path("id") id: Long,
@@ -146,6 +169,31 @@ interface ApiService {
         @Query("from") from: String,
         @Query("to") to: String,
     ): MarkedDatesDto
+
+    /**
+     * Attendance per class over [from, to] (ISO dates; the server clips `to` to its today):
+     * every class in the caller's scope, marked or not. Absent on servers older than the
+     * dashboard (404).
+     */
+    @GET("attendance/class-summary")
+    suspend fun attendanceClassSummary(
+        @Query("from") from: String,
+        @Query("to") to: String,
+    ): Response<ClassAttendanceSummaryDto>
+
+    // ── Fees and staff (admin-only lists, read by the admin dashboard) ───────
+    /** Every fee receipt, newest first (admins; a teacher may only ask for one of their classes). */
+    @GET("fees")
+    suspend fun fees(): Response<List<FeePaymentDto>>
+
+    /** Staff who aren't archived (admins only). */
+    @GET("staff")
+    suspend fun staff(): Response<List<StaffSummaryDto>>
+
+    // ── Notices (read-only here; every signed-in user may read them) ─────────
+    /** Every notice, newest first. */
+    @GET("notices")
+    suspend fun notices(): List<NoticeDto>
 
     @POST("staff/change-password")
     suspend fun changeStaffPassword(@Body body: ChangePasswordRequest): Response<Unit>

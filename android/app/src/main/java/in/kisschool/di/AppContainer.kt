@@ -7,8 +7,10 @@ import `in`.kisschool.data.repo.AdminRepository
 import `in`.kisschool.data.repo.AppUpdateRepository
 import `in`.kisschool.data.repo.AttendanceRepository
 import `in`.kisschool.data.repo.AuthRepository
+import `in`.kisschool.data.repo.DashboardRepository
 import `in`.kisschool.data.repo.MarksRepository
 import `in`.kisschool.data.repo.MetaRepository
+import `in`.kisschool.data.repo.NoticeRepository
 import `in`.kisschool.data.repo.ReportCardRepository
 import `in`.kisschool.data.repo.ResultsRepository
 import `in`.kisschool.data.repo.SessionRepository
@@ -80,6 +82,8 @@ class AppContainer(context: Context) {
     val sessionRepo = SessionRepository(api)
     val metaRepo = MetaRepository(api)
     val resultsRepo = ResultsRepository(api)
+    val noticeRepo = NoticeRepository(api)
+    val dashboardRepo = DashboardRepository(api)
     val reportCardRepo = ReportCardRepository(
         api = api,
         renderApi = renderApi,

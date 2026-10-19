@@ -1,81 +1,112 @@
 package `in`.kisschool.ui.screens.home
 
+import androidx.activity.compose.BackHandler
+import android.widget.Toast
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assessment
-import androidx.compose.material.icons.filled.BrightnessMedium
-import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.automirrored.filled.FactCheck
-import androidx.compose.material.icons.automirrored.filled.Logout
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.People
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import `in`.kisschool.BuildConfig
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import `in`.kisschool.BuildConfig
+import `in`.kisschool.R
 import `in`.kisschool.data.settings.ThemeMode
-import `in`.kisschool.ui.components.ClassDropdown
-import `in`.kisschool.ui.components.ErrorBanner
+import `in`.kisschool.ui.components.BrandRule
+import `in`.kisschool.ui.components.RoleChip
+import `in`.kisschool.ui.components.brandGradient
+import `in`.kisschool.ui.components.roleLabel
+import `in`.kisschool.ui.screens.dashboard.ClassDayKind
+import `in`.kisschool.ui.screens.dashboard.DashboardActions
 import `in`.kisschool.ui.screens.dashboard.DashboardViewModel
-import `in`.kisschool.ui.screens.dashboard.MonthCalendar
+import `in`.kisschool.ui.screens.dashboard.adminDashboard
+import `in`.kisschool.ui.screens.dashboard.portalPageUrl
+import `in`.kisschool.ui.screens.dashboard.teacherDashboard
 import `in`.kisschool.ui.theme.KISTheme
-import `in`.kisschool.ui.theme.kisTopAppBarColors
+import `in`.kisschool.ui.theme.PlayfairDisplay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
+/**
+ * Home: a brand header, then the role's dashboard: the school-wide cards for admins and the
+ * super-admin, the teacher's own classes for staff (see DashboardCards.kt). Every other screen
+ * opens from the navigation drawer behind the top bar's menu button, or from a card.
+ *
+ * The body is a LazyColumn of cards: a new dashboard card is one more `cardItem(…)` in
+ * adminDashboard / teacherDashboard, a DashboardCard with `Modifier.padding(horizontal = 16.dp)`.
+ * The refresh button reloads every card; each card loads (and fails) on its own.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
     userName: String,
+    /** The stored role ("super_admin" | "admin" | "staff"), or null until /auth/me has said. */
+    role: String?,
     dashVm: DashboardViewModel,
     onOpenAttendanceFor: (className: String, iso: String) -> Unit,
+    /** The dashboard's lists of one day's marked / pending / holiday classes. */
+    onOpenClassesToday: (kind: ClassDayKind, iso: String) -> Unit,
     onTakeAttendance: () -> Unit,
     onViewHistory: () -> Unit,
     onViewStudents: () -> Unit,
+    /** Students, Marks entry and Results opened from a dashboard card, on a class when given. */
+    onStudentsFor: (className: String?) -> Unit,
     onMarksEntry: () -> Unit,
+    onMarksEntryFor: (className: String?) -> Unit,
+    onResultsFor: (className: String?) -> Unit,
+    onNotices: () -> Unit,
     onLogout: () -> Unit,
     isSuperAdmin: Boolean = false,
     onApprovals: () -> Unit = {},
@@ -83,14 +114,45 @@ fun HomeScreen(
     canMarksEntry: Boolean = true,
     canResults: Boolean = true,
     onResults: () -> Unit = {},
-    /** Home → Theme: the saved choice, and how to change it (applies at once, app-wide). */
+    /** Drawer → Theme: the saved choice, and how to change it (applies at once, app-wide). */
     themeMode: ThemeMode,
     onThemeModeChange: (ThemeMode) -> Unit,
 ) {
-    var menuOpen by remember { mutableStateOf(false) }
+    val drawerState = rememberDrawerState(DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
     var showAbout by remember { mutableStateOf(false) }
     var showTheme by remember { mutableStateOf(false) }
     val s by dashVm.state.collectAsStateWithLifecycle()
+    val cards by dashVm.cards.collectAsStateWithLifecycle()
+    val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    val actions = DashboardActions(
+        onOpenAttendanceFor = onOpenAttendanceFor,
+        onOpenClasses = onOpenClassesToday,
+        onApprovals = onApprovals,
+        onResults = onResultsFor,
+        onMarksEntry = onMarksEntryFor,
+        onStudents = onStudentsFor,
+        onNotices = onNotices,
+        onOpenFees = {
+            // Fees aren't in the app: the card opens the web portal's fees page.
+            val url = portalPageUrl(BuildConfig.API_BASE_URL, "fees")
+            try {
+                uriHandler.openUri(url)
+            } catch (_: Exception) {
+                Toast.makeText(context, "No browser could open $url", Toast.LENGTH_LONG).show()
+            }
+        },
+        onRetry = dashVm::retry,
+        onSelectPeriod = dashVm::selectPeriod,
+        onToggleClass = dashVm::toggleClass,
+        onPrevMonth = dashVm::prevMonth,
+        onNextMonth = dashVm::nextMonth,
+    )
+
+    // Back closes an open (or opening) drawer before it can leave the app.
+    val drawerOpen = drawerState.currentValue == DrawerValue.Open || drawerState.targetValue == DrawerValue.Open
+    BackHandler(enabled = drawerOpen) { scope.launch { drawerState.close() } }
 
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
     if (showTheme) ThemeDialog(
@@ -99,224 +161,179 @@ fun HomeScreen(
         onDismiss = { showTheme = false },
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("KIS School Portal") },
-                colors = kisTopAppBarColors(),
-                actions = {
-                    IconButton(onClick = { menuOpen = true }) {
-                        Icon(Icons.Default.MoreVert, contentDescription = "Menu")
-                    }
-                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Theme") },
-                            leadingIcon = { Icon(Icons.Default.BrightnessMedium, contentDescription = null) },
-                            onClick = {
-                                menuOpen = false
-                                showTheme = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("About") },
-                            leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
-                            onClick = {
-                                menuOpen = false
-                                showAbout = true
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Logout") },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) },
-                            onClick = {
-                                menuOpen = false
-                                onLogout()
-                            }
-                        )
-                    }
-                }
-            )
+    // Close the drawer, then act: a screen opened from it finds the drawer closed on return.
+    fun fromDrawer(action: () -> Unit) {
+        scope.launch {
+            drawerState.close()
+            action()
         }
-    ) { padding: PaddingValues ->
-        Column(
-            Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                "Hello, $userName",
-                style = MaterialTheme.typography.headlineSmall
+    }
+
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            HomeDrawerContent(
+                userName = userName,
+                role = role,
+                isSuperAdmin = isSuperAdmin,
+                canMarksEntry = canMarksEntry,
+                canResults = canResults,
+                onDashboard = { scope.launch { drawerState.close() } },
+                onTakeAttendance = { fromDrawer(onTakeAttendance) },
+                onViewHistory = { fromDrawer(onViewHistory) },
+                onViewStudents = { fromDrawer(onViewStudents) },
+                onMarksEntry = { fromDrawer(onMarksEntry) },
+                onResults = { fromDrawer(onResults) },
+                onApprovals = { fromDrawer(onApprovals) },
+                onNotices = { fromDrawer(onNotices) },
+                onTheme = { fromDrawer { showTheme = true } },
+                onAbout = { fromDrawer { showAbout = true } },
+                onLogout = { fromDrawer(onLogout) },
             )
-
-            // ── Attendance coverage dashboard ───────────────────────────────
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-            ) {
-                Column(
-                    Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text("Attendance coverage", style = MaterialTheme.typography.titleMedium)
-
-                    ClassDropdown(
-                        classes = s.allowedClasses,
-                        selected = s.selectedClass,
-                        onSelect = dashVm::selectClass,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    val cls = s.selectedClass
-                    if (cls == null) {
+        },
+    ) {
+        Scaffold(
+            topBar = {
+                // Same colour as the top of the header gradient below, so the two read as one band.
+                val brand = KISTheme.colors
+                TopAppBar(
+                    title = {
                         Text(
-                            "No classes assigned yet.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            "Khalsa International",
+                            fontFamily = PlayfairDisplay,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                         )
-                    } else {
-                        val todayIsoStr = LocalDate.now().toString()
-                        val todayMarked = s.month == YearMonth.now() && todayIsoStr in s.markedDates
-                        TodayStatusChip(
-                            marked = todayMarked,
-                            onClick = { onOpenAttendanceFor(cls, todayIsoStr) }
-                        )
-
-                        MonthCalendar(
-                            month = s.month,
-                            markedDates = s.markedDates,
-                            holidays = s.holidays,
-                            today = LocalDate.now(),
-                            onPrevMonth = dashVm::prevMonth,
-                            onNextMonth = dashVm::nextMonth,
-                            onDayClick = { iso -> onOpenAttendanceFor(cls, iso) },
-                        )
-                    }
-
-                    ErrorBanner(s.error)
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                            Icon(Icons.Default.Menu, contentDescription = "Open menu")
+                        }
+                    },
+                    actions = {
+                        // Spins while any card loads, and stays a button: a slow card never blocks a refresh.
+                        val loading = cards.anyLoading
+                        IconButton(
+                            onClick = dashVm::refreshAll,
+                            modifier = Modifier.semantics {
+                                contentDescription = if (loading) "Refreshing the dashboard" else "Refresh the dashboard"
+                            },
+                        ) {
+                            if (loading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    strokeWidth = 2.dp,
+                                    color = brand.onTopBar,
+                                )
+                            } else {
+                                Icon(Icons.Default.Refresh, contentDescription = null)
+                            }
+                        }
+                    },
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = brand.loginGradientStart,
+                        scrolledContainerColor = brand.loginGradientStart,
+                        titleContentColor = brand.onTopBar,
+                        navigationIconContentColor = brand.onTopBar,
+                        actionIconContentColor = brand.onTopBar,
+                    ),
+                )
+            }
+        ) { padding: PaddingValues ->
+            LazyColumn(
+                Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentPadding = PaddingValues(bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                item(key = "greeting") {
+                    GreetingHeader(userName = userName, role = role)
                 }
-            }
-
-            // ── Quick actions ──────────────────────────────────────────────
-            if (isSuperAdmin) {
-                ActionTile(
-                    title = "Approvals",
-                    subtitle = "Review student & marks edits, deletions",
-                    icon = Icons.AutoMirrored.Filled.FactCheck,
-                    onClick = onApprovals
-                )
-            }
-            ActionTile(
-                title = "Take attendance",
-                subtitle = "Mark today's class attendance",
-                icon = Icons.Default.CalendarMonth,
-                onClick = onTakeAttendance
-            )
-            ActionTile(
-                title = "Past attendance",
-                subtitle = "View previously saved records",
-                icon = Icons.Default.History,
-                onClick = onViewHistory
-            )
-            ActionTile(
-                title = "Students",
-                subtitle = "Browse class rosters",
-                icon = Icons.Default.People,
-                onClick = onViewStudents
-            )
-            if (canMarksEntry) {
-                ActionTile(
-                    title = "Marks entry",
-                    subtitle = "Enter marks or grades · save draft · submit for lock",
-                    icon = Icons.Default.EditNote,
-                    onClick = onMarksEntry
-                )
-            }
-            if (canResults) {
-                ActionTile(
-                    title = "Results & report cards",
-                    subtitle = "Term results · open and share report cards",
-                    icon = Icons.Default.Assessment,
-                    onClick = onResults
-                )
+                if (cards.access.isAdmin) adminDashboard(cards, s, actions) else teacherDashboard(cards, s, actions)
             }
         }
     }
 }
 
+// ── Brand header ────────────────────────────────────────────────────────
+
+private val HEADER_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, d MMM yyyy", Locale.ENGLISH)
+
+/** Lower-cased honorifics that stay with the name after them ("Mrs. Sharma", not "Mrs."). */
+private val HONORIFICS = setOf("mr", "mrs", "ms", "miss", "dr", "prof", "sh", "smt", "s", "sardar")
+
+/**
+ * The name to greet: a teacher's first name ("Manjeet" for "Manjeet Kaur"), with a leading
+ * honorific kept ("Mrs. Sharma"). Admin accounts are named after the account ("Super
+ * Admin"), so theirs is used whole. Empty when there is no name.
+ */
+internal fun greetingName(name: String, role: String?): String {
+    val words = name.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+    if (words.isEmpty()) return ""
+    if (role == "admin" || role == "super_admin") return words.joinToString(" ")
+    val first = words[0]
+    return if (words.size > 1 && first.trimEnd('.').lowercase(Locale.ROOT) in HONORIFICS) "$first ${words[1]}" else first
+}
+
+/**
+ * Full-width gradient band under the top bar: the crest, "Sat Sri Akal, {name}" in Playfair
+ * Display, the role chip and today's date, closed by the royal-gold rule.
+ */
 @Composable
-private fun TodayStatusChip(marked: Boolean, onClick: () -> Unit) {
-    val markedGreen = KISTheme.colors.present
-    val bg = if (marked) markedGreen.copy(alpha = 0.14f) else MaterialTheme.colorScheme.secondaryContainer
-    val fg = if (marked) markedGreen else MaterialTheme.colorScheme.onSecondaryContainer
-    Row(
+private fun GreetingHeader(userName: String, role: String?) {
+    val onBrand = KISTheme.colors.onTopBar
+    // Non-breaking spaces keep the name on one line: a greeting too long for the row wraps
+    // after "Sat Sri Akal," rather than inside "Mrs. Sharma".
+    val name = greetingName(userName, role).replace(' ', '\u00A0')
+    Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(bg)
-            .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (marked) {
-            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = fg)
-            Text(
-                "Today's attendance is marked",
-                color = fg,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        } else {
-            Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = fg)
-            Text(
-                "Mark today's attendance →",
-                color = fg,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(start = 8.dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun ActionTile(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(96.dp),
-        onClick = onClick,
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            .background(brandGradient())
     ) {
         Row(
             Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp, vertical = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = icon,
+            // The crest is 5:4, so only its height is fixed (CLAUDE.md Gotcha #11).
+            Image(
+                painter = painterResource(R.drawable.crest_mark),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.height(36.dp)
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.height(44.dp),
             )
-            Column(Modifier.padding(start = 16.dp)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.width(14.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    if (name.isEmpty()) "Sat Sri Akal" else "Sat Sri Akal, $name",
+                    fontFamily = PlayfairDisplay,
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = onBrand,
                 )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    roleLabel(role)?.let { RoleChip(it) }
+                    Text(
+                        HEADER_DATE.format(LocalDate.now()),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = onBrand.copy(alpha = 0.85f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
         }
+        BrandRule()
     }
 }
+
+// ── Dialogs ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun AboutDialog(onDismiss: () -> Unit) {

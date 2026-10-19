@@ -19,13 +19,15 @@ data class StudentsUiState(
 
 class StudentsViewModel(
     private val studentRepo: StudentRepository,
-    allowedClasses: List<String>
+    allowedClasses: List<String>,
+    /** The class to open on (e.g. a dashboard row's); the first class when it isn't offered. */
+    initialClass: String? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
         StudentsUiState(
             allowedClasses = allowedClasses,
-            selectedClass = allowedClasses.firstOrNull()
+            selectedClass = initialClass?.takeIf { it in allowedClasses } ?: allowedClasses.firstOrNull()
         )
     )
     val state: StateFlow<StudentsUiState> = _state.asStateFlow()

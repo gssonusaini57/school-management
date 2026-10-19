@@ -54,6 +54,9 @@ import `in`.kisschool.data.api.dto.ExamComponentDto
 import `in`.kisschool.data.api.dto.StudentDto
 import `in`.kisschool.ui.components.ClassDropdown
 import `in`.kisschool.ui.components.ErrorBanner
+import `in`.kisschool.ui.components.ModuleTopBarTitle
+import `in`.kisschool.ui.theme.KisIcons
+import `in`.kisschool.ui.theme.KisModule
 import `in`.kisschool.ui.theme.kisTopAppBarColors
 
 /** Dropdown label for a test; graded tests (max 0) say so instead of "max 0". */
@@ -79,7 +82,7 @@ fun MarksEntryScreen(vm: MarksEntryViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Marks entry") },
+                title = { ModuleTopBarTitle("Marks entry", KisModule.Marks, KisIcons.MarksEntry) },
                 navigationIcon = {
                     IconButton(onClick = { unlessDirty(onBack) }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

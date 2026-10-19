@@ -46,7 +46,10 @@ import `in`.kisschool.data.api.dto.MarksEditRequestDto
 import `in`.kisschool.ui.components.EmptyState
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
+import `in`.kisschool.ui.components.ModuleTopBarTitle
 import `in`.kisschool.ui.theme.KISTheme
+import `in`.kisschool.ui.theme.KisIcons
+import `in`.kisschool.ui.theme.KisModule
 import `in`.kisschool.ui.theme.kisTopAppBarColors
 
 private enum class ApprovalTab { STUDENT, MARKS, DELETIONS }
@@ -104,7 +107,7 @@ fun ApprovalsScreen(vm: ApprovalsViewModel, onBack: () -> Unit) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Approvals") },
+                title = { ModuleTopBarTitle("Approvals", KisModule.Approvals, KisIcons.Approvals) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")

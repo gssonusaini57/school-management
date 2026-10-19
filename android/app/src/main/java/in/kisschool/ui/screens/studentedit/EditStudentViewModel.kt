@@ -3,6 +3,7 @@ package `in`.kisschool.ui.screens.studentedit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import `in`.kisschool.BuildConfig
+import `in`.kisschool.data.CLASSES
 import `in`.kisschool.data.repo.StudentRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
