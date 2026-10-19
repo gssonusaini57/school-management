@@ -1,8 +1,6 @@
 package `in`.kisschool.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -21,16 +19,12 @@ private val Light = lightColorScheme(
     surface = Surface
 )
 
-private val Dark = darkColorScheme(
-    primary = Color(0xFF7CA3D9),
-    onPrimary = Color(0xFF062144),
-    secondary = Color(0xFF63DB9E),
-    background = Color(0xFF0B1220),
-    surface = Color(0xFF111A2C)
-)
-
+/**
+ * The school's design is light only: the app ignores the phone's dark mode, so cards and
+ * screens stay white and the brand blue stays readable (in dark mode it used to turn the
+ * login card dark grey with dark-blue text on it).
+ */
 @Composable
 fun KISTheme(content: @Composable () -> Unit) {
-    val colors = if (isSystemInDarkTheme()) Dark else Light
-    MaterialTheme(colorScheme = colors, content = content)
+    MaterialTheme(colorScheme = Light, content = content)
 }
