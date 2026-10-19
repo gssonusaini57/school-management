@@ -225,6 +225,7 @@
       "scope": "Scope",
       "tabResults": "Results",
       "pickClass": "Pick a class to see its results.",
+      "term2Empty": "No Term 2 marks yet, so this shows Term 1. Pick Term 2 under Scope to see it.",
       "forbidden": "You don't have access to the results of {{cls}}. Ask an admin to add this class and the Results menu to your account.",
       "updating": "Updating…",
       "exportCsv": "Export CSV",

@@ -313,10 +313,26 @@ export default function MarksResults() {
 
   const scopeParam = searchParams.get("scope");
   const scopePick = SCOPES.find((s) => s === scopeParam) ?? null;
-  const scope = scopePick ?? scopeForToday(sessionsQ.data);
   // The default session and scope come from GET /sessions: wait for it instead of
   // loading results for a guess first, unless both were already picked by hand.
   const ready = !sessionsQ.isPending || (!!sessionPick && scopePick !== null);
+  const scopeToday = scopeForToday(sessionsQ.data);
+  // Until a scope is picked by hand, a class whose current term is Term 2 with no marks yet
+  // opens on Term 1 (as the Android app does), with a note saying why. The probe shares
+  // ResultsView's cache entry for Term 2, so it isn't fetched twice.
+  const probeTerm2 = ready && !scopePick && scopeToday === "term2" && !!cls && !!session;
+  const term2Q = useQuery({
+    queryKey: ["results", cls, session, "term2", true] as const,
+    queryFn: () =>
+      api
+        .get<ClassResults>("/marks/results", { params: { class: cls, session, scope: "term2", include_drafts: true } })
+        .then((r) => r.data),
+    enabled: probeTerm2,
+    retry: (failures, e) => !isClientError(e) && failures < 1,
+  });
+  const term2Empty = probeTerm2 && !!term2Q.data && !term2Q.data.students.some((s) => s.has_marks);
+  const probing = probeTerm2 && term2Q.isPending;
+  const scope = scopePick ?? (term2Empty ? "term1" : scopeToday);
 
   const [view, setView] = useState<ViewOptions>({ showExams: false, includeDrafts: true, hideNoMarks: true });
 
@@ -398,6 +414,11 @@ export default function MarksResults() {
           </CardContent>
         </Card>
 
+        {term2Empty && (
+          <p role="status" className="text-sm text-muted-foreground print:hidden">
+            {t("portal.results.term2Empty", "No Term 2 marks yet, so this shows Term 1. Pick Term 2 under Scope to see it.")}
+          </p>
+        )}
         {/* Manual activation: a click or Enter switches tabs and focus alone doesn't, so the
             unsaved-changes prompt in onTabChange asks once, not again on the focus after a click. */}
         <Tabs value={tab} onValueChange={onTabChange} activationMode="manual">
@@ -412,14 +433,14 @@ export default function MarksResults() {
                 <GraduationCap className="mx-auto mb-2 h-6 w-6" aria-hidden />
                 {t("portal.results.pickClass", "Pick a class to see its results.")}
               </div>
-            ) : !ready ? (
+            ) : !ready || probing ? (
               loading
             ) : (
               <ResultsView cls={cls} session={session} scope={scope} view={view} onViewChange={setView} />
             )}
           </TabsContent>
           <TabsContent value="report-cards">
-            {ready ? <ReportCardsTab cls={cls} session={session} scope={scope} /> : loading}
+            {ready && !probing ? <ReportCardsTab cls={cls} session={session} scope={scope} /> : loading}
           </TabsContent>
         </Tabs>
       </div>
