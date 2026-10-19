@@ -321,6 +321,21 @@ export interface ClassSubject {
   order_index: number;
   created_at: string;
   updated_at: string;
+  /** An optional (additional) subject: only the students in enrolled_student_ids take it.
+   *  Older servers omit both fields (every subject is taken by the whole class). */
+  is_optional?: boolean;
+  /** Sorted ids of the students who take the subject (still in the class, not archived);
+   *  sent whether or not the subject is optional, used only when it is. */
+  enrolled_student_ids?: number[];
+}
+
+/** GET / PUT /class-subjects/{id}/enrollments. */
+export interface SubjectEnrollments {
+  class_subject_id: number;
+  class_name: string;
+  subject_name: string;
+  is_optional: boolean;
+  student_ids: number[];
 }
 
 export interface ClassSubjectDetail extends ClassSubject {
@@ -348,6 +363,8 @@ export interface SubjectColumn {
   is_grading: boolean; // letter-graded subject (max 0)
   batch_status: BatchStatus;
   components: ComponentInfo[];
+  /** Taken only by the students enrolled on Class Subjects; the others' result is "not_taken". Older servers omit it. */
+  is_optional?: boolean;
 }
 
 export interface ComponentMark extends ComponentInfo {
@@ -373,8 +390,11 @@ export interface SubjectResult {
   max: number;
   percentage: number | null;
   grade: string | null;
-  status: "complete" | "partial" | "missing";
+  /** "not_taken": an optional subject this student doesn't take. It carries nothing (0 of 0, no
+   *  percentage, grade or components) and the server leaves it out of every total, rank and verdict. */
+  status: "complete" | "partial" | "missing" | "not_taken";
   is_grading: boolean;
+  is_optional?: boolean;
   grade_letter: string | null;
   term_letters: Record<string, string>;
   batch_status: BatchStatus;

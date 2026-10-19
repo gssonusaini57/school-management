@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "@/components/ui/toaster";
+import { OptionalSubjectCard } from "@/components/OptionalSubjectCard";
 import { api, apiError } from "@/lib/api";
 import { useSSE } from "@/lib/sse";
 import type { ClassSubjectDetail, SubjectCategory } from "@/types/api";
@@ -245,6 +246,9 @@ export default function ClassSubjectDetail() {
           <Badge variant={s.category === "academic" ? "default" : s.category === "co_curricular" ? "secondary" : "outline"}>
             {CATEGORY_LABEL[s.category]}
           </Badge>
+          {s.is_optional && (
+            <Badge variant="info">{t("portal.classSubjects.optionalBadge", "Optional")}</Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={addRow}>
@@ -381,6 +385,9 @@ export default function ClassSubjectDetail() {
           )}
         </CardContent>
       </Card>
+
+      {/* Who takes the subject: everyone, or (optional subject) only the students ticked there. */}
+      <OptionalSubjectCard key={s.id} subject={s} />
 
       <Dialog open={!!forcePrompt} onOpenChange={(o) => { if (!o) setForcePrompt(null); }}>
         <DialogContent>

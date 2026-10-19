@@ -185,7 +185,12 @@
       "graded": "graded",
       "gradeOption": "grade",
       "maxOption": "max {{max}}",
-      "letterGrade": "Letter grade"
+      "letterGrade": "Letter grade",
+      "optionalOption": "optional",
+      "optionalListed_one": "Optional subject: only the {{count}} student taking it is listed.",
+      "optionalListed_other": "Optional subject: only the {{count}} students taking it are listed.",
+      "optionalNone": "No student takes this subject yet. The super-admin ticks the students on Class Subjects.",
+      "optionalSetUp": "Tick the students who take {{subject}}"
     },
     "classSubjects": {
       "maxByScope": "Max marks · Term 1 / Term 2 / Annual",
@@ -194,7 +199,24 @@
       "forceDeleteTitle": "Delete components that have marks?",
       "forceDeleteBody": "Their marks stay in the database but no longer count in results or report cards. To rename a component instead, edit its name in place rather than deleting and re-adding it.",
       "keepThem": "Keep them",
-      "deleteAnyway": "Delete anyway"
+      "deleteAnyway": "Delete anyway",
+      "optionalBadge": "Optional",
+      "whoTakesTitle": "Who takes this subject",
+      "optionalLabel": "Optional subject",
+      "optionalHint": "Only the students ticked below get marks and results for this subject. It never affects promotion.",
+      "wholeClass": "The whole class takes {{subject}}. Tick “Optional subject” if only some students take it, such as Mathematics as an additional subject in 11th and 12th.",
+      "optionalOn": "{{subject}} is now an optional subject. Tick the students who take it, then save.",
+      "optionalOff": "{{subject}} is taken by the whole class again.",
+      "takersCount_one": "{{count}} of {{total}} students takes this subject",
+      "takersCount_other": "{{count}} of {{total}} students take this subject",
+      "selectAll": "Select all",
+      "clearAll": "Clear",
+      "takersSaved_one": "Saved. {{count}} student takes {{subject}}.",
+      "takersSaved_other": "Saved. {{count}} students take {{subject}}.",
+      "takersUnsaved": "Changes to who takes this subject aren't saved yet.",
+      "studentsLoadError": "Couldn't load the students of {{cls}}.",
+      "noStudents": "No students in {{cls}} yet.",
+      "father": "Father: {{name}}"
     },
     "reports": {
       "halfDay": "Half day"
@@ -249,7 +271,12 @@
       "csvProvisional": "Provisional results: not every subject is entered and submitted yet, so totals and ranks can still change.",
       "caption": "Results for {{cls}}, {{scope}}, session {{session}}",
       "noMarks": "No marks entered for {{cls}} · {{scope}} in {{session}} yet.",
-      "showAll": "Show all students"
+      "showAll": "Show all students",
+      "notTaken": "N/A",
+      "notTakenHint": "Not taken (optional subject)",
+      "csvNotTaken": "N/A = optional subject not taken",
+      "optional": "Optional",
+      "optionalHint": "Optional subject: it counts only for the students who take it, and never affects promotion."
     },
     "reportCards": {
       "title": "Report cards",

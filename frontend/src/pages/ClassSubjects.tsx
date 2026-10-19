@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { Plus, Trash2, Pencil, FileSpreadsheet, Save, X, ChevronRight, Sparkles } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -48,6 +49,7 @@ const CATEGORY_VARIANT: Record<SubjectCategory, "default" | "secondary" | "outli
 };
 
 export default function ClassSubjects() {
+  const { t } = useTranslation();
   const qc = useQueryClient();
   const [filterCls, setFilterCls] = useState<string>("");
   const [addOpen, setAddOpen] = useState(false);
@@ -221,6 +223,11 @@ export default function ClassSubjects() {
                       <Link to={`/class-subjects/${r.id}`} className="hover:underline text-khalsa-blue font-medium">
                         {r.subject_name}
                       </Link>
+                      {r.is_optional && (
+                        <Badge variant="info" className="ml-2 align-middle">
+                          {t("portal.classSubjects.optionalBadge", "Optional")}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="text-muted-foreground font-display">
                       {r.subject_name_pa ?? "—"}

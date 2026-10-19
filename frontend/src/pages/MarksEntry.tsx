@@ -23,6 +23,7 @@ import { SessionSelect } from "@/components/SessionSelect";
 import { useCurrentSessionName } from "@/lib/session";
 import { useMeta } from "@/lib/meta";
 import { confirmLeave, useUnsavedChanges } from "@/lib/unsaved";
+import { compareByRoll } from "@/lib/roster";
 import type { Student, ClassSubject, ClassSubjectDetail, MarksBatchDetail } from "@/types/api";
 import { useTranslation } from "react-i18next";
 
@@ -50,10 +51,15 @@ const itemsToInputs = (b: MarksBatchDetail | null, graded: boolean): Record<numb
 const revisionKey = (b: MarksBatchDetail | null): string =>
   b ? `${b.id}:${b.revision ?? b.updated_at}` : "none";
 
-/** True when the inputs differ from what was loaded (blank and missing count as the same). */
-const differs = (a: Record<number, string>, b: Record<number, string>): boolean =>
+/** True when the inputs differ from what was loaded (blank and missing count as the same),
+ *  looking only at the students `listed` keeps (every student by default). */
+const differs = (
+  a: Record<number, string>,
+  b: Record<number, string>,
+  listed: (studentId: number) => boolean = () => true,
+): boolean =>
   Array.from(new Set([...Object.keys(a), ...Object.keys(b)])).some(
-    (k) => (a[Number(k)] ?? "") !== (b[Number(k)] ?? ""),
+    (k) => listed(Number(k)) && (a[Number(k)] ?? "") !== (b[Number(k)] ?? ""),
   );
 
 /** The test whose marks the inputs show, and the saved batch they were loaded from. */
@@ -102,6 +108,8 @@ export default function MarksEntry() {
     queryFn: () => api.get(`/class-subjects/${subjectId}`).then((r) => r.data),
     enabled: !!subjectId,
   });
+  // A super-admin ticking who takes an optional subject (or editing its exams) shows up here.
+  useSSE("class-subjects", [["class-subjects"]]);
 
   const studentsQ = useQuery<Student[]>({
     queryKey: ["students", cls],
@@ -116,6 +124,19 @@ export default function MarksEntry() {
     () => eligibleSubjects.find((s) => String(s.id) === subjectId) ?? null,
     [eligibleSubjects, subjectId],
   );
+
+  // An optional subject (11th/12th Mathematics) is taken only by the students ticked on Class
+  // Subjects: only they are listed, counted and saved. Marks stored for anyone else stay on the
+  // server untouched (results ignore them) and are never sent back, as the server refuses them.
+  const subjectInfo =
+    subjectDetailQ.data && String(subjectDetailQ.data.id) === subjectId ? subjectDetailQ.data : selectedSubject;
+  const takersKey = subjectInfo?.is_optional ? (subjectInfo.enrolled_student_ids ?? []).join(",") : null;
+  const takerIds = useMemo(
+    () => (takersKey == null ? null : new Set(takersKey ? takersKey.split(",").map(Number) : [])),
+    [takersKey],
+  );
+  /** Whether a student takes the selected subject (everyone does unless it is optional). */
+  const takes = (studentId: number) => !takerIds || takerIds.has(studentId);
 
   const components = useMemo(
     () => (subjectDetailQ.data?.components ?? []).slice().sort((a, b) => a.order_index - b.order_index),
@@ -167,7 +188,7 @@ export default function MarksEntry() {
     : "";
   const testKeyRef = useRef(testKey);
   testKeyRef.current = testKey;
-  const dirty = differs(marks, baseline);
+  const dirty = differs(marks, baseline, takes);
   // Leaving the page or reloading it (also the automatic reload after a deploy) asks first.
   useUnsavedChanges(dirty);
 
@@ -195,24 +216,12 @@ export default function MarksEntry() {
   };
 
   // ── Student sort: roll-first ───────────────────────────────────
-  const sortedStudents = useMemo(() => {
-    return (studentsQ.data ?? []).slice().sort((a, b) => {
-      const ar = a.roll_no ?? "";
-      const br = b.roll_no ?? "";
-      if (ar !== "" || br !== "") {
-        if (ar === "") return 1;
-        if (br === "") return -1;
-        const an = Number(ar);
-        const bn = Number(br);
-        if (!Number.isNaN(an) && !Number.isNaN(bn) && an !== bn) return an - bn;
-        if (Number.isNaN(an) || Number.isNaN(bn)) {
-          const c = ar.localeCompare(br);
-          if (c !== 0) return c;
-        }
-      }
-      return a.name.localeCompare(b.name);
-    });
-  }, [studentsQ.data]);
+  const sortedStudents = useMemo(() => (studentsQ.data ?? []).slice().sort(compareByRoll), [studentsQ.data]);
+  // The rows on screen: for an optional subject, only the students who take it.
+  const listedStudents = useMemo(
+    () => (takerIds ? sortedStudents.filter((s) => takerIds.has(s.id)) : sortedStudents),
+    [sortedStudents, takerIds],
+  );
 
   // ── Mutations ──────────────────────────────────────────────────
   const buildPayload = () => ({
@@ -226,7 +235,7 @@ export default function MarksEntry() {
     base_batch_id: shown.current.batchId,
     base_revision: shown.current.revision,
     items: Object.entries(marks)
-      .filter(([, v]) => (isGraded ? v !== "" : markNumber(v) != null))
+      .filter(([id, v]) => takes(Number(id)) && (isGraded ? v !== "" : markNumber(v) != null))
       .map(([id, v]) => (isGraded ? { student_id: Number(id), grade: v } : { student_id: Number(id), marks: markNumber(v)! })),
   });
 
@@ -306,14 +315,19 @@ export default function MarksEntry() {
   }, [testKey, batchRev, batchLoaded, saving]);
 
   // ── Validation summary ─────────────────────────────────────────
+  // Only the listed students' entries count (an optional subject's others are never sent).
+  const listedEntries = useMemo(
+    () => Object.entries(marks).filter(([id]) => !takerIds || takerIds.has(Number(id))).map(([, v]) => v),
+    [marks, takerIds],
+  );
   const enteredCount = useMemo(
-    () => Object.values(marks).filter((v) => (isGraded ? v !== "" : markNumber(v) != null)).length,
-    [marks, isGraded],
+    () => listedEntries.filter((v) => (isGraded ? v !== "" : markNumber(v) != null)).length,
+    [listedEntries, isGraded],
   );
   const overMaxCount = useMemo(() => {
     if (!selectedComponent || isGraded) return 0;
-    return Object.values(marks).filter((v) => (markNumber(v) ?? 0) > maxMarks).length;
-  }, [marks, maxMarks, selectedComponent, isGraded]);
+    return listedEntries.filter((v) => (markNumber(v) ?? 0) > maxMarks).length;
+  }, [listedEntries, maxMarks, selectedComponent, isGraded]);
 
   const canSave = !!selectedSubject && !!selectedComponent && batchLoaded && shown.current.test === testKey
     && !staleError && overMaxCount === 0 && !isLockedForMe && !hasPendingRequest;
@@ -378,6 +392,7 @@ export default function MarksEntry() {
                       {s.subject_name}
                       {s.category === "co_curricular" && ` — ${t("portal.marksEntry.coCurricularCounted", "co-curricular (counted in total)")}`}
                       {s.category === "grading" && ` — ${t("portal.marksEntry.graded", "graded")}`}
+                      {s.is_optional && ` — ${t("portal.marksEntry.optionalOption", "optional")}`}
                     </SelectItem>
                   ))
                 )}
@@ -502,6 +517,26 @@ export default function MarksEntry() {
             <p className="text-muted-foreground text-sm">Select a class to load students.</p>
           ) : !sortedStudents.length ? (
             <p className="text-muted-foreground text-sm">No students in this class.</p>
+          ) : takerIds && !listedStudents.length ? (
+            <div role="status" className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" aria-hidden />
+              <div>
+                {t(
+                  "portal.marksEntry.optionalNone",
+                  "No student takes this subject yet. The super-admin ticks the students on Class Subjects.",
+                )}
+                {isSuperAdmin && (
+                  <>
+                    {" "}
+                    <Link to={`/class-subjects/${subjectId}`} className="underline font-medium">
+                      {t("portal.marksEntry.optionalSetUp", "Tick the students who take {{subject}}", {
+                        subject: selectedSubject?.subject_name ?? "",
+                      })}
+                    </Link>
+                  </>
+                )}
+              </div>
+            </div>
           ) : !selectedComponent ? (
             <p className="text-muted-foreground text-sm">Pick a subject and a test component above.</p>
           ) : (
@@ -541,8 +576,15 @@ export default function MarksEntry() {
                   </Button>
                 </div>
               )}
+              {takerIds && (
+                <p role="status" className="text-sm text-muted-foreground mb-3">
+                  {t("portal.marksEntry.optionalListed", "Optional subject: only the {{count}} students taking it are listed.", {
+                    count: listedStudents.length,
+                  })}
+                </p>
+              )}
               <div className="space-y-2 mb-4">
-                {sortedStudents.map((s) => {
+                {listedStudents.map((s) => {
                   const v = marks[s.id] ?? "";
                   // Names the row's input for screen readers ("Manveer Singh · P.T. First").
                   const entryLabel = `${s.name} · ${selectedComponent?.component_name ?? ""}`;

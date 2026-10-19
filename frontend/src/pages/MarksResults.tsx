@@ -131,9 +131,12 @@ function subjectViews(
     data.groups.forEach((_, index) => {
       // Which exams a subject has doesn't depend on the student, so the first row
       // carrying the subject tells whether it uses this column, and the column's max.
+      // A student who doesn't take an optional subject has nothing for it, so they can't.
       let cell: ResultCell | undefined;
       for (const r of rows) {
-        cell = r.subjects.get(col.subject_name)?.cells[index];
+        const sub = r.subjects.get(col.subject_name);
+        if (!sub || sub.status === "not_taken") continue;
+        cell = sub.cells[index];
         if (cell) break;
       }
       if (cell && cell.status !== "none") exams.push({ index, label: groupLabel(index), max: cell.max });
@@ -173,7 +176,8 @@ function csvMark(text: string, status: string | undefined): string {
  * "obtained/max" split into Total and Max so spreadsheets read numbers, not dates.
  * The screen's markers come along, so a shared file can't pass for final results:
  * a first line while the results are provisional or include drafts, "(Draft)" on
- * subjects with unsubmitted marks, "*" on part-entered marks, and a legend.
+ * subjects with unsubmitted marks, "*" on part-entered marks, "N/A" for an optional
+ * subject a student doesn't take, and a legend.
  */
 function resultsCsvRows(
   views: SubjectView[],
@@ -184,7 +188,7 @@ function resultsCsvRows(
 ): string[][] {
   const header = [labels.roll, labels.student];
   for (const v of views) {
-    const name = v.col.subject_name;
+    const name = v.col.is_optional ? `${v.col.subject_name} (${labels.optional})` : v.col.subject_name;
     const draftTag = v.col.batch_status === "draft" ? ` (${labels.draft})` : "";
     if (v.exams.length) {
       for (const e of v.exams) header.push(`${name} — ${e.label} (/${formatNumber(e.max)})${draftTag}`);
@@ -203,11 +207,18 @@ function resultsCsvRows(
   const lines: string[][] = notes.length ? [[notes.join(" · ")], [], header] : [header];
   let partial = false;
   let draft = false;
+  let notTaken = false;
   for (const { st, subjects } of rows) {
     const line = [st.roll_no ?? "", st.name];
     for (const v of views) {
       const sub = subjects.get(v.col.subject_name);
       if (v.col.batch_status === "draft") draft = true;
+      if (sub?.status === "not_taken") {
+        // Nothing to write: the subject's exams and its total all read N/A.
+        notTaken = true;
+        for (let i = 0; i <= v.exams.length; i++) line.push(labels.notTaken);
+        continue;
+      }
       for (const e of v.exams) {
         const cell = sub?.cells[e.index];
         if (cell?.status === "partial") partial = true;
@@ -227,9 +238,10 @@ function resultsCsvRows(
     if (annual) line.push(st.promotion ? labels.promotion(st.promotion) : "");
     lines.push(line);
   }
-  if (partial || draft) lines.push([]);
+  if (partial || draft || notTaken) lines.push([]);
   if (partial) lines.push([`* ${labels.partialHint}`]);
   if (draft) lines.push([`(${labels.draft}) ${labels.draftHint}`]);
+  if (notTaken) lines.push([labels.csvNotTaken]);
   return lines;
 }
 
@@ -253,6 +265,14 @@ function useResultLabels(passPct: number | null) {
     draftHint: t("portal.results.draftHint", "Marks not submitted yet (still a draft)"),
     missing: t("portal.results.missing", "Not entered"),
     partialHint: t("portal.results.partialHint", "Some exams not entered yet"),
+    notTaken: t("portal.results.notTaken", "N/A"),
+    notTakenHint: t("portal.results.notTakenHint", "Not taken (optional subject)"),
+    csvNotTaken: t("portal.results.csvNotTaken", "N/A = optional subject not taken"),
+    optional: t("portal.results.optional", "Optional"),
+    optionalHint: t(
+      "portal.results.optionalHint",
+      "Optional subject: it counts only for the students who take it, and never affects promotion.",
+    ),
     provisional: t(
       "portal.results.csvProvisional",
       "Provisional results: not every subject is entered and submitted yet, so totals and ranks can still change.",
@@ -506,6 +526,8 @@ function ResultsView({
   );
   const rows = hideNoMarks ? allRows.filter((r) => r.st.has_marks) : allRows;
   const hiddenCount = allRows.length - rows.length;
+  // Some student on screen doesn't take an optional subject (their cells read N/A).
+  const showsNotTaken = rows.some((r) => r.st.subjects.some((s) => s.status === "not_taken"));
   const annual = data?.scope === "annual";
   const groupLabel = (index: number): string => {
     const g = data?.groups[index];
@@ -720,6 +742,11 @@ function ResultsView({
                       <div className="inline-flex items-center gap-1.5">
                         <span aria-hidden>—</span> {labels.missing}
                       </div>
+                      {showsNotTaken && (
+                        <div className="inline-flex items-center gap-1.5">
+                          <span aria-hidden>{labels.notTaken}</span> {labels.notTakenHint}
+                        </div>
+                      )}
                       <div className="inline-flex items-center gap-1.5 font-semibold text-destructive">
                         <span className={FAILING_MARK}>{labels.belowPass}</span>
                       </div>
@@ -891,6 +918,11 @@ function SubjectHeading({ col, showMax, labels }: { col: SubjectColumn; showMax:
           {col.is_grading ? labels.grade : `/${formatNumber(col.max)}`}
         </span>
       )}
+      {col.is_optional && (
+        <Badge variant="outline" className="px-1.5 py-0 font-normal normal-case tracking-normal" title={labels.optionalHint}>
+          {labels.optional}
+        </Badge>
+      )}
       {col.batch_status === "draft" && <DraftBadge labels={labels} />}
     </div>
   );
@@ -912,6 +944,14 @@ function SubjectCells({
   labels: ResultLabels;
 }) {
   const { col, exams } = view;
+  if (sub?.status === "not_taken") {
+    // An optional subject this student doesn't take: one N/A across its exams and total.
+    return (
+      <TableCell colSpan={exams.length + 1} className={cn(NUM_CELL, divided && "border-l")}>
+        <NotTaken labels={labels} />
+      </TableCell>
+    );
+  }
   if (col.is_grading) {
     return (
       <TableCell className={cn(NUM_CELL, divided && "border-l")}>
@@ -967,6 +1007,15 @@ function MarkValue({
       {partial && <PartialDot />}
       {failing ? <span className={FAILING_MARK}>{text}</span> : text}
       {hint && <span className="sr-only"> ({hint})</span>}
+    </span>
+  );
+}
+
+function NotTaken({ labels }: { labels: ResultLabels }) {
+  return (
+    <span className="font-normal text-muted-foreground" title={labels.notTakenHint}>
+      <span aria-hidden>{labels.notTaken}</span>
+      <span className="sr-only">{labels.notTakenHint}</span>
     </span>
   );
 }
