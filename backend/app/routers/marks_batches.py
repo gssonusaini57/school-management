@@ -17,7 +17,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session, selectinload
 
-from ..deps import db_dep, current_user, require_super_admin, CurrentUser, assert_class_allowed
+from ..deps import db_dep, require_menu, require_super_admin, CurrentUser, assert_class_allowed
 from ..events import broker
 from ..notifications import (
     notify_marks_edit_request, notify_marks_submitted, notify_request_outcome,
@@ -128,6 +128,10 @@ def _validate_items(items, max_marks: int) -> tuple[dict[int, int], dict[int, st
     return {it.student_id: it.marks for it in items}, None
 
 
+# Teachers need the Marks Entry menu grant to load or change batches (admins always pass).
+_marks_entry = require_menu("marks-entry", "marks entry")
+
+
 # ── Batch endpoints ─────────────────────────────────────────────
 @router.get("", response_model=BatchDetailOut | None)
 def get_batch(
@@ -135,7 +139,7 @@ def get_batch(
     subject: str = Query(),
     exam_type: str = Query(),
     session: str = Query(),
-    user: CurrentUser = Depends(current_user),
+    user: CurrentUser = Depends(_marks_entry),
     db: Session = Depends(db_dep),
 ):
     """Return the single batch matching the 4-tuple, or `null` if none exists."""
@@ -149,7 +153,7 @@ def get_batch(
 @router.post("", response_model=BatchDetailOut, status_code=200)
 def save_batch(
     payload: BatchSaveBody,
-    user: CurrentUser = Depends(current_user),
+    user: CurrentUser = Depends(_marks_entry),
     db: Session = Depends(db_dep),
 ):
     """Upsert a draft batch + its mark rows.
@@ -228,7 +232,7 @@ def save_batch(
 @router.post("/{batch_id}/submit", response_model=BatchDetailOut)
 def submit_batch(
     batch_id: int,
-    user: CurrentUser = Depends(current_user),
+    user: CurrentUser = Depends(_marks_entry),
     db: Session = Depends(db_dep),
 ):
     """Lock the batch (admin/staff/super-admin)."""
@@ -270,7 +274,7 @@ def submit_batch(
 def request_edit(
     batch_id: int,
     payload: RequestEditBody,
-    user: CurrentUser = Depends(current_user),
+    user: CurrentUser = Depends(_marks_entry),
     db: Session = Depends(db_dep),
 ):
     """Admin/staff enqueue a request to unlock a submitted batch."""

@@ -164,3 +164,23 @@ def test_older_apps_that_omit_the_base_keep_the_unchecked_save(client, db, eight
     db.commit()
     r = client.post("/api/marks/batches", json=_form(a.id), headers=auth("staff", ["8th"]))
     assert r.status_code == 200
+
+
+def test_marks_entry_needs_the_menu_grant_on_the_server(client, db, eighth):
+    """The web and app hide Marks Entry without the grant; the server refuses it too."""
+    a, _, _ = eighth
+    bt = batch(db, "8th", "Mathematics", "P.T. First", marks={a.id: 10})
+    db.commit()
+    no_entry = auth("staff", ["8th"], menus=["dashboard", "marks-results"])
+    q = {"class": "8th", "subject": "Mathematics", "exam_type": "P.T. First", "session": "2026-27"}
+    assert client.get("/api/marks/batches", params=q, headers=no_entry).status_code == 403
+    r = client.post("/api/marks/batches", json=_form(a.id, base_batch_id=bt.id), headers=no_entry)
+    assert r.status_code == 403 and "marks entry" in r.json()["detail"]
+    assert client.post(f"/api/marks/batches/{bt.id}/submit", headers=no_entry).status_code == 403
+    assert client.post(f"/api/marks/batches/{bt.id}/request-edit", json={"reason": "typo"},
+                       headers=no_entry).status_code == 403
+    db.expire_all()
+    assert {m.student_id: m.marks for m in db.query(Marks)} == {a.id: 10}
+    # Default staff menus include Marks Entry, and admins always pass.
+    assert client.get("/api/marks/batches", params=q, headers=auth("staff", ["8th"])).status_code == 200
+    assert client.get("/api/marks/batches", params=q, headers=auth("admin", menus=[])).status_code == 200
