@@ -1,6 +1,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import axios from "axios";
 import { FileSpreadsheet, AlertTriangle, BookOpen, Lock, Send, Save, FilePen } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -47,6 +48,9 @@ export default function MarksEntry() {
   const [submitConfirmOpen, setSubmitConfirmOpen] = useState(false);
   const [requestEditOpen, setRequestEditOpen] = useState(false);
   const [editReason, setEditReason] = useState("");
+  // Set when the server refused a save because its marks changed after this
+  // screen loaded them (or the batch got locked). Saving waits for a reload.
+  const [staleError, setStaleError] = useState<string | null>(null);
   const qc = useQueryClient();
   const { grade_letters: gradeLetters } = useMeta();
 
@@ -108,6 +112,10 @@ export default function MarksEntry() {
   useSSE("marks-batches", [["marks-batch"]]);
 
   const batch = batchQ.data ?? null;
+  // Editing waits until this test's saved marks have loaded. Saving from an
+  // unfinished or failed load would send the wrong set, and the server
+  // removes students missing from a save.
+  const batchLoaded = batchEnabled && batchQ.isSuccess;
   const isLocked = batch?.status === "submitted";
   const isLockedForMe = isLocked && !isSuperAdmin;
   const hasPendingRequest = !!batch?.pending_edit_request_id;
@@ -115,6 +123,9 @@ export default function MarksEntry() {
   // Reset child selectors when parents change.
   useEffect(() => { setSubjectId(""); setComponentId(""); setMarks({}); }, [cls]);
   useEffect(() => { setComponentId(""); setMarks({}); }, [subjectId]);
+  // Another test or session: drop the previous one's marks until this one loads.
+  // (Declared before the hydrate effect so a cached batch still wins.)
+  useEffect(() => { setMarks({}); setStaleError(null); }, [componentId, session]);
   // When the loaded batch changes, hydrate the inputs from its rows.
   useEffect(() => {
     if (batch) {
@@ -153,6 +164,9 @@ export default function MarksEntry() {
     exam_type: selectedComponent!.component_name,
     session,
     max_marks: maxMarks,
+    // The batch this screen loaded (null = none). The server refuses the save
+    // if its batch for this test is a different one.
+    base_batch_id: batch?.id ?? null,
     items: Object.entries(marks)
       .filter(([, v]) => v !== "")
       .map(([id, v]) => (isGraded ? { student_id: Number(id), grade: v } : { student_id: Number(id), marks: Number(v) })),
@@ -160,13 +174,18 @@ export default function MarksEntry() {
 
   const refetchBatch = () => qc.invalidateQueries({ queryKey: ["marks-batch", cls, selectedSubject?.subject_name, selectedComponent?.component_name, session] });
 
+  const onSaveError = (e: unknown) => {
+    toast(apiError(e), "error");
+    if (axios.isAxiosError(e) && e.response?.status === 409) setStaleError(apiError(e));
+  };
+
   const saveDraft = useMutation({
     mutationFn: () => api.post("/marks/batches", buildPayload()),
     onSuccess: () => {
       toast(isLocked ? "Changes saved (marks stay submitted)" : "Draft saved", "success");
       refetchBatch();
     },
-    onError: (e) => toast(apiError(e), "error"),
+    onError: (e) => onSaveError(e),
   });
 
   const submitFinal = useMutation({
@@ -182,7 +201,7 @@ export default function MarksEntry() {
       refetchBatch();
     },
     onError: (e) => {
-      toast(apiError(e), "error");
+      onSaveError(e);
       setSubmitConfirmOpen(false);
     },
   });
@@ -208,7 +227,8 @@ export default function MarksEntry() {
     return Object.values(marks).filter((v) => v !== "" && Number(v) > maxMarks).length;
   }, [marks, maxMarks, selectedComponent, isGraded]);
 
-  const canSave = !!selectedSubject && !!selectedComponent && overMaxCount === 0 && !isLockedForMe && !hasPendingRequest;
+  const canSave = !!selectedSubject && !!selectedComponent && batchLoaded && !staleError
+    && overMaxCount === 0 && !isLockedForMe && !hasPendingRequest;
   const canSubmit = canSave && enteredCount > 0;
 
   // ── Render ─────────────────────────────────────────────────────
@@ -356,7 +376,7 @@ export default function MarksEntry() {
                     <Lock className="h-3 w-3" /> Submitted
                   </Badge>
                 )}
-                {!batch && <Badge variant="outline">New</Badge>}
+                {batchLoaded && !batch && <Badge variant="outline">New</Badge>}
                 <Badge variant="outline">{isGraded ? "Letter grade" : `Max ${maxMarks}`}</Badge>
                 {enteredCount > 0 && <span>{enteredCount} entered</span>}
                 {overMaxCount > 0 && <Badge variant="destructive">{overMaxCount} over max</Badge>}
@@ -378,6 +398,32 @@ export default function MarksEntry() {
             <p className="text-muted-foreground text-sm">Pick a subject and a test component above.</p>
           ) : (
             <>
+              {batchEnabled && batchQ.isPending && (
+                <p className="text-sm text-muted-foreground mb-3">
+                  {t("portal.marksEntry.loadingSaved", "Loading saved marks…")}
+                </p>
+              )}
+              {batchQ.isError && (
+                <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm flex items-start gap-2 mb-3">
+                  <AlertTriangle className="h-4 w-4 text-red-700 mt-0.5 shrink-0" />
+                  <div className="flex-1">
+                    {t("portal.marksEntry.loadFailed", "Couldn't load the saved marks for this test, so editing is paused to protect them.")}{" "}
+                    <span className="text-muted-foreground">{apiError(batchQ.error)}</span>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => batchQ.refetch()}>
+                    {t("portal.marksEntry.retry", "Retry")}
+                  </Button>
+                </div>
+              )}
+              {staleError && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm flex items-start gap-2 mb-3">
+                  <AlertTriangle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+                  <div className="flex-1">{staleError}</div>
+                  <Button size="sm" variant="outline" onClick={() => { setStaleError(null); refetchBatch(); }}>
+                    {t("portal.marksEntry.reloadSaved", "Reload saved marks")}
+                  </Button>
+                </div>
+              )}
               <div className="space-y-2 mb-4">
                 {sortedStudents.map((s) => {
                   const v = marks[s.id] ?? "";
@@ -398,7 +444,7 @@ export default function MarksEntry() {
                         <Select
                           value={v || "none"}
                           onValueChange={(next) => setMarks({ ...marks, [s.id]: next === "none" ? "" : next })}
-                          disabled={isLockedForMe || hasPendingRequest}
+                          disabled={isLockedForMe || hasPendingRequest || !batchLoaded}
                         >
                           <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
                           <SelectContent>
@@ -413,7 +459,7 @@ export default function MarksEntry() {
                           value={v}
                           max={maxMarks}
                           min={0}
-                          disabled={isLockedForMe || hasPendingRequest}
+                          disabled={isLockedForMe || hasPendingRequest || !batchLoaded}
                           invalid={v !== "" && (Number(v) > maxMarks || Number(v) < 0)}
                           onChange={(next) => setMarks({ ...marks, [s.id]: next })}
                         />

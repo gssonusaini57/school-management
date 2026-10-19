@@ -39,6 +39,12 @@ class BatchSaveBody(BaseModel):
     session: str = Field(min_length=1, max_length=20)
     max_marks: int = Field(ge=0, le=1000)   # 0 = grading component (letters)
     items: list[MarkItemIn] = Field(default_factory=list)
+    # The batch the screen loaded before the teacher edited it: its id, or
+    # 0 / null when the test had no saved marks. When sent, the save is
+    # refused (409) if the server's batch for the 4-tuple is a different one,
+    # so a stale or failed load can't overwrite or prune saved marks.
+    # Older apps omit it and keep the unchecked behaviour.
+    base_batch_id: int | None = Field(default=None, ge=0)
 
 
 class BatchOut(BaseModel):

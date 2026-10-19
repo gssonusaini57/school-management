@@ -112,3 +112,55 @@ def test_submit_notifies_once_and_super_admin_resubmit_is_a_no_op(client, db, ei
     r = client.post(f"/api/marks/batches/{bt.id}/submit", headers=auth("super_admin"))
     assert r.status_code == 200 and r.json()["status"] == "submitted"
     assert len(calls) == 1
+
+
+def _form(a_id, **extra):
+    return {"class_name": "8th", "subject": "Mathematics", "exam_type": "P.T. First", "session": "2026-27",
+            "max_marks": 35, "items": [{"student_id": a_id, "marks": 30}], **extra}
+
+
+@pytest.mark.parametrize("base", [None, 0])
+def test_save_with_no_base_creates_the_batch_when_none_exists(client, db, eighth, base):
+    a, _, _ = eighth
+    r = client.post("/api/marks/batches", json=_form(a.id, base_batch_id=base), headers=auth("staff", ["8th"]))
+    assert r.status_code == 200
+    assert db.query(MarksBatch).count() == 1
+
+
+@pytest.mark.parametrize("base", [None, 0, "other"])
+def test_save_against_a_stale_or_failed_load_is_refused_and_keeps_the_marks(client, db, eighth, base):
+    """The screen saw no batch (failed or unfinished load) or another test's batch,
+    but marks are saved on the server: the save must not overwrite or prune them."""
+    a, b, _ = eighth
+    other = batch(db, "8th", "Mathematics", "P.T. Second", marks={a.id: 5})
+    saved = batch(db, "8th", "Mathematics", "P.T. First", marks={a.id: 10, b.id: 20})
+    db.commit()
+    base_id = other.id if base == "other" else base
+    r = client.post("/api/marks/batches", json=_form(a.id, base_batch_id=base_id), headers=auth("staff", ["8th"]))
+    assert r.status_code == 409 and "Reload" in r.json()["detail"]
+    db.expire_all()
+    assert {m.student_id: m.marks for m in db.query(Marks).filter(Marks.batch_id == saved.id)} == {a.id: 10, b.id: 20}
+
+
+def test_save_with_the_loaded_batch_id_goes_through(client, db, eighth):
+    a, b, _ = eighth
+    saved = batch(db, "8th", "Mathematics", "P.T. First", marks={a.id: 10, b.id: 20})
+    db.commit()
+    r = client.post("/api/marks/batches", json=_form(a.id, base_batch_id=saved.id), headers=auth("staff", ["8th"]))
+    assert r.status_code == 200
+    assert [(i["student_id"], i["marks"]) for i in r.json()["items"]] == [(a.id, 30)]
+
+
+def test_save_naming_a_batch_that_no_longer_exists_is_refused(client, db, eighth):
+    a, _, _ = eighth
+    r = client.post("/api/marks/batches", json=_form(a.id, base_batch_id=999), headers=auth("staff", ["8th"]))
+    assert r.status_code == 409
+    assert db.query(MarksBatch).count() == 0
+
+
+def test_older_apps_that_omit_the_base_keep_the_unchecked_save(client, db, eighth):
+    a, b, _ = eighth
+    batch(db, "8th", "Mathematics", "P.T. First", marks={a.id: 10, b.id: 20})
+    db.commit()
+    r = client.post("/api/marks/batches", json=_form(a.id), headers=auth("staff", ["8th"]))
+    assert r.status_code == 200

@@ -179,6 +179,12 @@ def save_batch(
         )
 
     batch = find_batch(db, payload.class_name, payload.subject, payload.exam_type, payload.session)
+    if "base_batch_id" in payload.model_fields_set and (payload.base_batch_id or None) != (batch.id if batch else None):
+        raise HTTPException(
+            status_code=409,
+            detail="The saved marks for this test changed after this screen loaded them. "
+                   "Reload the test, check the marks, then save again.",
+        )
     if batch and batch.status == MarksBatchStatus.submitted and user.role != "super_admin":
         raise HTTPException(
             status_code=409,
