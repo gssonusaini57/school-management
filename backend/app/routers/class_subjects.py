@@ -16,21 +16,31 @@ Routes:
   PATCH  /class-subjects/components/{cid}           — update component
   DELETE /class-subjects/components/{cid}           — delete component
   PUT    /class-subjects/{id}/components            — REPLACE all components atomically
+
+  GET    /class-subjects/{id}/enrollments           — students who take an optional subject
+  PUT    /class-subjects/{id}/enrollments           — REPLACE that set atomically (super-admin)
+
+Every subject response carries `is_optional` and `enrolled_student_ids`.
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
-from ..deps import db_dep, current_user, require_super_admin, CurrentUser
+from ..deps import db_dep, current_user, require_super_admin, CurrentUser, assert_class_allowed
 from ..models.class_subject import ClassSubject, SubjectExamComponent, SubjectCategory
+from ..models.record_status import RecordStatus
+from ..models.student import Student
+from ..models.subject_enrollment import SubjectEnrollment
 from ..schemas.class_subject import (
     ClassSubjectCreate, ClassSubjectUpdate, ClassSubjectOut, ClassSubjectDetailOut,
     ExamComponentCreate, ExamComponentUpdate, ExamComponentOut, ComponentsReplaceBody,
+    EnrollmentsOut, EnrollmentsReplaceBody,
 )
 from ..events import broker
 from ..logging_config import get_logger
 from ..seed.exam_pattern import EXAM_PATTERN_SEED
+from ..services.enrollments import name_list, roster_enrollments
 from ..services.marks_batches import (
     component_mark_stats, rename_component_marks, rename_subject_marks, sync_component_max,
 )
@@ -38,6 +48,17 @@ from ._bulk import read_csv, must_str, opt_str, FieldError, error_dict
 
 router = APIRouter(prefix="/class-subjects", tags=["class-subjects"])
 log = get_logger("app.audit.class_subjects")
+
+
+# ── Response helpers ─────────────────────────────────────────────
+def _subject_out(row: ClassSubject, enrolled: list[int], *, detail: bool = False):
+    out = (ClassSubjectDetailOut if detail else ClassSubjectOut).model_validate(row)
+    out.enrolled_student_ids = enrolled
+    return out
+
+
+def _subject_out_one(db: Session, row: ClassSubject, *, detail: bool = False):
+    return _subject_out(row, roster_enrollments(db, [row.id])[row.id], detail=detail)
 
 
 # ── Subject endpoints ────────────────────────────────────────────
@@ -51,7 +72,9 @@ def list_subjects(
     if class_name:
         stmt = stmt.where(ClassSubject.class_name == class_name)
     stmt = stmt.order_by(ClassSubject.class_name, ClassSubject.order_index, ClassSubject.subject_name)
-    return db.execute(stmt).scalars().all()
+    rows = db.execute(stmt).scalars().all()
+    enrolled = roster_enrollments(db, [r.id for r in rows])
+    return [_subject_out(r, enrolled[r.id]) for r in rows]
 
 
 @router.get("/{subject_id}", response_model=ClassSubjectDetailOut)
@@ -67,7 +90,7 @@ def get_subject(
     ).scalar_one_or_none()
     if not row:
         raise HTTPException(status_code=404, detail="Subject not found")
-    return row
+    return _subject_out_one(db, row, detail=True)
 
 
 @router.post("", response_model=ClassSubjectOut, status_code=201)
@@ -82,6 +105,7 @@ def create_subject(
         subject_name_pa=(payload.subject_name_pa or "").strip() or None,
         category=SubjectCategory(payload.category),
         order_index=payload.order_index,
+        is_optional=payload.is_optional,
     )
     db.add(row)
     try:
@@ -95,7 +119,7 @@ def create_subject(
         "class subject created",
         extra={"event": "class_subject_created", "subject_id": row.id, "class_name": row.class_name, "subject": row.subject_name, "actor": user.name},
     )
-    return row
+    return _subject_out(row, [])
 
 
 @router.patch("/{subject_id}", response_model=ClassSubjectOut)
@@ -133,18 +157,24 @@ def update_subject(
         row.category = SubjectCategory(data["category"])
     if "order_index" in data and data["order_index"] is not None:
         row.order_index = data["order_index"]
+    optional_changed = False
+    if "is_optional" in data and data["is_optional"] is not None:
+        optional_changed = bool(data["is_optional"]) != bool(row.is_optional)
+        row.is_optional = bool(data["is_optional"])
     try:
         db.commit()
     except IntegrityError:
         db.rollback()
         raise HTTPException(status_code=409, detail=f"{row.subject_name} already exists for {row.class_name}")
     db.refresh(row)
+    # Also tells results screens and report-card rosters that who takes it changed.
     broker.publish("class_subjects", "upsert", id=row.id)
     log.info(
         "class subject updated",
-        extra={"event": "class_subject_updated", "subject_id": row.id, "actor": user.name},
+        extra={"event": "class_subject_updated", "subject_id": row.id, "actor": user.name,
+               **({"is_optional": row.is_optional} if optional_changed else {})},
     )
-    return row
+    return _subject_out_one(db, row)
 
 
 @router.delete("/{subject_id}", status_code=204)
@@ -469,12 +499,13 @@ def replace_components(
         extra={"event": "exam_components_replaced", "subject_id": subject_id, "count": len(payload.components),
                "deleted": len(to_delete), "actor": user.name},
     )
-    return db.execute(
+    fresh = db.execute(
         select(ClassSubject)
         .where(ClassSubject.id == subject_id)
         .options(selectinload(ClassSubject.components))
         .execution_options(populate_existing=True)
     ).scalar_one()
+    return _subject_out_one(db, fresh, detail=True)
 
 
 def _apply_component_plan(db: Session, subject: ClassSubject, plan, to_delete) -> None:
@@ -516,3 +547,92 @@ def _apply_component_plan(db: Session, subject: ClassSubject, plan, to_delete) -
             row.max_marks = item.max_marks
         row.order_index = item.order_index or idx
         row.term = item.term
+
+
+# ── Enrolments (who takes an optional subject) ───────────────────
+def _enrollments_out(db: Session, subject: ClassSubject) -> EnrollmentsOut:
+    return EnrollmentsOut(
+        class_subject_id=subject.id,
+        class_name=subject.class_name,
+        subject_name=subject.subject_name,
+        is_optional=bool(subject.is_optional),
+        student_ids=roster_enrollments(db, [subject.id])[subject.id],
+    )
+
+
+@router.get("/{subject_id}/enrollments", response_model=EnrollmentsOut)
+def get_enrollments(
+    subject_id: int,
+    user: CurrentUser = Depends(current_user),
+    db: Session = Depends(db_dep),
+):
+    """The students who take the subject (sorted ids), for anyone allowed the class."""
+    subject = db.get(ClassSubject, subject_id)
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    assert_class_allowed(user, subject.class_name)
+    return _enrollments_out(db, subject)
+
+
+def _not_active_label(row, class_name: str) -> str:
+    if row.status == RecordStatus.deleted:
+        return f"{row.name} (archived)"
+    return f"{row.name} ({row.class_name})" if row.class_name != class_name else row.name
+
+
+@router.put("/{subject_id}/enrollments", response_model=EnrollmentsOut)
+def replace_enrollments(
+    subject_id: int,
+    payload: EnrollmentsReplaceBody,
+    user: CurrentUser = Depends(require_super_admin),
+    db: Session = Depends(db_dep),
+):
+    """Replace the set of students who take the subject in one transaction.
+    Every id must be an active (not archived) student of the subject's class."""
+    subject = db.get(ClassSubject, subject_id)
+    if not subject:
+        raise HTTPException(status_code=404, detail="Subject not found")
+    wanted = set(payload.student_ids)
+    active = set(db.scalars(
+        select(Student.id).where(Student.class_name == subject.class_name, Student.status != RecordStatus.deleted)
+    ))
+    bad = sorted(wanted - active)
+    if bad:
+        found = {r.id: r for r in db.execute(
+            select(Student.id, Student.name, Student.class_name, Student.status).where(Student.id.in_(bad))
+        ).all()}
+        labels = [_not_active_label(found[i], subject.class_name) if i in found else f"student #{i}" for i in bad]
+        one = len(labels) == 1
+        raise HTTPException(
+            status_code=422,
+            detail=(f"{name_list(labels)} {'is not an active student' if one else 'are not active students'} "
+                    f"of {subject.class_name}. Reload the page and tick the students again."),
+        )
+
+    existing = {e.student_id: e for e in db.scalars(
+        select(SubjectEnrollment).where(SubjectEnrollment.class_subject_id == subject.id)
+    )}
+    removed = [e for sid, e in existing.items() if sid not in wanted]
+    for e in removed:
+        db.delete(e)
+    added = sorted(wanted - set(existing))
+    for sid in added:
+        db.add(SubjectEnrollment(class_subject_id=subject.id, student_id=sid, created_by=user.name))
+    try:
+        db.commit()
+    except IntegrityError:
+        # Another save of the same subject landed first (UNIQUE subject + student).
+        db.rollback()
+        raise HTTPException(
+            status_code=409,
+            detail="Who takes this subject was changed elsewhere just now. Reload the page and save again.",
+        )
+    # Results screens and report-card rosters refresh on this channel.
+    broker.publish("class_subjects", "upsert", id=subject.id)
+    log.info(
+        "subject enrolments replaced",
+        extra={"event": "subject_enrollments_replaced", "subject_id": subject.id,
+               "class_name": subject.class_name, "subject": subject.subject_name,
+               "count": len(wanted), "added": len(added), "removed": len(removed), "actor": user.name},
+    )
+    return _enrollments_out(db, subject)

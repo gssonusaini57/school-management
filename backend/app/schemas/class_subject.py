@@ -43,7 +43,7 @@ class ClassSubjectBase(BaseModel):
 
 
 class ClassSubjectCreate(ClassSubjectBase):
-    pass
+    is_optional: bool = False
 
 
 class ClassSubjectUpdate(BaseModel):
@@ -51,6 +51,8 @@ class ClassSubjectUpdate(BaseModel):
     subject_name_pa: str | None = Field(default=None, max_length=60)
     category: SubjectCategoryT | None = None
     order_index: int | None = Field(default=None, ge=0)
+    # Optional (additional) subject: only the students enrolled on it take it.
+    is_optional: bool | None = None
 
 
 class ClassSubjectOut(ClassSubjectBase):
@@ -58,6 +60,11 @@ class ClassSubjectOut(ClassSubjectBase):
     id: int
     created_at: datetime
     updated_at: datetime
+    is_optional: bool = False
+    # Sorted ids of the students who take the subject: its stored enrolments
+    # (for students still in the class, not archived), returned whether or not
+    # the subject is optional. Only optional subjects use them.
+    enrolled_student_ids: list[int] = Field(default_factory=list)
 
 
 class ClassSubjectDetailOut(ClassSubjectOut):
@@ -68,6 +75,20 @@ class ComponentReplaceItem(ExamComponentBase):
     """`id` of the existing component this row edits; omit for a new one.
     Rows without an id are matched to an existing component by exact name."""
     id: int | None = None
+
+
+class EnrollmentsOut(BaseModel):
+    """GET / PUT /class-subjects/{id}/enrollments."""
+    class_subject_id: int
+    class_name: str
+    subject_name: str
+    is_optional: bool
+    student_ids: list[int]
+
+
+class EnrollmentsReplaceBody(BaseModel):
+    """The complete set of students who take the subject (replaces the stored set)."""
+    student_ids: list[int]
 
 
 class ComponentsReplaceBody(BaseModel):

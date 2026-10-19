@@ -1,5 +1,7 @@
 import enum
-from sqlalchemy import BigInteger, String, Integer, SmallInteger, DateTime, Enum, UniqueConstraint, ForeignKey, func
+from sqlalchemy import (
+    BigInteger, Boolean, String, Integer, SmallInteger, DateTime, Enum, UniqueConstraint, ForeignKey, func, text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from ..db import Base
@@ -32,6 +34,9 @@ class ClassSubject(Base):
         server_default=SubjectCategory.academic.value,
     )
     order_index: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    # An optional (additional) subject is taken only by the students listed in
+    # subject_enrollments (migration 0020); everyone else has nothing for it.
+    is_optional: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()

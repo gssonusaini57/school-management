@@ -4,7 +4,8 @@ Report cards: `build_report_card_payload(inputs, student_id)` turns one
 student's slice of the class inputs (gathered once per class by
 app.services.report_cards) into a validated `ReportCard`. Marks, totals,
 rank, class size, attendance and promotion are computed; values typed into
-the per-student data override them only when present.
+the per-student data override them only when present. An optional subject the
+student doesn't take is left off their card entirely.
 
 PSEB admit cards: `build_pseb_admit_payload` merges the class template, the
 student row and the per-student PSEB identifiers.
@@ -91,12 +92,17 @@ def build_report_card_payload(inputs: Any, student_id: int, *, photo_url: str | 
     settings = inputs.settings
     sd = ReportCardStudentData.model_validate(inputs.student_data.get(student_id) or {})
 
-    numeric = [s for s in res.subjects if not s.is_grading]
-    grading = [s for s in res.subjects if s.is_grading]
+    # An optional subject the student doesn't take has no place on their card.
+    taken = [s for s in res.subjects if s.taken]
+    numeric = [s for s in taken if not s.is_grading]
+    grading = [s for s in taken if s.is_grading]
     if not res.has_marks:
         drafts = f" ({res.draft_components} entered marks are still drafts)" if res.draft_components else ""
         raise ValueError(f"no submitted marks for {student.name} in {inputs.scope}{drafts}")
 
+    # Per-exam columns: those of the subjects on this card (an exam only an
+    # optional subject the student doesn't take has would be an empty column).
+    cols = [i for i in range(len(cr.groups)) if any(i < len(s.cells) and s.cells[i].total for s in numeric)]
     subjects = [
         ReportCardSubject(
             name=_opt(s.subject_name, s.subject_name_pa),
@@ -107,12 +113,13 @@ def build_report_card_payload(inputs: Any, student_id: int, *, photo_url: str | 
             status=s.status,
             cells=[
                 ReportCardCell(key=c.key, marks=c.obtained if c.marked else None, max=c.max, status=c.status)
-                for c in s.cells
+                for c in (s.cells[i] for i in cols)
             ],
         )
         for s in numeric
     ]
-    groups = [ReportCardGroup(key=g.key, label=_opt(g.key, EXAM_GROUP_PA.get(g.key))) for g in cr.groups]
+    groups = [ReportCardGroup(key=g.key, label=_opt(g.key, EXAM_GROUP_PA.get(g.key)))
+              for g in (cr.groups[i] for i in cols)]
     co_scholastic = [
         ReportCardCoScholastic(
             name=_opt(s.subject_name, s.subject_name_pa),
@@ -124,9 +131,9 @@ def build_report_card_payload(inputs: Any, student_id: int, *, photo_url: str | 
     att = inputs.attendance.get(student_id)
     has_drafts = any(
         cm.batch_status == "draft" and (cm.marks is not None or cm.grade_letter is not None)
-        for s in res.subjects for cm in s.components
+        for s in taken for cm in s.components
     )
-    incomplete = any(s.status != "complete" for s in res.subjects)
+    incomplete = any(s.status != "complete" for s in taken)
     promotion = _first(sd.promotion, res.promotion)
     default_remarks = settings.get("remarksDefault")
     if sd.remarks is not None:

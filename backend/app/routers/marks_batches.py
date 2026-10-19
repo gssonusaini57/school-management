@@ -33,6 +33,7 @@ from ..schemas.marks_batch import (
     RequestEditBody, RejectRequestBody,
     MarksEditRequestOut, MarksEditRequestList,
 )
+from ..services.enrollments import not_taken_message, student_names, subject_takers
 from ..services.marks_batches import bump_revision, component_max, find_batch, upsert_batch_marks
 from ..services.results import GRADE_LETTERS, normalize_grade_letter
 from ..services.sessions import get_session
@@ -129,6 +130,25 @@ def _validate_items(items, max_marks: int) -> tuple[dict[int, int], dict[int, st
     return {it.student_id: it.marks for it in items}, None
 
 
+def _carries_entry(item) -> bool:
+    return item.marks is not None or bool((item.grade or "").strip())
+
+
+def _items_for_takers(db: Session, payload: BatchSaveBody, takers: set[int] | None) -> list:
+    """An optional subject's marks belong only to the students who take it:
+    refuse (422) a mark or grade for anyone else and drop their blank rows.
+    `takers` None means the whole class takes the subject."""
+    if takers is None:
+        return list(payload.items)
+    outsiders = [it.student_id for it in payload.items if it.student_id not in takers and _carries_entry(it)]
+    if outsiders:
+        raise HTTPException(
+            status_code=422,
+            detail=not_taken_message(student_names(db, outsiders), payload.subject),
+        )
+    return [it for it in payload.items if it.student_id in takers]
+
+
 # Teachers need the Marks Entry menu grant to load or change batches (admins always pass).
 _marks_entry = require_menu("marks-entry", "marks entry")
 
@@ -184,10 +204,14 @@ def save_batch(
     - Refuses (409) a save made from a screen that loaded another batch
       (base_batch_id) or an older revision of this one (base_revision), and a
       save without base_batch_id that would remove saved marks.
+    - Optional subject: refuses (422) a mark or grade for a student who isn't
+      enrolled, and never removes the saved rows of students who aren't.
     """
     assert_class_allowed(user, payload.class_name)
     _require_session(db, payload.session)
-    marks_by_student, grades_by_student = _validate_items(payload.items, payload.max_marks)
+    takers = subject_takers(db, payload.class_name, payload.subject)   # None: the whole class takes it
+    items = _items_for_takers(db, payload, takers)
+    marks_by_student, grades_by_student = _validate_items(items, payload.max_marks)
     master_max = component_max(db, payload.class_name, payload.subject, payload.exam_type)
     if master_max is None:
         raise HTTPException(
@@ -217,11 +241,14 @@ def save_batch(
         )
     if batch is not None and not sent_base:
         saved_ids = set(db.scalars(select(Marks.student_id).where(Marks.batch_id == batch.id)))
+        if takers is not None:
+            saved_ids &= takers   # rows of students who don't take it are never pruned
         if saved_ids - set(marks_by_student):
             raise HTTPException(status_code=409, detail=OLD_CLIENT_PRUNE)
 
     # The form sends the complete on-screen set, so students the teacher
-    # cleared are removed (prune_missing=True).
+    # cleared are removed (prune_missing=True). An optional subject's form
+    # shows only its takers, so only their rows can be pruned.
     batch = upsert_batch_marks(
         db,
         class_name=payload.class_name,
@@ -233,6 +260,7 @@ def save_batch(
         grades_by_student=grades_by_student,
         actor=user.name,
         prune_missing=True,
+        prune_only=takers,
         batch=batch,
     )
     db.commit()
@@ -247,7 +275,7 @@ def save_batch(
             "subject": batch.subject,
             "exam_type": batch.exam_type,
             "session": batch.session,
-            "items": len(payload.items),
+            "items": len(items),
             "actor": user.name,
         },
     )

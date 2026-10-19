@@ -30,6 +30,7 @@ from ..models.marks import Marks
 from ..models.pdf_template import PdfStudentData, PdfTemplate, TemplateKind
 from ..models.student import Student
 from .attendance_summary import AttendanceSummary, attendance_summary
+from .enrollments import optional_takers
 from .marks_batches import batch_status_map
 from .results import (
     CONDITIONAL_MAX_FAILS_DEFAULT, PASS_PCT_DEFAULT, RESULTS_ENGINE_VERSION,
@@ -114,6 +115,7 @@ def gather_class_inputs(
         include_drafts=drafts,
         pass_pct=float(rule.get("passPct", PASS_PCT_DEFAULT)),
         conditional_max_fails=int(rule.get("conditionalMaxFails", CONDITIONAL_MAX_FAILS_DEFAULT)),
+        enrolled=optional_takers(db, template.class_name),
     )
 
     warnings = list(results.warnings)

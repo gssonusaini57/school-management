@@ -72,6 +72,7 @@ def upsert_batch_marks(
     prune_missing: bool,
     batch: MarksBatch | None = None,
     grades_by_student: dict[int, str] | None = None,
+    prune_only: set[int] | None = None,
 ) -> MarksBatch:
     """Create the draft batch if it doesn't exist, then upsert one Marks row per student.
 
@@ -79,7 +80,9 @@ def upsert_batch_marks(
     `marks_by_student`, because the form always sends the complete on-screen
     set. The CSV import passes False so a partial sheet never wipes marks it
     doesn't mention. Rows are matched on (batch_id, student_id), which is
-    UNIQUE, so re-saving never duplicates.
+    UNIQUE, so re-saving never duplicates. `prune_only`, when given, limits
+    pruning to those students: an optional subject's form lists only the
+    students who take it, so other students' saved rows are left alone.
 
     Grading components (max 0) pass `grades_by_student` with a letter per
     student; their `marks` stay 0. Every call bumps the batch's revision.
@@ -110,7 +113,7 @@ def upsert_batch_marks(
     }
     if prune_missing:
         for sid, m in existing.items():
-            if sid not in marks_by_student:
+            if sid not in marks_by_student and (prune_only is None or sid in prune_only):
                 db.delete(m)
 
     for sid, value in marks_by_student.items():

@@ -26,6 +26,9 @@ class SubjectColumnOut(BaseModel):
     is_grading: bool = False
     batch_status: Literal["submitted", "draft", "none"] = "none"
     components: list[ComponentInfoOut] = Field(default_factory=list)
+    # Taken only by the students enrolled on Class Subjects; for the others
+    # their result for it has status "not_taken".
+    is_optional: bool = False
 
 
 class GroupColumnOut(BaseModel):
@@ -61,8 +64,12 @@ class SubjectResultOut(BaseModel):
     max: float
     percentage: float | None = None
     grade: str | None = None
-    status: Literal["complete", "partial", "missing"]
+    # "not_taken": an optional subject this student doesn't take. It carries
+    # nothing (obtained 0, max 0, percentage / grade null, no components) and
+    # is left out of the student's totals, grade and completeness.
+    status: Literal["complete", "partial", "missing", "not_taken"]
     is_grading: bool = False
+    is_optional: bool = False
     grade_letter: str | None = None
     term_letters: dict[int, str] = Field(default_factory=dict)
     batch_status: Literal["submitted", "draft", "none"] = "none"
@@ -115,7 +122,7 @@ class ClassResultsOut(BaseModel):
     include_drafts: bool = True
     has_drafts: bool = False
     complete: bool = False
-    engine_version: int = 2
+    engine_version: int = 3
     session_dates: SessionDatesOut | None = None
     warnings: list[str] = Field(default_factory=list)
     # The pass rule pass_status / failed_subjects / promotion were worked out with:

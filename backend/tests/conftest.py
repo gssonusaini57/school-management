@@ -45,6 +45,7 @@ from app.db import Base, get_db  # noqa: E402
 from app.models import (  # noqa: E402,F401
     admin, staff, student, document, attendance, marks, fee, notice, pdf_template,
     student_edit_request, class_subject, marks_batch, password_reset, academic_session, pdf_render_job,
+    subject_enrollment,
 )
 from app.main import app  # noqa: E402
 from app.permissions import DEFAULT_STAFF_MENUS  # noqa: E402

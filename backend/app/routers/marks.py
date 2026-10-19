@@ -23,6 +23,7 @@ from ..services.results import (
     CONDITIONAL_MAX_FAILS_DEFAULT, GRADE_LETTERS, PASS_PCT_DEFAULT, aggregate_class_results,
     normalize_grade_letter,
 )
+from ..services.enrollments import not_taken_message, optional_takers, student_names, subject_takers
 from ..services.marks_batches import batch_status_map, find_batch, upsert_batch_marks
 from ..services.roster import roll_sort_key
 from ..services.attendance_summary import attendance_summary
@@ -99,6 +100,7 @@ def class_results(
         include_drafts=include_drafts,
         pass_pct=pass_pct,
         conditional_max_fails=conditional_max_fails,
+        enrolled=optional_takers(db, class_name),
     )
 
     warnings = list(agg.warnings)
@@ -123,6 +125,7 @@ def class_results(
                 category=c.category, order_index=c.order_index, max=c.max,
                 is_grading=c.is_grading, batch_status=c.batch_status,
                 components=[ComponentInfoOut(**vars(ci)) for ci in c.components],
+                is_optional=c.is_optional,
             )
             for c in agg.subject_columns
         ],
@@ -153,7 +156,8 @@ def _student_out(sr, info, att) -> StudentResultOut:
                 subject_name=s.subject_name, category=s.category,
                 obtained=s.obtained, max=s.max, percentage=s.percentage,
                 grade=s.grade, status=s.status,
-                is_grading=s.is_grading, grade_letter=s.grade_letter, term_letters=s.term_letters,
+                is_grading=s.is_grading, is_optional=s.is_optional,
+                grade_letter=s.grade_letter, term_letters=s.term_letters,
                 batch_status=s.batch_status,
                 components_total=s.components_total, components_marked=s.components_marked,
                 components=[ComponentMarkOut(**vars(cm)) for cm in s.components],
@@ -220,6 +224,10 @@ def bulk_import_marks(
     submitted batch is rejected unless the caller is super-admin. Marks already
     in a batch but absent from the sheet are left untouched.
 
+    Optional subjects take marks only for the students ticked on Class
+    Subjects: a mark or grade for anyone else refuses the whole file (422),
+    and a blank row for them is skipped.
+
     Atomic: if any row fails validation, nothing is saved.
     """
     # A plain def (thread pool), not async: the validation and upserts below run
@@ -228,6 +236,9 @@ def bulk_import_marks(
     errors: list[dict] = []
     comp_cache: dict[str, dict[tuple[str, str], int]] = {}
     roster_cache: dict[str, set[int]] = {}
+    takers_cache: dict[tuple[str, str], set[int] | None] = {}
+    # (class, subject) -> students given a mark in an optional subject they don't take
+    not_taking: dict[tuple[str, str], set[int]] = defaultdict(set)
     known_sessions: dict[str, bool] = {}
     # (class, subject, component, session) -> {student_id: marks}
     groups: dict[tuple[str, str, str, str], dict[int, int]] = defaultdict(dict)
@@ -263,6 +274,19 @@ def bulk_import_marks(
                     "exam_type", exam_type,
                     f"not an exam component of {subject!r} in {cls} (see Class Subjects)",
                 )
+            student_id = must_int(row, "student_id")
+            if cls not in roster_cache:
+                roster_cache[cls] = _active_student_ids(db, cls)
+            if student_id not in roster_cache[cls]:
+                raise FieldError("student_id", str(student_id), f"is not an active student of {cls}")
+            if (cls, subject) not in takers_cache:
+                takers_cache[(cls, subject)] = subject_takers(db, cls, subject)
+            takers = takers_cache[(cls, subject)]
+            if takers is not None and student_id not in takers:
+                if opt_str(row, "marks") or opt_str(row, "grade"):
+                    not_taking[(cls, subject)].add(student_id)
+                continue   # a blank row for a student who doesn't take it: nothing to save
+
             letter: str | None = None
             if comp_max <= 0:
                 raw_grade = opt_str(row, "grade")
@@ -273,12 +297,6 @@ def bulk_import_marks(
                 max_raw = opt_str(row, "max_marks")
                 if max_raw and max_raw != str(comp_max):
                     raise FieldError("max_marks", max_raw, f"must be {comp_max} (set in Class Subjects)")
-
-            student_id = must_int(row, "student_id")
-            if cls not in roster_cache:
-                roster_cache[cls] = _active_student_ids(db, cls)
-            if student_id not in roster_cache[cls]:
-                raise FieldError("student_id", str(student_id), f"is not an active student of {cls}")
 
             if letter is None:
                 marks_v = must_int(row, "marks")
@@ -297,6 +315,19 @@ def bulk_import_marks(
             group_rows[key].append((i, row))
         except Exception as e:
             errors.append(error_dict(i, e, row))
+
+    if not_taking:
+        log.warning(
+            "bulk import rejected",
+            extra={"event": "bulk_import_rejected", "entity": "marks", "rows_total": len(rows),
+                   "reason": "optional_subject_not_taken",
+                   "students": sum(len(v) for v in not_taking.values())},
+        )
+        raise HTTPException(
+            status_code=422,
+            detail=" ".join(not_taken_message(student_names(db, ids), subject)
+                            for (_cls, subject), ids in not_taking.items()),
+        )
 
     # Lock check: a submitted batch only accepts changes from super-admin.
     batches = {key: find_batch(db, *key) for key in groups}

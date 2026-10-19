@@ -15,24 +15,43 @@ exam_type is not a current component name don't match and are ignored.
 Numeric components carry marks; components with max 0 belong to grading
 subjects (Computer, P.E., …) and carry a letter grade in `Marks.grade`.
 
+Optional subjects (`is_optional`, e.g. 11th/12th Mathematics as an additional
+subject) are taken only by the students in `enrolled[class_subject_id]`. For
+anyone else the subject's result is "not_taken": it carries nothing and is
+left out of their total, max, percentage, grade and completeness (and of the
+class's `complete` flag), whatever marks may be stored for them. For takers it
+counts in total, max, percentage and grade like any subject, but it never
+affects pass status or promotion (it is extra).
+
 Policy knobs (assumptions the school can change in one place):
   - GRADE_BANDS: the A1…D bands used for computed grades, for the letters
     teachers pick on grading subjects, and for the legend printed on cards.
-  - Rank: competition ranking ("1, 2, 2, 4") on total marks within the scope.
-  - Pass: every academic subject at or above `pass_pct` (default 33 %).
+  - Rank: competition ranking ("1, 2, 2, 4") on each student's percentage
+    within the scope, compared exactly (obtained / max as a fraction), so an
+    optional subject's extra marks don't push its takers ahead on raw total.
+    In a class without optional subjects everyone has the same max, so this
+    is the same order as ranking on total marks.
+  - Pass: every academic subject at or above `pass_pct` (default 33 %);
+    optional subjects are not counted.
   - Promotion (annual only): Promoted with no failed academic subject,
     Conditional with up to `conditional_max_fails`, Detained above that.
 """
 from __future__ import annotations
 
+from collections.abc import Collection, Mapping
 from dataclasses import dataclass, field
+from fractions import Fraction
 from typing import Any, Literal
 
 Scope = Literal["term1", "term2", "annual"]
 SCOPES: tuple[str, ...] = ("term1", "term2", "annual")
 
 # Bump when the computed numbers change meaning: the report-card cache hashes it.
-RESULTS_ENGINE_VERSION = 2
+# 3: optional subjects (not_taken) and rank by exact percentage.
+RESULTS_ENGINE_VERSION = 3
+
+# SubjectResult.status of an optional subject the student doesn't take.
+NOT_TAKEN = "not_taken"
 
 # (letter, minimum percentage), best first.
 GRADE_BANDS: tuple[tuple[str, float], ...] = (
@@ -179,6 +198,7 @@ class SubjectColumn:
     is_grading: bool = False
     batch_status: str = "none"     # submitted | draft | none (worst over in-scope components)
     components: list[ComponentInfo] = field(default_factory=list)
+    is_optional: bool = False      # taken only by enrolled students
 
 
 @dataclass
@@ -193,13 +213,18 @@ class SubjectResult:
     grade: str | None          # None until every in-scope component is in (as on the card)
     components_total: int
     components_marked: int
-    status: str                # "complete" | "partial" | "missing"
+    status: str                # "complete" | "partial" | "missing" | "not_taken"
     is_grading: bool = False
     grade_letter: str | None = None            # grading subjects: letter for this scope
     term_letters: dict[int, str] = field(default_factory=dict)   # grading: {1: "A2", 2: "B1"}
     batch_status: str = "none"
     components: list[ComponentMark] = field(default_factory=list)
     cells: list[Cell] = field(default_factory=list)              # aligned with ClassResults.groups
+    is_optional: bool = False
+
+    @property
+    def taken(self) -> bool:
+        return self.status != NOT_TAKEN
 
 
 @dataclass
@@ -260,6 +285,8 @@ class _SubjectScope:
     order_index: int
     components: list[_Comp]
     scope_max: float
+    subject_id: int | None = None
+    is_optional: bool = False
 
     @property
     def is_grading(self) -> bool:
@@ -288,6 +315,8 @@ def _subject_scopes(class_subjects: list[Any], scope: str) -> list[_SubjectScope
             order_index=cs.order_index,
             components=plan,
             scope_max=sum(c.max for c in plan),
+            subject_id=getattr(cs, "id", None),
+            is_optional=bool(getattr(cs, "is_optional", False)),
         ))
     return out
 
@@ -411,7 +440,30 @@ def _subject_result(
         batch_status=_subject_batch_status(plan, batch_status_by_key),
         components=comp_marks,
         cells=cells,
+        is_optional=plan.is_optional,
     ), excluded_drafts
+
+
+def _not_taken_result(plan: _SubjectScope, groups: list[GroupColumn]) -> SubjectResult:
+    """An optional subject the student doesn't take: nothing shown, nothing
+    counted, even if marks were stored for them before. Cells stay aligned
+    with the class's groups (all "none") so per-exam layouts can index them."""
+    return SubjectResult(
+        subject_name=plan.subject_name,
+        subject_name_pa=plan.subject_name_pa,
+        category=plan.category,
+        order_index=plan.order_index,
+        obtained=0.0,
+        max=0.0,
+        percentage=None,
+        grade=None,
+        components_total=0,
+        components_marked=0,
+        status=NOT_TAKEN,
+        is_grading=plan.is_grading,
+        is_optional=True,
+        cells=[] if plan.is_grading else [Cell(g.key) for g in groups],
+    )
 
 
 def _group_marks(marks_rows: list[Any]) -> dict[int, dict[str, dict[str, tuple[float, str | None]]]]:
@@ -424,20 +476,33 @@ def _group_marks(marks_rows: list[Any]) -> dict[int, dict[str, dict[str, tuple[f
     return out
 
 
+def exact_share(st: StudentResult) -> Fraction:
+    """The student's percentage as an exact fraction (obtained / max), so equal
+    percentages tie exactly and no float rounding splits or merges them."""
+    if st.total_max <= 0:
+        return Fraction(0)
+    return Fraction(st.total_obtained) / Fraction(st.total_max)
+
+
 def rank_students(students: list[StudentResult]) -> int:
-    """Competition ranking on total marks among students who have marks.
-    Sets `rank` in place and returns how many students were ranked."""
-    ranked = [s for s in students if s.has_marks]
-    totals = sorted((s.total_obtained for s in ranked), reverse=True)
-    for s in ranked:
-        s.rank = 1 + sum(1 for t in totals if t > s.total_obtained + 1e-9)
+    """Competition ranking ("1, 2, 2, 4") on the exact percentage among students
+    who have marks. Sets `rank` in place and returns how many were ranked."""
+    ranked = sorted((s for s in students if s.has_marks), key=exact_share, reverse=True)
+    rank, prev = 0, None
+    for position, s in enumerate(ranked, start=1):
+        share = exact_share(s)
+        if share != prev:
+            rank, prev = position, share
+        s.rank = rank
     return len(ranked)
 
 
 def _pass_status(st: StudentResult, pass_pct: float) -> tuple[str | None, list[str]]:
     if not st.has_marks:
         return None, []
-    academic = [s for s in st.subjects if s.category == "academic" and not s.is_grading]
+    # Optional subjects are extra: failing one never affects pass or promotion.
+    academic = [s for s in st.subjects
+                if s.category == "academic" and not s.is_grading and not s.is_optional]
     failed = [s.subject_name for s in academic
               if s.status == "complete" and (s.percentage or 0.0) < pass_pct]
     if any(s.status != "complete" for s in academic):
@@ -470,8 +535,12 @@ def aggregate_class_results(
     include_drafts: bool = True,
     pass_pct: float = PASS_PCT_DEFAULT,
     conditional_max_fails: int = CONDITIONAL_MAX_FAILS_DEFAULT,
+    # class_subject_id -> ids of the students who take that optional subject.
+    # An optional subject missing here is taken by nobody; others by everyone.
+    enrolled: Mapping[int, Collection[int]] | None = None,
 ) -> ClassResults:
     statuses = batch_status_by_key or {}
+    takers = enrolled or {}
     plans = _subject_scopes(class_subjects, scope)
     groups = group_columns(plans, scope)
     columns = [
@@ -480,10 +549,14 @@ def aggregate_class_results(
             is_grading=p.is_grading,
             batch_status=_subject_batch_status(p, statuses),
             components=[ComponentInfo(c.name, c.group, c.term, c.max) for c in p.components],
+            is_optional=p.is_optional,
         )
         for p in plans
     ]
     grouped = _group_marks(marks_rows)
+
+    def takes(p: _SubjectScope, sid: int) -> bool:
+        return not p.is_optional or sid in takers.get(p.subject_id, ())
 
     students: list[StudentResult] = []
     for sid in student_ids:
@@ -494,6 +567,9 @@ def aggregate_class_results(
         drafts_left_out = 0
         has_marks = False
         for p in plans:
+            if not takes(p, sid):
+                subjects.append(_not_taken_result(p, groups))
+                continue
             sr, excluded = _subject_result(
                 p, subj_marks.get(p.subject_name, {}),
                 scope=scope, groups=groups, batch_status_by_key=statuses, include_drafts=include_drafts,
@@ -505,7 +581,7 @@ def aggregate_class_results(
                 total_max += sr.max
                 has_marks = has_marks or sr.components_marked > 0
         pct = (total_obtained / total_max * 100.0) if total_max > 0 else None
-        all_complete = all(sr.status == "complete" for sr in subjects)
+        all_complete = all(sr.status == "complete" for sr in subjects if sr.taken)
         st = StudentResult(
             student_id=sid,
             subjects=subjects,
@@ -522,9 +598,14 @@ def aggregate_class_results(
         students.append(st)
 
     ranked = rank_students(students)
-    has_drafts = any(c.batch_status == "draft" for c in columns)
+    roster = set(student_ids)
+    # An optional subject nobody on the roster takes can't hold back the class.
+    has_drafts = any(
+        c.batch_status == "draft" for c, p in zip(columns, plans)
+        if not p.is_optional or not roster.isdisjoint(takers.get(p.subject_id, ()))
+    )
     complete = bool(ranked) and not has_drafts and all(
-        s.status == "complete" for st in students if st.has_marks for s in st.subjects
+        s.status == "complete" for st in students if st.has_marks for s in st.subjects if s.taken
     )
     warnings = [
         f"{p.subject_name}: component {c.name!r} has no term, so it counts in both terms"
@@ -546,6 +627,7 @@ def aggregate_student_subjects(
     marks_rows: list[Any],         # already filtered to ONE student × class × session
     batch_status_by_key: dict[tuple[str, str], str] | None = None,
     include_drafts: bool = True,
+    enrolled: Mapping[int, Collection[int]] | None = None,
 ) -> tuple[list[SubjectResult], float, float, float | None, str | None]:
     """Per-student roll-up. Returns (subjects, total_obtained, total_max, percentage, grade).
     Thin wrapper over aggregate_class_results so the two can never disagree."""
@@ -554,6 +636,7 @@ def aggregate_student_subjects(
         class_name="", session="", scope=scope, class_subjects=class_subjects,
         marks_rows=marks_rows, student_ids=[sid],
         batch_status_by_key=batch_status_by_key, include_drafts=include_drafts,
+        enrolled=enrolled,
     )
     st = res.students[0]
     return st.subjects, st.total_obtained, st.total_max, st.percentage, st.grade
