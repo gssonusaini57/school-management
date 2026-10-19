@@ -27,6 +27,9 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from .format import format_inr, format_date_long, format_date_pseb, format_month_label, format_num, format_pct
 
 log = logging.getLogger(__name__)
+# WeasyPrint's font subsetting (fontTools) logs hundreds of INFO lines per card
+# (738 for two cards on TEST); keep its warnings, drop the chatter.
+logging.getLogger("fontTools").setLevel(logging.WARNING)
 
 PDF_DIR = Path(__file__).resolve().parent
 TEMPLATES_DIR = PDF_DIR / "templates"
