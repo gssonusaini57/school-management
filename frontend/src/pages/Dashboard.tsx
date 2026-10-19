@@ -7,6 +7,8 @@ import {
 import { Users, Briefcase, Wallet, ClipboardCheck, Megaphone } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ClassAttendanceCard, CLASS_ATTENDANCE_KEY } from "@/components/ClassAttendanceCard";
+import { ClassAttendanceChart, CLASS_CHART_KEY } from "@/components/ClassAttendanceChart";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useSSE } from "@/lib/sse";
@@ -29,7 +31,7 @@ export default function Dashboard() {
   const notices = useQuery<Notice[]>({ queryKey: ["notices"], queryFn: () => api.get("/notices").then((r) => r.data) });
   const attSummary = useQuery<AttendanceSummary>({ queryKey: ["attendance", "today"], queryFn: () => api.get("/attendance/today-summary").then((r) => r.data) });
 
-  useSSE("dashboard", [["students"], ["staff"], ["fees"], ["notices"], ["attendance", "today"]]);
+  useSSE("dashboard", [["students"], ["staff"], ["fees"], ["notices"], ["attendance", "today"], CLASS_ATTENDANCE_KEY, CLASS_CHART_KEY]);
 
   const list = students.data ?? [];
   const studentCount = list.filter((s) => allowed.length === 0 || allowed.includes(s.class_name) || isAdmin).length;
@@ -86,6 +88,12 @@ export default function Dashboard() {
           />
         )}
       </div>
+
+      {/* Admins and the super-admin: which classes have marked today's attendance. */}
+      {isAdmin && <ClassAttendanceCard />}
+
+      {/* Every role: attendance by class over a period; a teacher sees only their own classes. */}
+      <ClassAttendanceChart />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">

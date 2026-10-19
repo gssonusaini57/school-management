@@ -103,6 +103,49 @@ export interface AttendanceSummary {
   percent: number;
 }
 
+/** One class over a date range (GET /attendance/class-summary). The counts cover
+ *  non-holiday days only; a class nobody marked has zeros and percent null. */
+export interface ClassAttendanceRow {
+  class_name: string;
+  /** Students not archived (pending-delete students still count). */
+  class_size: number;
+  /** Non-holiday days with attendance saved (a day saved with no students counts). */
+  marked_days: number;
+  /** Days saved as a holiday. */
+  holiday_days: number;
+  present: number;
+  absent: number;
+  leave: number;
+  half_day: number;
+  /** present + absent + leave + half_day. */
+  records: number;
+  /** (present + 0.5 * half_day) / records * 100, one decimal place; null with no records. */
+  percent: number | null;
+}
+
+export interface ClassAttendanceTotals {
+  class_size: number;
+  present: number;
+  absent: number;
+  leave: number;
+  half_day: number;
+  records: number;
+  percent: number | null;
+  /** Classes with at least one marked day in the range. */
+  classes_marked: number;
+  /** Classes in the caller's scope: every class for admins, a teacher's own classes. */
+  classes_total: number;
+}
+
+/** GET /attendance/class-summary: every class in scope, in CLASSES order. */
+export interface ClassAttendanceSummary {
+  /** The range actually used; `to` is never later than the server's today. */
+  from: string;
+  to: string;
+  classes: ClassAttendanceRow[];
+  totals: ClassAttendanceTotals;
+}
+
 export interface Mark {
   id: number;
   student_id: number;
