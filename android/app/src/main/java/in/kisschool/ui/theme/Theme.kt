@@ -1,9 +1,19 @@
 package `in`.kisschool.ui.theme
 
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TopAppBarColors
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+
+// ── Material colour schemes ─────────────────────────────────────────────
 
 private val Primary = Color(0xFF0F3460)
 private val OnPrimary = Color(0xFFFFFFFF)
@@ -11,6 +21,7 @@ private val Secondary = Color(0xFF16C172)
 private val Surface = Color(0xFFFFFFFF)
 private val Background = Color(0xFFF8FAFC)
 
+/** The school's approved look. Roles not named here are the Material 3 baseline. */
 private val Light = lightColorScheme(
     primary = Primary,
     onPrimary = OnPrimary,
@@ -19,12 +30,157 @@ private val Light = lightColorScheme(
     surface = Surface
 )
 
+/** Dark-theme screen background; MainActivity paints the window with it as well. */
+internal val DarkBackground = Color(0xFF0B1220)
+private val DarkPrimary = Color(0xFF7CA3D9)
+
 /**
- * The school's design is light only: the app ignores the phone's dark mode, so cards and
- * screens stay white and the brand blue stays readable (in dark mode it used to turn the
- * login card dark grey with dark-blue text on it).
+ * Navy-tinted dark scheme. Primary is a light blue so text, buttons and focus rings drawn
+ * in primary stay readable on dark surfaces (top bars use the brand navy instead, see
+ * [KisColors.topBar]). The secondary, tertiary and error roles keep the Material 3
+ * baseline dark tones: the light scheme uses the baseline light ones, so a banner keeps
+ * its colour family in both themes.
+ */
+private val Dark = darkColorScheme(
+    primary = DarkPrimary,
+    onPrimary = Color(0xFF062144),
+    primaryContainer = Color(0xFF1E3A64),
+    onPrimaryContainer = Color(0xFFD6E3FF),
+    inversePrimary = Primary,
+    secondary = Color(0xFF63DB9E),
+    onSecondary = Color(0xFF00391F),
+    background = DarkBackground,
+    onBackground = Color(0xFFE2E8F0),
+    surface = Color(0xFF111A2C),
+    onSurface = Color(0xFFE2E8F0),
+    surfaceVariant = Color(0xFF334058),
+    onSurfaceVariant = Color(0xFFB6C0CF),
+    inverseSurface = Color(0xFFE2E8F0),
+    inverseOnSurface = Color(0xFF1E293B),
+    outline = Color(0xFF7D8AA0),
+    outlineVariant = Color(0xFF3B475D),
+    surfaceBright = Color(0xFF2A364D),
+    surfaceDim = DarkBackground,
+    surfaceContainerLowest = Color(0xFF070C17),
+    surfaceContainerLow = Color(0xFF131C2E),
+    surfaceContainer = Color(0xFF172133),
+    surfaceContainerHigh = Color(0xFF1C273B),
+    surfaceContainerHighest = Color(0xFF222E44),
+)
+
+// ── App colours Material has no role for ────────────────────────────────
+
+/**
+ * Brand and status colours, each with a light and a dark value. The light values are
+ * exactly the colours the screens hard-coded before the dark theme came back, so the
+ * light look is unchanged. Read them with `KISTheme.colors`.
+ */
+@Immutable
+data class KisColors(
+    /** Top app bars and the strip behind the status bar: brand navy under white text and icons. */
+    val topBar: Color,
+    val onTopBar: Color,
+    /** Login backdrop, top-left to bottom-right (the web admin login's deep indigo → khalsa blue). */
+    val loginGradientStart: Color,
+    val loginGradientEnd: Color,
+    /** "Khalsa International" and "SENIOR SECONDARY SCHOOL" on the login card. */
+    val schoolName: Color,
+    val schoolTagline: Color,
+    /** Attendance statuses drawn as text, outlines or light tints on a surface. */
+    val present: Color,
+    val absent: Color,
+    val leave: Color,
+    val halfDay: Color,
+    /** No saved status (the history list's "—"). */
+    val noStatus: Color,
+    /** Solid day cells and legend dots of the coverage calendar, under [onCalendarDay] numbers. */
+    val calendarMarked: Color,
+    val calendarMissed: Color,
+    val calendarHoliday: Color,
+    val onCalendarDay: Color,
+    /** Amber notes: draft marks, exams still missing, a pending deletion. */
+    val warning: Color,
+    /** Approvals diff: the old value (struck through) and the new one. */
+    val diffOld: Color,
+    val diffNew: Color,
+    /** Spinner inside a filled button while it is busy (and so disabled). */
+    val buttonSpinner: Color,
+)
+
+private val LightKisColors = KisColors(
+    topBar = Primary,
+    onTopBar = OnPrimary,
+    loginGradientStart = Color(0xFF08205C),
+    loginGradientEnd = Color(0xFF0E2F8E),
+    schoolName = Color(0xFF08205C),
+    schoolTagline = Color(0xFF0E2F8E),
+    present = Color(0xFF16A34A),
+    absent = Color(0xFFDC2626),
+    leave = Color(0xFFD97706),
+    halfDay = Color(0xFF2563EB),
+    noStatus = Color.Gray,
+    calendarMarked = Color(0xFF16A34A),
+    calendarMissed = Color(0xFFD97706),
+    calendarHoliday = Color(0xFF2563EB),
+    onCalendarDay = Color.White,
+    warning = Color(0xFFD97706),
+    diffOld = Color(0xFFB91C1C),
+    diffNew = Color(0xFF15803D),
+    buttonSpinner = OnPrimary,
+)
+
+/**
+ * Status accents use lighter tones that read on dark surfaces (at least 5:1 on the dark
+ * cards). Calendar fills go a shade deeper instead, so the white day numbers keep their
+ * contrast. Top bars stay brand navy: the status-bar icons over them are always white.
+ */
+private val DarkKisColors = KisColors(
+    topBar = Primary,
+    onTopBar = OnPrimary,
+    loginGradientStart = Color(0xFF050D24),
+    loginGradientEnd = Color(0xFF0B225E),
+    schoolName = Color(0xFFD6E2FF),
+    schoolTagline = Color(0xFF9DB9FF),
+    present = Color(0xFF4ADE80),
+    absent = Color(0xFFF87171),
+    leave = Color(0xFFFBBF24),
+    halfDay = Color(0xFF60A5FA),
+    noStatus = Color(0xFF94A3B8),
+    calendarMarked = Color(0xFF15803D),
+    calendarMissed = Color(0xFFB45309),
+    calendarHoliday = Color(0xFF1D4ED8),
+    onCalendarDay = Color.White,
+    warning = Color(0xFFFBBF24),
+    diffOld = Color(0xFFF87171),
+    diffNew = Color(0xFF4ADE80),
+    buttonSpinner = DarkPrimary,
+)
+
+private val LocalKisColors = staticCompositionLocalOf { LightKisColors }
+
+/**
+ * The app theme. Light unless the user picks Dark in Home → Theme, or picks "Same as
+ * phone" while the phone is in dark mode (MainActivity decides [darkTheme]).
  */
 @Composable
-fun KISTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = Light, content = content)
+fun KISTheme(darkTheme: Boolean = false, content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalKisColors provides if (darkTheme) DarkKisColors else LightKisColors) {
+        MaterialTheme(colorScheme = if (darkTheme) Dark else Light, content = content)
+    }
 }
+
+object KISTheme {
+    /** The [KisColors] of the current theme. */
+    val colors: KisColors
+        @Composable @ReadOnlyComposable get() = LocalKisColors.current
+}
+
+/** Colours for every screen's top app bar: brand navy with a white title and icons, in both themes. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun kisTopAppBarColors(): TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+    containerColor = KISTheme.colors.topBar,
+    titleContentColor = KISTheme.colors.onTopBar,
+    navigationIconContentColor = KISTheme.colors.onTopBar,
+    actionIconContentColor = KISTheme.colors.onTopBar,
+)

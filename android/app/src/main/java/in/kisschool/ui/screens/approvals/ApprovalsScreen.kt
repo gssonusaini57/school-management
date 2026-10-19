@@ -29,7 +29,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -37,7 +36,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -48,11 +46,10 @@ import `in`.kisschool.data.api.dto.MarksEditRequestDto
 import `in`.kisschool.ui.components.EmptyState
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
+import `in`.kisschool.ui.theme.KISTheme
+import `in`.kisschool.ui.theme.kisTopAppBarColors
 
 private enum class ApprovalTab { STUDENT, MARKS, DELETIONS }
-
-private val OldRed = Color(0xFFB91C1C)
-private val NewGreen = Color(0xFF15803D)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -118,12 +115,7 @@ fun ApprovalsScreen(vm: ApprovalsViewModel, onBack: () -> Unit) {
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                colors = kisTopAppBarColors(),
             )
         }
     ) { padding ->
@@ -233,7 +225,7 @@ private fun EditReviewDialog(
                             Text(
                                 diffValue(pair.old),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = OldRed,
+                                color = KISTheme.colors.diffOld,
                                 textDecoration = TextDecoration.LineThrough,
                                 modifier = Modifier.weight(1f),
                             )
@@ -241,7 +233,7 @@ private fun EditReviewDialog(
                             Text(
                                 diffValue(pair.new),
                                 style = MaterialTheme.typography.bodySmall,
-                                color = NewGreen,
+                                color = KISTheme.colors.diffNew,
                                 fontWeight = FontWeight.Medium,
                                 modifier = Modifier.weight(1f),
                             )
@@ -306,7 +298,7 @@ private fun DeletionCard(
             Text(
                 if (pending) "Pending deletion" else "Archived (deleted)",
                 style = MaterialTheme.typography.labelSmall,
-                color = if (pending) Color(0xFFD97706) else MaterialTheme.colorScheme.error,
+                color = if (pending) KISTheme.colors.warning else MaterialTheme.colorScheme.error,
             )
             req.deleteReason?.takeIf { it.isNotBlank() }?.let {
                 Text("Reason: $it", style = MaterialTheme.typography.bodySmall)

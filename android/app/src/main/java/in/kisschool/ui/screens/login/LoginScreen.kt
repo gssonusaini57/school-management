@@ -29,7 +29,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -42,10 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import `in`.kisschool.BuildConfig
 import `in`.kisschool.R
 import `in`.kisschool.ui.components.ErrorBanner
-
-// KIS brand palette (matches the web admin login gradient: deep-indigo → khalsa-blue).
-private val DeepIndigo = Color(0xFF08205C)
-private val KhalsaBlue = Color(0xFF0E2F8E)
+import `in`.kisschool.ui.theme.KISTheme
 
 @Composable
 fun LoginScreen(
@@ -59,10 +55,12 @@ fun LoginScreen(
         if (state.success) onLoggedIn(state.forcePasswordChange)
     }
 
+    // KIS brand palette (matches the web admin login gradient: deep indigo → khalsa blue).
+    val brand = KISTheme.colors
     Box(
         Modifier
             .fillMaxSize()
-            .background(Brush.linearGradient(listOf(DeepIndigo, KhalsaBlue)))
+            .background(Brush.linearGradient(listOf(brand.loginGradientStart, brand.loginGradientEnd)))
             .padding(24.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -85,13 +83,13 @@ fun LoginScreen(
                     "Khalsa International",
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = DeepIndigo,
+                    color = brand.schoolName,
                     textAlign = TextAlign.Center
                 )
                 Text(
                     "SENIOR SECONDARY SCHOOL",
                     style = MaterialTheme.typography.labelMedium,
-                    color = KhalsaBlue,
+                    color = brand.schoolTagline,
                     letterSpacing = 2.sp,
                     textAlign = TextAlign.Center
                 )

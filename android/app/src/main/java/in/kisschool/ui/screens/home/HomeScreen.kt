@@ -9,12 +9,16 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.BrightnessMedium
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -34,11 +38,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import `in`.kisschool.BuildConfig
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,18 +52,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import `in`.kisschool.data.settings.ThemeMode
 import `in`.kisschool.ui.components.ClassDropdown
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.screens.dashboard.DashboardViewModel
 import `in`.kisschool.ui.screens.dashboard.MonthCalendar
+import `in`.kisschool.ui.theme.KISTheme
+import `in`.kisschool.ui.theme.kisTopAppBarColors
 import java.time.LocalDate
 import java.time.YearMonth
-
-private val MarkedGreen = Color(0xFF16A34A)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,27 +83,40 @@ fun HomeScreen(
     canMarksEntry: Boolean = true,
     canResults: Boolean = true,
     onResults: () -> Unit = {},
+    /** Home → Theme: the saved choice, and how to change it (applies at once, app-wide). */
+    themeMode: ThemeMode,
+    onThemeModeChange: (ThemeMode) -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
+    var showTheme by remember { mutableStateOf(false) }
     val s by dashVm.state.collectAsStateWithLifecycle()
 
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
+    if (showTheme) ThemeDialog(
+        current = themeMode,
+        onSelect = onThemeModeChange,
+        onDismiss = { showTheme = false },
+    )
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("KIS School Portal") },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary
-                ),
+                colors = kisTopAppBarColors(),
                 actions = {
                     IconButton(onClick = { menuOpen = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = "Menu")
                     }
                     DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text("Theme") },
+                            leadingIcon = { Icon(Icons.Default.BrightnessMedium, contentDescription = null) },
+                            onClick = {
+                                menuOpen = false
+                                showTheme = true
+                            }
+                        )
                         DropdownMenuItem(
                             text = { Text("About") },
                             leadingIcon = { Icon(Icons.Default.Info, contentDescription = null) },
@@ -230,8 +248,9 @@ fun HomeScreen(
 
 @Composable
 private fun TodayStatusChip(marked: Boolean, onClick: () -> Unit) {
-    val bg = if (marked) MarkedGreen.copy(alpha = 0.14f) else MaterialTheme.colorScheme.secondaryContainer
-    val fg = if (marked) MarkedGreen else MaterialTheme.colorScheme.onSecondaryContainer
+    val markedGreen = KISTheme.colors.present
+    val bg = if (marked) markedGreen.copy(alpha = 0.14f) else MaterialTheme.colorScheme.secondaryContainer
+    val fg = if (marked) markedGreen else MaterialTheme.colorScheme.onSecondaryContainer
     Row(
         Modifier
             .fillMaxWidth()
@@ -327,6 +346,55 @@ private fun AboutDialog(onDismiss: () -> Unit) {
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+        }
+    )
+}
+
+private val ThemeMode.label: String
+    get() = when (this) {
+        ThemeMode.LIGHT -> "Light"
+        ThemeMode.DARK -> "Dark"
+        ThemeMode.SYSTEM -> "Same as phone"
+    }
+
+/** Picking a choice re-themes the app straight away (this dialog included); Close just dismisses. */
+@Composable
+private fun ThemeDialog(
+    current: ThemeMode,
+    onSelect: (ThemeMode) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text("Close") }
+        },
+        title = { Text("Theme") },
+        text = {
+            Column(Modifier.selectableGroup()) {
+                ThemeMode.entries.forEach { mode ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .selectable(
+                                selected = mode == current,
+                                onClick = { onSelect(mode) },
+                                role = Role.RadioButton
+                            )
+                            .padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(selected = mode == current, onClick = null)
+                        Text(
+                            mode.label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(start = 12.dp)
+                        )
+                    }
+                }
             }
         }
     )

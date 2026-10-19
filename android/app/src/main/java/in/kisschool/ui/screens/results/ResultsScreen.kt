@@ -37,7 +37,6 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -64,10 +63,11 @@ import `in`.kisschool.ui.components.ClassDropdown
 import `in`.kisschool.ui.components.EmptyState
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
+import `in`.kisschool.ui.theme.KISTheme
+import `in`.kisschool.ui.theme.kisTopAppBarColors
+import `in`.kisschool.ui.theme.SheetSystemBarsFollowAppTheme
 import kotlin.math.abs
 import kotlin.math.roundToLong
-
-private val Amber = Color(0xFFD97706)
 
 private val ROLL_W = 40.dp
 private val NAME_W = 132.dp
@@ -126,12 +126,7 @@ fun ResultsScreen(
                         Icon(Icons.Default.Refresh, contentDescription = "Refresh")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                colors = kisTopAppBarColors(),
             )
         }
     ) { padding ->
@@ -197,6 +192,7 @@ fun ResultsScreen(
     if (student != null && results != null) {
         val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ModalBottomSheet(onDismissRequest = vm::closeStudent, sheetState = sheetState) {
+            SheetSystemBarsFollowAppTheme()
             StudentSheet(
                 st = student,
                 r = results,
@@ -399,7 +395,7 @@ private fun ValueCell(text: String, width: Dp, bold: Boolean = false) {
 private fun MarkValue(text: String, partial: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         if (partial) {
-            Box(Modifier.size(6.dp).clip(CircleShape).background(Amber))
+            Box(Modifier.size(6.dp).clip(CircleShape).background(KISTheme.colors.warning))
             Spacer(Modifier.width(3.dp))
         }
         Text(text, style = MaterialTheme.typography.bodySmall)
@@ -438,7 +434,7 @@ private fun Tag(text: String, color: Color, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun DraftBadge(modifier: Modifier = Modifier) = Tag("Draft", Amber, modifier)
+private fun DraftBadge(modifier: Modifier = Modifier) = Tag("Draft", KISTheme.colors.warning, modifier)
 
 /** An optional subject: taken only by the students enrolled on it, and never counted for passing. */
 @Composable
@@ -448,7 +444,7 @@ private fun OptionalTag(modifier: Modifier = Modifier) =
 @Composable
 private fun Legend(showDraft: Boolean, showNotTaken: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(6.dp).clip(CircleShape).background(Amber))
+        Box(Modifier.size(6.dp).clip(CircleShape).background(KISTheme.colors.warning))
         Text(
             buildString {
                 append(" some exams missing   — not entered")
@@ -466,7 +462,7 @@ private fun NoteText(text: String, warn: Boolean = false) {
     Text(
         text,
         style = MaterialTheme.typography.bodySmall,
-        color = if (warn) Amber else MaterialTheme.colorScheme.onSurfaceVariant,
+        color = if (warn) KISTheme.colors.warning else MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
@@ -602,7 +598,7 @@ private fun ReportCardButton(enabled: Boolean, busy: Boolean, onClick: () -> Uni
             CircularProgressIndicator(
                 strokeWidth = 2.dp,
                 modifier = Modifier.size(18.dp),
-                color = MaterialTheme.colorScheme.onPrimary,
+                color = KISTheme.colors.buttonSpinner,
             )
             Text("  Preparing report card…")
         } else {

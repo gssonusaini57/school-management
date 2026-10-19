@@ -33,7 +33,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -54,6 +53,7 @@ import androidx.core.content.FileProvider
 import `in`.kisschool.BuildConfig
 import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
+import `in`.kisschool.ui.theme.kisTopAppBarColors
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -134,12 +134,7 @@ fun ReportCardPreviewScreen(
                         Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = "Open with")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                    actionIconContentColor = MaterialTheme.colorScheme.onPrimary,
-                ),
+                colors = kisTopAppBarColors(),
             )
         }
     ) { padding ->

@@ -149,6 +149,7 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                 canMarksEntry = container.authRepo.canAccess(MenuKeys.MARKS_ENTRY)
                 canResults = container.authRepo.canAccess(MenuKeys.MARKS_RESULTS)
             }
+            val themeMode by container.settings.themeMode.collectAsStateWithLifecycle()
             HomeScreen(
                 userName = container.authRepo.displayName ?: "Teacher",
                 dashVm = dashVm,
@@ -168,6 +169,8 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                 canMarksEntry = canMarksEntry,
                 canResults = canResults,
                 onResults = { navController.navigate(Routes.RESULTS) },
+                themeMode = themeMode,
+                onThemeModeChange = container.settings::setThemeMode,
             )
         }
 

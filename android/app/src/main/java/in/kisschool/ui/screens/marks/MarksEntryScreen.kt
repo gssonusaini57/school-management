@@ -36,7 +36,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +54,7 @@ import `in`.kisschool.data.api.dto.ExamComponentDto
 import `in`.kisschool.data.api.dto.StudentDto
 import `in`.kisschool.ui.components.ClassDropdown
 import `in`.kisschool.ui.components.ErrorBanner
+import `in`.kisschool.ui.theme.kisTopAppBarColors
 
 /** Dropdown label for a test; graded tests (max 0) say so instead of "max 0". */
 private fun componentLabel(c: ExamComponentDto): String =
@@ -85,11 +85,7 @@ fun MarksEntryScreen(vm: MarksEntryViewModel, onBack: () -> Unit) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                colors = kisTopAppBarColors()
             )
         }
     ) { padding ->

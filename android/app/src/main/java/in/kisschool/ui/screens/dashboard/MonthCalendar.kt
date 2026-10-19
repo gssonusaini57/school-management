@@ -29,15 +29,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import `in`.kisschool.ui.theme.KISTheme
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
-
-private val MarkedColor = Color(0xFF16A34A)
-private val MissedColor = Color(0xFFD97706)
-private val HolidayColor = Color(0xFF2563EB)
 
 private enum class DayKind { MARKED, MISSED, HOLIDAY, OFF, FUTURE }
 
@@ -122,9 +119,9 @@ fun MonthCalendar(
             Modifier.fillMaxWidth().padding(top = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
-            LegendDot(MarkedColor, "Marked")
-            LegendDot(MissedColor, "Missed")
-            LegendDot(HolidayColor, "Holiday")
+            LegendDot(KISTheme.colors.calendarMarked, "Marked")
+            LegendDot(KISTheme.colors.calendarMissed, "Missed")
+            LegendDot(KISTheme.colors.calendarHoliday, "Holiday")
             LegendDot(MaterialTheme.colorScheme.surfaceVariant, "Off / future")
         }
 
@@ -153,14 +150,14 @@ private fun RowScope.DayCell(
     onClick: () -> Unit,
 ) {
     val bg = when (kind) {
-        DayKind.MARKED -> MarkedColor
-        DayKind.MISSED -> MissedColor
-        DayKind.HOLIDAY -> HolidayColor
+        DayKind.MARKED -> KISTheme.colors.calendarMarked
+        DayKind.MISSED -> KISTheme.colors.calendarMissed
+        DayKind.HOLIDAY -> KISTheme.colors.calendarHoliday
         DayKind.OFF -> MaterialTheme.colorScheme.surfaceVariant
         DayKind.FUTURE -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
     }
     val fg = when (kind) {
-        DayKind.MARKED, DayKind.MISSED, DayKind.HOLIDAY -> Color.White
+        DayKind.MARKED, DayKind.MISSED, DayKind.HOLIDAY -> KISTheme.colors.onCalendarDay
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Box(

@@ -13,6 +13,7 @@ import `in`.kisschool.data.repo.ReportCardRepository
 import `in`.kisschool.data.repo.ResultsRepository
 import `in`.kisschool.data.repo.SessionRepository
 import `in`.kisschool.data.repo.StudentRepository
+import `in`.kisschool.data.settings.SettingsStore
 import kotlinx.coroutines.flow.MutableSharedFlow
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -26,6 +27,9 @@ class AppContainer(context: Context) {
     val authExpired = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
 
     val tokenStore = TokenStore(context.applicationContext)
+
+    /** Display settings (theme); plain prefs, read by MainActivity and the Home menu. */
+    val settings = SettingsStore(context.applicationContext)
 
     private val httpClient: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)

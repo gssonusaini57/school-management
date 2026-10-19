@@ -29,7 +29,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -38,7 +37,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import `in`.kisschool.ui.components.ClassDropdown
@@ -48,6 +46,8 @@ import `in`.kisschool.ui.components.ErrorBanner
 import `in`.kisschool.ui.components.LoadingRow
 import `in`.kisschool.ui.components.StatusChip
 import `in`.kisschool.ui.components.todayIso
+import `in`.kisschool.ui.theme.KISTheme
+import `in`.kisschool.ui.theme.kisTopAppBarColors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -90,11 +90,7 @@ fun AttendanceScreen(
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
+                colors = kisTopAppBarColors()
             )
         },
         snackbarHost = { SnackbarHost(snackbar) }
@@ -167,13 +163,13 @@ fun AttendanceScreen(
                                 modifier = Modifier.weight(1f),
                                 style = MaterialTheme.typography.bodyLarge
                             )
-                            StatusChip("P", Color(0xFF16A34A), current == "P") { vm.setStatus(student.id, "P") }
+                            StatusChip("P", KISTheme.colors.present, current == "P") { vm.setStatus(student.id, "P") }
                             Spacer(Modifier.width(6.dp))
-                            StatusChip("A", Color(0xFFDC2626), current == "A") { vm.setStatus(student.id, "A") }
+                            StatusChip("A", KISTheme.colors.absent, current == "A") { vm.setStatus(student.id, "A") }
                             Spacer(Modifier.width(6.dp))
-                            StatusChip("L", Color(0xFFD97706), current == "L") { vm.setStatus(student.id, "L") }
+                            StatusChip("L", KISTheme.colors.leave, current == "L") { vm.setStatus(student.id, "L") }
                             Spacer(Modifier.width(6.dp))
-                            StatusChip("H", Color(0xFF2563EB), current == "H") { vm.setStatus(student.id, "H") }
+                            StatusChip("H", KISTheme.colors.halfDay, current == "H") { vm.setStatus(student.id, "H") }
                         }
                     }
                 }
