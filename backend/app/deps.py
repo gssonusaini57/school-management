@@ -15,6 +15,10 @@ class CurrentUser:
     name: str
     allowed_classes: list[str]
     allowed_menus: list[str]
+    # Device-session id the access token was minted from (see models/device_session.py).
+    # None for a sign-in without "remember me" and for tokens issued before device
+    # sessions existed, which stay valid until they expire.
+    sid: int | None = None
 
 
 def _parse(token: str) -> CurrentUser:
@@ -22,6 +26,11 @@ def _parse(token: str) -> CurrentUser:
         payload = decode_token(token)
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token")
+    sid = payload.get("sid")
+    try:
+        sid = int(sid) if sid is not None else None
+    except (TypeError, ValueError):
+        sid = None
     return CurrentUser(
         sub=str(payload.get("sub")),
         role=payload.get("role", ""),
@@ -30,6 +39,7 @@ def _parse(token: str) -> CurrentUser:
         # ~8h) also surface the concrete class list for /me and authorization.
         allowed_classes=expand_classes(payload.get("allowed_classes", []) or []),
         allowed_menus=payload.get("allowed_menus", []) or [],
+        sid=sid,
     )
 
 

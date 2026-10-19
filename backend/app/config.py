@@ -32,6 +32,17 @@ class Settings(BaseSettings):
     APP_BASE_URL: str = "http://69.62.72.137/kisschool/admin"
     RESET_TOKEN_TTL_MINUTES: int = 30
 
+    # --- Device sessions ("stay signed in") ---
+    # A remembered sign-in lasts REFRESH_TOKEN_DAYS from its last use (sliding) and
+    # never more than REFRESH_TOKEN_MAX_DAYS from the first sign-in (absolute cap).
+    REFRESH_TOKEN_DAYS: int = 30
+    REFRESH_TOKEN_MAX_DAYS: int = 180
+    # The web keeps its refresh token in an HttpOnly cookie scoped to the auth routes.
+    # Set the path the BROWSER sees: behind a prefix (TEST serves the API under
+    # /kisschool/api) that is AUTH_COOKIE_PATH=/kisschool/api/auth.
+    AUTH_COOKIE_PATH: str = "/api/auth"
+    AUTH_COOKIE_NAME: str = "kis_refresh"
+
     # Publicly-reachable logo URL embedded in transactional emails. Email clients
     # can't load bundled/relative images, so this must be an absolute URL. Left
     # blank, it derives from APP_BASE_URL → the crest shipped in the SPA's

@@ -1,7 +1,8 @@
 """Tiny row builders for tests. Each returns the flushed ORM object."""
 from __future__ import annotations
 
-from datetime import date
+import itertools
+from datetime import date, datetime
 
 from sqlalchemy.orm import Session
 
@@ -12,7 +13,10 @@ from app.models.marks import Marks
 from app.models.marks_batch import MarksBatch, MarksBatchStatus
 from app.models.pdf_template import PdfCache, PdfTemplate, TemplateKind
 from app.models.record_status import RecordStatus
+from app.models.staff import Staff, StaffClass
 from app.models.student import Student
+from app.permissions import DEFAULT_STAFF_MENUS
+from app.security import hash_password
 from app.services.sessions import default_dates
 
 
@@ -29,6 +33,34 @@ def student(db: Session, name: str = "Asha Kaur", class_name: str = "8th", roll_
         name=name, father=kw.pop("father", "Father " + name), mother=kw.pop("mother", "Mother " + name),
         class_name=class_name, roll_no=roll_no, status=status, **kw,
     )
+    db.add(s)
+    db.flush()
+    return s
+
+
+_EMPLOYEE_SEQ = itertools.count(1)
+
+
+def staff(db: Session, name: str = "Gurpreet Kaur", email: str | None = None, phone: str = "",
+          password: str = "pw", classes: list[str] | tuple[str, ...] = ("8th",), menus: list[str] | None = None,
+          temp_password: str | None = None, force_password_change: bool = False,
+          status: RecordStatus = RecordStatus.active, designation: str = "Class Teacher") -> Staff:
+    """A teacher the way `routers/staff.py` creates one: bcrypt hashes for the password
+    (and the admin-set temporary password), one `staff_classes` row per class — the
+    "All" sentinel is stored literally, as the app does — and the default menus."""
+    n = next(_EMPLOYEE_SEQ)
+    s = Staff(
+        name=name, designation=designation, phone=phone,
+        email=email or f"{name.lower().replace(' ', '.')}{n}@kisschool.in",
+        employee_id=f"KIS/EMP/2026/{n:04d}",
+        password_hash=hash_password(password), force_password_change=force_password_change,
+        temp_password_hash=hash_password(temp_password) if temp_password else None,
+        temp_password_set_at=datetime(2026, 10, 1) if temp_password else None,
+        temp_password_set_by="Administrator" if temp_password else None,
+        allowed_menus=list(menus) if menus is not None else list(DEFAULT_STAFF_MENUS),
+        updated_by="t", status=status,
+    )
+    s.classes = [StaffClass(class_name=c) for c in classes]
     db.add(s)
     db.flush()
     return s

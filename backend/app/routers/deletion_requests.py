@@ -19,6 +19,8 @@ from ..models.student import Student
 from ..models.staff import Staff
 from ..models.record_status import RecordStatus
 from ..events import broker
+from ..models.device_session import SessionAccountType
+from ..services.device_sessions import revoke_sessions_hook
 from ..logging_config import get_logger
 
 router = APIRouter(prefix="/admin/deletion-requests", tags=["deletion-requests"])
@@ -105,6 +107,8 @@ def approve(
         f"{kind}_delete_approved",
         extra={"event": f"{kind}_delete_approved", f"{kind}_id": rid, "actor": user.name},
     )
+    if kind == "staff":
+        revoke_sessions_hook(db, SessionAccountType.staff, str(rid), reason="account_deleted")
     return _serialize(kind, s)
 
 
@@ -166,4 +170,8 @@ def purge(
         f"{kind}_purged",
         extra={"event": f"{kind}_purged", f"{kind}_id": rid, f"{kind}_name": purged_name, "actor": user.name},
     )
+    if kind == "staff":
+        # device_sessions has no FK to staff (account_ref is the JWT sub), so the
+        # rows survive the purge and are closed here.
+        revoke_sessions_hook(db, SessionAccountType.staff, str(rid), reason="account_deleted")
     return Response(status_code=204)

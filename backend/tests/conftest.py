@@ -45,11 +45,26 @@ from app.db import Base, get_db  # noqa: E402
 from app.models import (  # noqa: E402,F401
     admin, staff, student, document, attendance, marks, fee, notice, pdf_template,
     student_edit_request, class_subject, marks_batch, password_reset, academic_session, pdf_render_job,
-    subject_enrollment,
+    subject_enrollment, device_session,
 )
 from app.main import app  # noqa: E402
 from app.permissions import DEFAULT_STAFF_MENUS  # noqa: E402
+from app import security  # noqa: E402
 from app.security import create_token  # noqa: E402
+from app.routers.auth import reset_login_failures  # noqa: E402
+from passlib.context import CryptContext  # noqa: E402
+
+# bcrypt at its minimum cost: the factories hash real passwords and the admin seeds
+# hash on first login, which at 12 rounds would cost ~0.3 s per row.
+_FAST_BCRYPT = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=4)
+
+
+@pytest.fixture(autouse=True)
+def _fast_hashes_and_fresh_login_counters(monkeypatch):
+    monkeypatch.setattr(security, "pwd_context", _FAST_BCRYPT)
+    reset_login_failures()      # the brute-force guard is process-global
+    yield
+    reset_login_failures()
 
 
 @pytest.fixture()

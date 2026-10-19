@@ -20,6 +20,8 @@ from ..models.record_status import RecordStatus
 from ..security import hash_password, verify_password
 from ..events import broker
 from ..permissions import DEFAULT_STAFF_MENUS, sanitize_menus
+from ..models.device_session import SessionAccountType, SessionVia
+from ..services.device_sessions import revoke_sessions, revoke_sessions_hook
 from ..logging_config import get_logger
 from ._bulk import read_csv, must_str, opt_str, title_case, FieldError, error_dict
 
@@ -190,6 +192,9 @@ def update_staff(
             "password_reset": bool(new_password),
         },
     )
+    if new_password:
+        # The old password is gone: every remembered device must sign in again.
+        revoke_sessions_hook(db, SessionAccountType.staff, str(s.id), reason="password_reset")
     base = _to_out(s).model_dump()
     return StaffUpdateResponse(**base, new_password=new_password)
 
@@ -220,6 +225,9 @@ def staff_change_password(
     db.commit()
     broker.publish("staff", "upsert", id=s.id)
     log.info("staff password changed", extra={"event": "staff_password_changed", "staff_id": s.id})
+    revoke_sessions_hook(
+        db, SessionAccountType.staff, str(s.id), reason="password_changed", except_sid=user.sid
+    )
 
 
 @router.post("/{sid}/temp-password", response_model=StaffOut)
@@ -271,6 +279,10 @@ def clear_temp_password(
     log.info(
         "staff temp password cleared",
         extra={"event": "staff_temp_password_cleared", "staff_id": s.id, "actor": user.name},
+    )
+    revoke_sessions_hook(
+        db, SessionAccountType.staff, str(s.id),
+        reason="temp_password_cleared", only_via=SessionVia.temp_password,
     )
     return _to_out(s)
 
@@ -326,7 +338,31 @@ def delete_staff(
         event,
         extra={"event": event, "staff_id": sid, "staff_name": s.name, "actor": user.name, "reason": reason},
     )
+    if s.status == RecordStatus.deleted:
+        revoke_sessions_hook(db, SessionAccountType.staff, str(sid), reason="account_deleted")
     return _to_out(s)
+
+
+@router.delete("/{sid}/sessions")
+def revoke_staff_sessions(
+    sid: int,
+    user: CurrentUser = Depends(require_admin),
+    db: Session = Depends(db_dep),
+):
+    """Sign a staff member out of every remembered device (admin/super-admin).
+
+    Their password is untouched; they simply have to sign in again. Returns how
+    many live sessions were ended."""
+    s = db.get(Staff, sid)
+    if not s:
+        raise HTTPException(status_code=404, detail="Not found")
+    revoked = revoke_sessions(db, SessionAccountType.staff, str(sid), reason="admin")
+    db.commit()
+    log.info(
+        "staff sessions revoked",
+        extra={"event": "staff_sessions_revoked", "staff_id": sid, "actor": user.name, "revoked": revoked},
+    )
+    return {"revoked": revoked}
 
 
 @router.post("/bulk-import", status_code=201)
