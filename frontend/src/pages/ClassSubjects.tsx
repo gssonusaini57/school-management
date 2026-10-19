@@ -300,6 +300,7 @@ export default function ClassSubjects() {
               <Label>Display order <span className="text-muted-foreground">— lower = first</span></Label>
               <NumberField
                 min={0}
+                integer
                 value={form.order_index}
                 onChange={(v) => setForm({ ...form, order_index: v })}
               />
@@ -356,6 +357,7 @@ export default function ClassSubjects() {
                   <Label>Display order</Label>
                   <NumberField
                     min={0}
+                    integer
                     value={String(editing.order_index)}
                     onChange={(v) => setEditing({ ...editing, order_index: v === "" ? 0 : Number(v) })}
                   />

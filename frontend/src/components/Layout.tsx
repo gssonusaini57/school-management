@@ -45,7 +45,7 @@ export function Layout() {
   const showTopNav = mode === "topbar";
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background print:min-h-0">
       <Sidebar
         open={mobileOpen}
         visibleOnDesktop={sidebarVisibleOnDesktop}
@@ -57,16 +57,16 @@ export function Layout() {
       {/* Mobile backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          className="fixed inset-0 z-30 bg-black/40 md:hidden print:hidden"
           onClick={() => setMobileOpen(false)}
           aria-hidden="true"
         />
       )}
 
-      {/* Slim topbar */}
+      {/* Slim topbar. Nav chrome hides itself on paper (print:hidden); pages print only their content. */}
       <header
         className={cn(
-          "fixed top-0 right-0 left-0 h-16 bg-white border-b border-border shadow-sm z-40 flex items-center justify-between px-4 md:px-6 transition-[left]",
+          "fixed top-0 right-0 left-0 h-16 bg-white border-b border-border shadow-sm z-40 flex items-center justify-between px-4 md:px-6 transition-[left] print:hidden",
           sidebarVisibleOnDesktop && "md:left-64",
         )}
       >
@@ -128,7 +128,7 @@ export function Layout() {
 
       {/* Desktop top-nav strip (topbar mode only) */}
       {showTopNav && (
-        <div className="fixed top-16 right-0 left-0 z-30 hidden md:block">
+        <div className="fixed top-16 right-0 left-0 z-30 hidden md:block print:hidden">
           <TopNav />
         </div>
       )}
@@ -136,12 +136,12 @@ export function Layout() {
       {/* Main */}
       <main
         className={cn(
-          "min-h-screen pt-16",
+          "min-h-screen pt-16 print:min-h-0 print:pt-0 print:ml-0",
           sidebarVisibleOnDesktop && "md:ml-64",
           showTopNav && "md:pt-28",
         )}
       >
-        <div className="p-4 md:p-6">
+        <div className="p-4 md:p-6 print:p-0">
           <Outlet />
         </div>
       </main>

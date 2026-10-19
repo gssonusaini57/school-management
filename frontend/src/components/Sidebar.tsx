@@ -27,7 +27,7 @@ export function Sidebar({
   return (
     <aside
       className={cn(
-        "fixed top-0 left-0 z-40 h-screen w-64 bg-deep-indigo text-white/80 overflow-y-auto transition-transform",
+        "fixed top-0 left-0 z-40 h-screen w-64 bg-deep-indigo text-white/80 overflow-y-auto transition-transform print:hidden",
         open ? "translate-x-0" : "-translate-x-full",
         visibleOnDesktop && "md:translate-x-0",
       )}

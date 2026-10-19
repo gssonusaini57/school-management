@@ -17,8 +17,30 @@ export function useSessions() {
   });
 }
 
-/** The server's current session, falling back to the April-rollover guess while loading. */
+/** `d` as YYYY-MM-DD on the local calendar (the school and its staff are on IST), not UTC's. */
+function localIsoDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * The current session as the server picks it (services/sessions.current_session):
+ * the one flagged current, else the one whose dates contain today. Never simply the
+ * newest: early in a new school year that would file new marks under last year.
+ */
+export function currentSessionRow(
+  sessions: AcademicSession[] | undefined,
+  today: Date = new Date(),
+): AcademicSession | undefined {
+  const flagged = sessions?.find((s) => s.is_current);
+  if (flagged) return flagged;
+  const day = localIsoDate(today);
+  return sessions?.find(
+    (s) => !!s.starts_on && !!s.ends_on && s.starts_on.slice(0, 10) <= day && day <= s.ends_on.slice(0, 10),
+  );
+}
+
+/** The server's current session; the April-rollover guess while loading or when none covers today. */
 export function useCurrentSessionName(): string {
   const { data } = useSessions();
-  return data?.find((s) => s.is_current)?.session ?? defaultSessionName();
+  return currentSessionRow(data)?.session ?? defaultSessionName();
 }

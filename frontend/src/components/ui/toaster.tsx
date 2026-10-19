@@ -12,8 +12,20 @@ interface ToastItem {
 
 let push: ((m: string, k?: ToastKind) => void) | null = null;
 
+/** Text for a toast. Callers pass strings, but anything else that slips through
+ *  (an error detail object) must not reach React as a child: it unmounts the app. */
+function asText(msg: unknown): string {
+  if (typeof msg === "string") return msg;
+  if (msg instanceof Error) return msg.message;
+  try {
+    return JSON.stringify(msg) ?? String(msg);
+  } catch {
+    return String(msg);
+  }
+}
+
 export function toast(msg: string, kind: ToastKind = "success") {
-  push?.(msg, kind);
+  push?.(asText(msg), kind);
 }
 
 export function Toaster() {
@@ -42,7 +54,7 @@ export function Toaster() {
   };
 
   return (
-    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm">
+    <div className="fixed top-4 right-4 z-[100] flex flex-col gap-2 max-w-sm print:hidden">
       {items.map((t) => (
         <div
           key={t.id}

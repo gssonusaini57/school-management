@@ -1,10 +1,10 @@
 import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { getToken } from "./api";
 
 const baseURL = (import.meta.env.VITE_API_URL as string | undefined) ?? "/api";
 
-export function useSSE(channel: string, invalidateKeys: string[][]) {
+export function useSSE(channel: string, invalidateKeys: QueryKey[]) {
   const qc = useQueryClient();
 
   useEffect(() => {

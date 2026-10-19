@@ -55,7 +55,10 @@
   }
 }
 
-@media print {
-  .no-print, .sidebar, .topbar { display: none !important; }
-  .main-content { margin: 0 !important; padding: 0 !important; }
-}
+/*
+ * Printing: the nav chrome (Sidebar, the Layout header and top-nav strip) carries
+ * Tailwind's `print:hidden`, and <main> drops its offsets with `print:pt-0
+ * print:ml-0`; hide page controls the same way. Tailwind emits `print:` after the
+ * `md:` breakpoints, so it wins on a wide page too. A page that needs a paper size
+ * renders its own @page rule while mounted (see pages/MarksResults.tsx).
+ */

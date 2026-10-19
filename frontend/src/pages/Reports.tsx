@@ -18,10 +18,10 @@ export default function Reports() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-heading-lg text-deep-indigo">{t("portal.nav.reports")}</h1>
-        {key && <Button variant="outline" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>}
+        {key && <Button variant="outline" className="print:hidden" onClick={() => window.print()}><Printer className="h-4 w-4" /> Print</Button>}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 print:hidden">
         <ReportCard title="Class-wise students" icon={<Users />} active={key === "class-wise"} onClick={() => setKey("class-wise")} />
         <ReportCard title="Fee collection" icon={<Wallet />} active={key === "fee-summary"} onClick={() => setKey("fee-summary")} />
         <ReportCard title="Attendance" icon={<ClipboardCheck />} active={key === "attendance-monthly"} onClick={() => setKey("attendance-monthly")} />
@@ -96,13 +96,14 @@ function FeeSummary() {
 
 interface AttRow { class: string; date: string; present: number; absent: number; leave: number; half_day?: number }
 function AttendanceMonthly() {
+  const { t } = useTranslation();
   const { data = [] } = useQuery<AttRow[]>({ queryKey: ["report", "attendance-monthly"], queryFn: () => api.get("/reports/attendance-monthly").then((r) => r.data) });
   return (
     <Card>
       <CardHeader><CardTitle>Attendance report</CardTitle></CardHeader>
       <CardContent>
         <Table>
-          <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Present</TableHead><TableHead>Absent</TableHead><TableHead>Leave</TableHead><TableHead>Half day</TableHead><TableHead>Total</TableHead></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Class</TableHead><TableHead>Present</TableHead><TableHead>Absent</TableHead><TableHead>Leave</TableHead><TableHead>{t("portal.reports.halfDay", "Half day")}</TableHead><TableHead>Total</TableHead></TableRow></TableHeader>
           <TableBody>
             {data.map((r, i) => (
               <TableRow key={i}>

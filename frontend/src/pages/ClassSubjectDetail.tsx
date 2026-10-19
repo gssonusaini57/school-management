@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import { ArrowLeft, Plus, Trash2, Save, GripVertical } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -42,6 +43,8 @@ interface DraftRow {
 }
 
 type Payload = { id: number | null; component_name: string; max_marks: number; order_index: number; term: number | null }[];
+/** A save: what is sent, and the draft it was made from (to tell whether it was edited meanwhile). */
+type SaveVars = { components: Payload; from: DraftRow[]; force?: boolean };
 
 const draftFromServer = (rows: ClassSubjectDetail["components"]): DraftRow[] =>
   rows
@@ -56,6 +59,19 @@ const draftFromServer = (rows: ClassSubjectDetail["components"]): DraftRow[] =>
       term: c.term == null ? "both" : String(c.term),
     }));
 
+/** True when the draft differs from the server's rows (ids included: a new exam has none yet). */
+const rowsDiffer = (server: DraftRow[], draft: DraftRow[]): boolean =>
+  server.length !== draft.length ||
+  draft.some((d, i) => {
+    const s = server[i];
+    return !s
+      || s.component_name !== d.component_name
+      || s.max_marks !== d.max_marks
+      || s.order_index !== d.order_index
+      || s.term !== d.term
+      || s.id !== d.id;
+  });
+
 const blankRow = (idx: number): DraftRow => ({
   key: `new-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   id: null,
@@ -66,6 +82,7 @@ const blankRow = (idx: number): DraftRow => ({
 });
 
 export default function ClassSubjectDetail() {
+  const { t } = useTranslation();
   const { id } = useParams();
   const subjectId = Number(id);
   const qc = useQueryClient();
@@ -73,7 +90,7 @@ export default function ClassSubjectDetail() {
 
   const [draft, setDraft] = useState<DraftRow[]>([]);
   // Set when the server refuses to delete components that already have marks.
-  const [forcePrompt, setForcePrompt] = useState<{ message: string; components: Payload } | null>(null);
+  const [forcePrompt, setForcePrompt] = useState<{ message: string; vars: SaveVars } | null>(null);
 
   const subjectQ = useQuery<ClassSubjectDetail>({
     queryKey: ["class-subjects", subjectId],
@@ -82,24 +99,42 @@ export default function ClassSubjectDetail() {
   });
   useSSE("class-subjects", [["class-subjects"]]);
 
+  // The draft follows the server's rows (another super-admin's save arrives over SSE) while it
+  // has no edits; one with edits keeps them. Replacing components doesn't touch the subject's
+  // updated_at, so this watches the rows themselves.
+  const synced = useRef<{ id: number; rows: DraftRow[] } | null>(null);
   useEffect(() => {
-    if (subjectQ.data) setDraft(draftFromServer(subjectQ.data.components));
-  }, [subjectQ.data?.id, subjectQ.data?.updated_at]);
+    const data = subjectQ.data;
+    if (!data) return;
+    const rows = draftFromServer(data.components);
+    const prev = synced.current;
+    synced.current = { id: data.id, rows };
+    setDraft((d) => (!prev || prev.id !== data.id || !rowsDiffer(prev.rows, d) ? rows : d));
+  }, [subjectQ.data]);
 
   const replace = useMutation({
-    mutationFn: ({ components, force }: { components: Payload; force?: boolean }) =>
-      api.put(`/class-subjects/${subjectId}/components`, { components }, { params: force ? { force: true } : undefined }),
-    onSuccess: () => {
+    mutationFn: ({ components, force }: SaveVars) =>
+      api
+        .put<ClassSubjectDetail>(`/class-subjects/${subjectId}/components`, { components }, { params: force ? { force: true } : undefined })
+        .then((r) => r.data),
+    onSuccess: (saved, vars) => {
       toast("Exam components saved", "success");
       setForcePrompt(null);
+      // Start again from the saved rows, so new exams carry their ids (a later rename then
+      // edits them in place), unless the table was edited while saving.
+      setDraft((d) => (d === vars.from ? draftFromServer(saved.components) : d));
+      qc.setQueryData(["class-subjects", subjectId], saved);
       qc.invalidateQueries({ queryKey: ["class-subjects", subjectId] });
       qc.invalidateQueries({ queryKey: ["class-subjects"] });
+      // Terms, max marks and names decide the results' totals and what report cards print.
+      qc.invalidateQueries({ queryKey: ["results"] });
+      qc.invalidateQueries({ queryKey: ["pdf-roster"] });
     },
     onError: (e, vars) => {
       const status = (e as { response?: { status?: number } })?.response?.status;
       const message = apiError(e);
       if (status === 409 && !vars.force && message.includes("already have marks")) {
-        setForcePrompt({ message, components: vars.components });
+        setForcePrompt({ message, vars });
         return;
       }
       toast(message, "error");
@@ -119,20 +154,10 @@ export default function ClassSubjectDetail() {
     return { term1, term2, annual, both };
   }, [draft]);
 
-  const isDirty = useMemo(() => {
-    if (!subjectQ.data) return false;
-    const server = draftFromServer(subjectQ.data.components);
-    if (server.length !== draft.length) return true;
-    return draft.some((d, i) => {
-      const s = server[i];
-      if (!s) return true;
-      return s.component_name !== d.component_name
-        || s.max_marks !== d.max_marks
-        || s.order_index !== d.order_index
-        || s.term !== d.term
-        || s.id !== d.id;
-    });
-  }, [draft, subjectQ.data]);
+  const isDirty = useMemo(
+    () => !!subjectQ.data && rowsDiffer(draftFromServer(subjectQ.data.components), draft),
+    [draft, subjectQ.data],
+  );
 
   const addRow = () => {
     setDraft((rows) => [...rows, blankRow(rows.length + 1)]);
@@ -188,7 +213,7 @@ export default function ClassSubjectDetail() {
         term: r.term === "both" ? null : Number(r.term),
       });
     }
-    replace.mutate({ components: cleaned });
+    replace.mutate({ components: cleaned, from: draft });
   };
 
   if (subjectQ.isLoading) {
@@ -299,6 +324,8 @@ export default function ClassSubjectDetail() {
                       <NumberField
                         className="text-right"
                         min={0}
+                        max={1000}
+                        integer
                         value={r.max_marks}
                         onChange={(v) => updateRow(r.key, { max_marks: v })}
                       />
@@ -315,6 +342,7 @@ export default function ClassSubjectDetail() {
                       <NumberField
                         className="text-right"
                         min={0}
+                        integer
                         value={r.order_index}
                         onChange={(v) => updateRow(r.key, { order_index: v })}
                       />
@@ -327,7 +355,9 @@ export default function ClassSubjectDetail() {
                   </TableRow>
                 ))}
                 <TableRow className="bg-cream/40">
-                  <TableCell colSpan={3} className="text-right font-medium">Max marks · Term 1 / Term 2 / Annual</TableCell>
+                  <TableCell colSpan={3} className="text-right font-medium">
+                    {t("portal.classSubjects.maxByScope", "Max marks · Term 1 / Term 2 / Annual")}
+                  </TableCell>
                   <TableCell colSpan={4} className="font-bold">
                     {totals.term1} / {totals.term2} / {totals.annual}
                   </TableCell>
@@ -337,8 +367,11 @@ export default function ClassSubjectDetail() {
           )}
           {totals.both > 0 && (
             <p className="mt-3 text-xs text-amber-700">
-              {totals.both} component{totals.both === 1 ? " is" : "s are"} set to <b>Both</b>, so {totals.both === 1 ? "it counts" : "they count"} in Term 1 and again in Term 2.
-              Pick a single term unless that is intended.
+              {t(
+                "portal.classSubjects.bothWarning",
+                "{{count}} components are set to “Both”, so they count in Term 1 and again in Term 2. Pick a single term unless that is intended.",
+                { count: totals.both },
+              )}
             </p>
           )}
           {isDirty && (
@@ -352,21 +385,25 @@ export default function ClassSubjectDetail() {
       <Dialog open={!!forcePrompt} onOpenChange={(o) => { if (!o) setForcePrompt(null); }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Delete components that have marks?</DialogTitle>
+            <DialogTitle>{t("portal.classSubjects.forceDeleteTitle", "Delete components that have marks?")}</DialogTitle>
             <DialogDescription>{forcePrompt?.message}</DialogDescription>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Their marks stay in the database but no longer count in results or report cards.
-            To rename a component instead, edit its name in place rather than deleting and re-adding it.
+            {t(
+              "portal.classSubjects.forceDeleteBody",
+              "Their marks stay in the database but no longer count in results or report cards. To rename a component instead, edit its name in place rather than deleting and re-adding it.",
+            )}
           </p>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setForcePrompt(null)}>Keep them</Button>
+            <Button variant="outline" onClick={() => setForcePrompt(null)}>
+              {t("portal.classSubjects.keepThem", "Keep them")}
+            </Button>
             <Button
               variant="destructive"
               disabled={replace.isPending}
-              onClick={() => forcePrompt && replace.mutate({ components: forcePrompt.components, force: true })}
+              onClick={() => forcePrompt && replace.mutate({ ...forcePrompt.vars, force: true })}
             >
-              Delete anyway
+              {t("portal.classSubjects.deleteAnyway", "Delete anyway")}
             </Button>
           </DialogFooter>
         </DialogContent>

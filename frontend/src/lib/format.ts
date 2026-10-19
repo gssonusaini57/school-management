@@ -45,3 +45,14 @@ function parseLooseDate(input: string): Date | null {
   const d = new Date(input);
   return Number.isNaN(d.getTime()) ? null : d;
 }
+
+/**
+ * Marks, percentages and day counts: whole numbers print bare (45, not 45.0),
+ * anything else rounds to `maxFractionDigits` (87.333 → 87.3, 92.5 → 92.5).
+ * null / undefined / NaN print as "—".
+ */
+export function formatNumber(n: number | null | undefined, maxFractionDigits = 1): string {
+  if (n == null || !Number.isFinite(n)) return "—";
+  const f = 10 ** maxFractionDigits;
+  return String(Math.round(n * f) / f);
+}

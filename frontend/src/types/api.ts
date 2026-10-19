@@ -197,6 +197,12 @@ export interface PdfTemplate {
   updated_by: string;
 }
 
+/** POST /pdf/templates/bulk-create: one template per class; classes that already have one are skipped. */
+export interface PdfTemplateBulkCreateResult {
+  created: PdfTemplate[];
+  skipped: { class_name: string; reason: string }[];
+}
+
 export interface PdfStudentDataRow {
   student_id: number;
   data: Record<string, unknown>;
@@ -222,7 +228,12 @@ export interface PdfStudentRosterRow {
   total: number | null;
   max: number | null;
   percentage: number | null;
-  attendance_pct: number | null;
+  attendance_pct: number | null; // what the card prints (override, else computed)
+  computed_rank: number | null; // what the system computes, shown beside an override
+  computed_attendance_pct: number | null;
+  computed_working_days: number | null;
+  computed_days_present: number | null;
+  overrides: string[]; // per-student keys that replace a computed value
   error: string | null; // why a card can't be produced yet
 }
 
@@ -270,7 +281,7 @@ export interface ReportCardTemplateData {
   showPhoto: boolean;
   showGradingScale: boolean;
   includeDrafts: boolean;
-  promotionRule: { passPct: number; conditionalMaxFails: number };
+  promotionRule: { passPct: number; conditionalMaxFails: number } | null; // null = the school's default rule
   remarksDefault: Bilingual | null;
 }
 
@@ -373,7 +384,9 @@ export interface SubjectResult {
   cells: ResultCell[];
 }
 
-export interface AttendanceSummary {
+/** A student's attendance over the results scope (the server's AttendanceOut). Not the
+ *  dashboard's AttendanceSummary (GET /attendance/today-summary). */
+export interface ResultAttendance {
   working_days: number;
   days_present: number;
   pct: number | null;
@@ -396,7 +409,7 @@ export interface StudentResult {
   failed_subjects: string[];
   promotion: string | null;
   draft_components: number;
-  attendance: AttendanceSummary | null;
+  attendance: ResultAttendance | null;
 }
 
 export interface GroupColumn {
@@ -417,9 +430,13 @@ export interface ClassResults {
   include_drafts: boolean;
   has_drafts: boolean;
   complete: boolean;
-  engine_version: number;
+  /** Absent from an engine-v1 server (the previous release), whose answer has no groups, cells or warnings. */
+  engine_version?: number;
   session_dates: { start: string; end: string } | null;
   warnings: string[];
+  /** The pass rule pass_status, failed_subjects and promotion were worked out with. Older servers omit them. */
+  pass_pct?: number;
+  conditional_max_fails?: number;
 }
 
 // ── Marks batch + edit-request workflow ──────────────────────────
@@ -446,6 +463,8 @@ export interface MarksBatch {
   submitted_at: string | null;
   submitted_by: string | null;
   updated_at: string;
+  /** +1 on every change to the batch's marks or status; sent back as base_revision on a save. Older servers omit it. */
+  revision?: number;
 }
 
 export interface MarksBatchDetail extends MarksBatch {
@@ -485,6 +504,17 @@ export interface AcademicSession {
   is_current: boolean;
   updated_at: string | null;
   updated_by: string;
+}
+
+/** GET /sessions/defaults?session=2027-28: the default calendar for a new session (ISO dates). */
+export interface SessionDefaults {
+  session: string;
+  starts_on: string;
+  ends_on: string;
+  term1_start: string;
+  term1_end: string;
+  term2_start: string;
+  term2_end: string;
 }
 
 // ── Reference data (GET /meta) ───────────────────────────────────

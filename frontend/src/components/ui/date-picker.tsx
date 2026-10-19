@@ -15,6 +15,8 @@ interface DatePickerProps {
   className?: string;
   disabled?: boolean;
   id?: string;
+  /** The visible label's id: the trigger is then named by it plus the date it shows. */
+  "aria-labelledby"?: string;
 }
 
 const ISO = "yyyy-MM-dd";
@@ -35,8 +37,10 @@ export function DatePicker({
   className,
   disabled,
   id,
+  "aria-labelledby": labelledBy,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false);
+  const valueId = React.useId();
 
   const date = parseIso(value);
   const minDate = parseIso(min);
@@ -47,6 +51,7 @@ export function DatePicker({
       <PopoverTrigger asChild>
         <Button
           id={id}
+          aria-labelledby={labelledBy ? `${labelledBy} ${valueId}` : undefined}
           type="button"
           variant="outline"
           disabled={disabled}
@@ -57,7 +62,7 @@ export function DatePicker({
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(date, DISPLAY) : placeholder}
+          <span id={valueId}>{date ? format(date, DISPLAY) : placeholder}</span>
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">

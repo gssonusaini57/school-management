@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useSyncExternalStore } from "react";
+import { hasUnsavedChanges } from "./unsaved";
 
 /**
  * Cache-bust check.
@@ -17,6 +18,11 @@ import { useEffect, useRef } from "react";
  *
  * First-time visits are a no-op: the freshly-fetched HTML references the
  * matching bundle, so embedded === server.
+ *
+ * A tab with unsaved edits isn't reloaded: that would put the browser's "Leave
+ * site?" prompt over them, unasked. `useUpdateWaiting()` turns true instead (the
+ * app shows a banner offering the reload), and the first check after the edits
+ * are saved reloads.
  */
 
 export const BUILD_ID: string =
@@ -44,7 +50,7 @@ async function fetchServerBuildId(signal?: AbortSignal): Promise<string | null> 
   }
 }
 
-function reloadWithCacheBust(): void {
+export function reloadWithCacheBust(): void {
   // A query-bust ensures the browser fetches a fresh HTML even if nginx /
   // upstream caches haven't expired index.html. The new HTML references
   // new hashed JS/CSS, so subsequent loads naturally cache-bust themselves.
@@ -56,14 +62,46 @@ function reloadWithCacheBust(): void {
 
 let triggered = false;
 
+// A newer build is deployed, but this tab had unsaved edits when it was found.
+let updateWaiting = false;
+const waitingListeners = new Set<() => void>();
+
+function setUpdateWaiting(value: boolean): void {
+  if (updateWaiting === value) return;
+  updateWaiting = value;
+  waitingListeners.forEach((notify) => notify());
+}
+
 export async function checkBuildOnce(): Promise<void> {
   if (triggered) return;
   if (BUILD_ID === "dev") return; // skip in vite dev server
   const server = await fetchServerBuildId();
-  if (server && server !== BUILD_ID) {
-    triggered = true;
-    reloadWithCacheBust();
+  if (!server) return;
+  if (server === BUILD_ID) {
+    setUpdateWaiting(false);
+    return;
   }
+  // Only latch once the reload really starts: a "Stay" on the browser's prompt
+  // would otherwise leave this tab on the old bundle for good.
+  if (hasUnsavedChanges()) {
+    setUpdateWaiting(true);
+    return;
+  }
+  triggered = true;
+  reloadWithCacheBust();
+}
+
+/** True while a newer build waits for this tab's unsaved edits to be saved. */
+export function useUpdateWaiting(): boolean {
+  return useSyncExternalStore(
+    (notify) => {
+      waitingListeners.add(notify);
+      return () => {
+        waitingListeners.delete(notify);
+      };
+    },
+    () => updateWaiting,
+  );
 }
 
 export function useVersionCheck(): void {

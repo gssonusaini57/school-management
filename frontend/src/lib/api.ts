@@ -37,9 +37,45 @@ api.interceptors.response.use(
   }
 );
 
+/**
+ * A FastAPI error `detail` as one line of text. It isn't always a string:
+ * request validation sends a list of {loc, msg}, and some endpoints send an
+ * object with a `message`. Rendering either as-is crashes React.
+ */
+function detailText(detail: unknown): string {
+  if (detail == null) return "";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail)) {
+    return detail
+      .map((d) => {
+        if (!d || typeof d !== "object" || !("msg" in d)) return typeof d === "string" ? d : JSON.stringify(d);
+        const msg = String((d as { msg: unknown }).msg).replace(/^Value error, /, "");
+        const loc = (d as { loc?: unknown }).loc;
+        // ["body", "items", 0, "marks"] → "items.0.marks"
+        const path = Array.isArray(loc) ? loc.map(String).filter((p, i) => i > 0 || !["body", "query", "path"].includes(p)) : [];
+        return path.length && !msg.startsWith(path[0]) ? `${path.join(".")}: ${msg}` : msg;
+      })
+      .filter(Boolean)
+      .join("; ");
+  }
+  if (typeof detail === "object") {
+    const message = (detail as { message?: unknown }).message;
+    if (typeof message === "string" && message) return message;
+    try {
+      return JSON.stringify(detail);
+    } catch {
+      return String(detail);
+    }
+  }
+  return String(detail);
+}
+
+/** The error to show for a failed request: always a string. */
 export function apiError(e: unknown): string {
   if (axios.isAxiosError(e)) {
-    return e.response?.data?.detail ?? e.message ?? "Network error";
+    const data: unknown = e.response?.data;
+    const detail = data && typeof data === "object" && "detail" in data ? (data as { detail: unknown }).detail : null;
+    return detailText(detail) || e.message || "Network error";
   }
   return e instanceof Error ? e.message : "Unknown error";
 }

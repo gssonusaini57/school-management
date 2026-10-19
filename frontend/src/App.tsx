@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useLocation } from "react-router-dom";
 import Login from "@/pages/Login";
 import ForgotPassword from "@/pages/ForgotPassword";
 import ResetPassword from "@/pages/ResetPassword";
@@ -26,14 +26,19 @@ import Sessions from "@/pages/Sessions";
 import { Layout } from "@/components/Layout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { Toaster } from "@/components/ui/toaster";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { UpdateBanner } from "@/components/UpdateBanner";
 import { useVersionCheck } from "@/lib/version";
 
 export default function App() {
-  // Auto-detect stale bundles after a deploy and hard-reload the user.
-  // No-op in dev (BUILD_ID === "dev") or when version.json matches the bundle.
+  // Auto-detect stale bundles after a deploy and hard-reload the user (a tab with
+  // unsaved edits gets the UpdateBanner instead). No-op in dev (BUILD_ID === "dev")
+  // or when version.json matches the bundle.
   useVersionCheck();
+  const { pathname } = useLocation();
   return (
-    <>
+    // One bad value or render error shows a message instead of a blank app.
+    <ErrorBoundary resetKey={pathname}>
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -65,6 +70,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
       <Toaster />
-    </>
+      <UpdateBanner />
+    </ErrorBoundary>
   );
 }
