@@ -4,6 +4,7 @@ from typing import Literal
 
 
 BatchStatusT = Literal["draft", "submitted"]
+SummaryStatusT = Literal["draft", "submitted", "none"]   # none: no marks saved for the exam yet
 MerStatusT = Literal["pending", "approved", "rejected"]
 MerRoleT = Literal["admin", "staff"]
 
@@ -73,6 +74,33 @@ class BatchDetailOut(BatchOut):
     items: list[MarkItemOut] = []
     pending_edit_request_id: int | None = None
     last_rejection: str | None = None
+
+
+# ── Marks progress (GET /marks/batches/summary) ─────────────────
+class BatchSummaryItem(BaseModel):
+    """One exam component of a class subject in a session, with its batch's state."""
+    class_name: str
+    subject: str
+    exam_type: str                 # the exam component's name
+    term: int | None = None        # 1, 2, or None for both terms
+    status: SummaryStatusT
+    entered: int                   # students in class_size with a mark (or a grade, for graded exams)
+    class_size: int                # active students; for an optional subject, the active students who take it
+    updated_at: datetime | None = None   # None when status is "none"
+    revision: int = 0              # 0 when status is "none"
+    pending_edit_request: bool = False
+
+
+class BatchSummaryTotals(BaseModel):
+    draft: int
+    submitted: int
+    missing: int                   # items with status "none"
+
+
+class BatchSummaryOut(BaseModel):
+    session: str
+    items: list[BatchSummaryItem]
+    totals: BatchSummaryTotals
 
 
 # ── Edit-request CRUD ───────────────────────────────────────────

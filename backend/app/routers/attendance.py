@@ -3,15 +3,29 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func
 from datetime import date as date_t
-from ..deps import db_dep, current_user, CurrentUser, assert_class_allowed
-from ..schemas.attendance import AttendanceSave, AttendanceOut, AttendanceSummary, MarkedDatesOut
+from ..constants import fold_name
+from ..deps import ADMIN_ROLES, db_dep, current_user, CurrentUser, assert_class_allowed, classes_in_scope
+from ..schemas.attendance import (
+    AttendanceSave, AttendanceOut, AttendanceSummary, MarkedDatesOut,
+    ClassAttendanceRow, ClassAttendanceSummaryOut, ClassAttendanceTotals,
+)
 from ..models.attendance import Attendance, AttendanceRecord, AttendanceStatus
+from ..services.attendance_summary import summarize_counts
+from ..services.roster import active_class_sizes
 from ..events import broker
 from ..logging_config import get_logger
 from ._bulk import read_csv, parse_date_field, must_str, must_int, must_choice, FieldError, error_dict
 
 router = APIRouter(prefix="/attendance", tags=["attendance"])
 log = get_logger("app.audit.attendance")
+
+STATUS_KEYS = ("P", "A", "L", "H")
+CLASS_SUMMARY_MAX_DAYS = 92   # about a quarter: enough for a month or a term so far
+
+
+def _today() -> date_t:
+    """The server's date; one place so tests can pin "today"."""
+    return date_t.today()
 
 
 @router.get("", response_model=AttendanceOut | None)
@@ -88,10 +102,12 @@ def clear_attendance(
 
 @router.get("/today-summary", response_model=AttendanceSummary)
 def today_summary(user: CurrentUser = Depends(current_user), db: Session = Depends(db_dep)):
-    today = date_t.today()
+    today = _today()
     stmt = select(Attendance).where(Attendance.date == today)
-    if user.role == "staff" and user.allowed_classes:
-        stmt = stmt.where(Attendance.class_name.in_(user.allowed_classes))
+    if user.role not in ADMIN_ROLES:
+        # A teacher sees their own classes; with none assigned that is nothing
+        # (an empty IN matches no rows), never every class.
+        stmt = stmt.where(Attendance.class_name.in_(user.allowed_classes or []))
     rows = db.execute(stmt).scalars().all()
     p = a = l = h = 0
     for att in rows:
@@ -104,11 +120,103 @@ def today_summary(user: CurrentUser = Depends(current_user), db: Session = Depen
                 l += 1
             else:
                 h += 1
-    total = p + a + l + h
+    # Same rule as the per-student totals: a half day counts as half present.
+    counted = summarize_counts({"P": p, "A": a, "L": l, "H": h})
+    total = counted.working_days
     return AttendanceSummary(
         date=today, total=total, present=p, absent=a, leave=l, half_day=h,
-        percent=round((p / total * 100), 2) if total else 0.0,
+        percent=round(counted.days_present / total * 100, 2) if total else 0.0,
     )
+
+
+def _summary_range(from_: date_t | None, to: date_t | None) -> tuple[date_t, date_t]:
+    """[from, to] for the class summary: both default to today and `to` stops at
+    today. 422 when from is after to, or the range is over the day limit."""
+    today = _today()
+    start = from_ or today
+    end = min(to or today, today)
+    if start > end:
+        raise HTTPException(
+            status_code=422,
+            detail=f"The start date {start} is after the end date {end}. "
+                   "Pick a start date on or before the end date (the end date is never later than today).",
+        )
+    days = (end - start).days + 1
+    if days > CLASS_SUMMARY_MAX_DAYS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Pick a range of at most {CLASS_SUMMARY_MAX_DAYS} days ({start} to {end} is {days} days).",
+        )
+    return start, end
+
+
+def _count_fields(c: dict[str, int]) -> dict:
+    """present / absent / leave / half_day / records / percent for status counts."""
+    s = summarize_counts(c)
+    return dict(present=c["P"], absent=c["A"], leave=c["L"], half_day=c["H"],
+                records=s.working_days, percent=s.pct)
+
+
+@router.get("/class-summary", response_model=ClassAttendanceSummaryOut)
+def class_summary(
+    from_: date_t | None = Query(default=None, alias="from"),
+    to: date_t | None = Query(default=None),
+    user: CurrentUser = Depends(current_user),
+    db: Session = Depends(db_dep),
+):
+    """Attendance per class over [from, to] for the marked / pending classes view.
+
+    Admins and the super-admin get every class, a teacher their own classes (none
+    assigned: an empty list). Every class in scope is listed, marked or not, in
+    CLASSES order. Holidays are counted in holiday_days and left out of the
+    counts; percent counts a half day as half present (None with no records).
+    """
+    start, end = _summary_range(from_, to)
+    classes = classes_in_scope(user)
+    counts: dict[str, dict[str, int]] = {c: dict.fromkeys(STATUS_KEYS, 0) for c in classes}
+    marked = dict.fromkeys(classes, 0)
+    holidays = dict.fromkeys(classes, 0)
+    if classes:
+        requested = {fold_name(c): c for c in classes}   # rows may come back as "l.k.g" on MySQL
+        in_range = (
+            Attendance.class_name.in_(classes),
+            Attendance.date >= start,
+            Attendance.date <= end,
+        )
+        record_counts = db.execute(
+            select(Attendance.class_name, AttendanceRecord.status, func.count())
+            .select_from(AttendanceRecord)
+            .join(Attendance, Attendance.id == AttendanceRecord.attendance_id)
+            .where(*in_range, Attendance.is_holiday.is_(False))
+            .group_by(Attendance.class_name, AttendanceRecord.status)
+        ).all()
+        for name, status, n in record_counts:
+            cls = requested.get(fold_name(name))
+            if cls is not None:
+                counts[cls][getattr(status, "value", status)] += int(n)
+        day_counts = db.execute(
+            select(Attendance.class_name, Attendance.is_holiday, func.count(func.distinct(Attendance.date)))
+            .where(*in_range)
+            .group_by(Attendance.class_name, Attendance.is_holiday)
+        ).all()
+        for name, is_holiday, n in day_counts:
+            cls = requested.get(fold_name(name))
+            if cls is not None:
+                (holidays if is_holiday else marked)[cls] += int(n)
+    sizes = active_class_sizes(db, classes)
+
+    rows = [
+        ClassAttendanceRow(class_name=c, class_size=sizes[c], marked_days=marked[c],
+                           holiday_days=holidays[c], **_count_fields(counts[c]))
+        for c in classes
+    ]
+    totals = ClassAttendanceTotals(
+        class_size=sum(sizes.values()),
+        classes_marked=sum(1 for c in classes if marked[c] >= 1),
+        classes_total=len(classes),
+        **_count_fields({k: sum(c[k] for c in counts.values()) for k in STATUS_KEYS}),
+    )
+    return ClassAttendanceSummaryOut(from_=start, to=end, classes=rows, totals=totals)
 
 
 @router.get("/marked-dates", response_model=MarkedDatesOut)
@@ -190,6 +298,8 @@ async def bulk_import_attendance(
             db.flush()
         else:
             a.updated_by = user.name
+            # Imported marks make the day a working day, so a holiday flag on it goes.
+            a.is_holiday = False
             for r in list(a.records):
                 db.delete(r)
             db.flush()

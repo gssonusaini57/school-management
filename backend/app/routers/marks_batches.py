@@ -17,7 +17,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, and_
 from sqlalchemy.orm import Session, selectinload
 
-from ..deps import db_dep, require_menu, require_super_admin, CurrentUser, assert_class_allowed
+from ..deps import (
+    db_dep, require_any_menu, require_menu, require_super_admin, CurrentUser, assert_class_allowed,
+    classes_in_scope,
+)
 from ..events import broker
 from ..notifications import (
     notify_marks_edit_request, notify_marks_submitted, notify_request_outcome,
@@ -30,11 +33,12 @@ from ..models.marks_batch import (
 )
 from ..schemas.marks_batch import (
     BatchSaveBody, BatchOut, BatchDetailOut, MarkItemOut,
+    BatchSummaryItem, BatchSummaryOut, BatchSummaryTotals,
     RequestEditBody, RejectRequestBody,
     MarksEditRequestOut, MarksEditRequestList,
 )
 from ..services.enrollments import not_taken_message, student_names, subject_takers
-from ..services.marks_batches import bump_revision, component_max, find_batch, upsert_batch_marks
+from ..services.marks_batches import batch_summary, bump_revision, component_max, find_batch, upsert_batch_marks
 from ..services.results import GRADE_LETTERS, normalize_grade_letter
 from ..services.sessions import get_session
 
@@ -151,6 +155,8 @@ def _items_for_takers(db: Session, payload: BatchSaveBody, takers: set[int] | No
 
 # Teachers need the Marks Entry menu grant to load or change batches (admins always pass).
 _marks_entry = require_menu("marks-entry", "marks entry")
+# The progress summary is read-only, so either marks menu opens it.
+_marks_progress = require_any_menu("marks-entry", "marks-results", what="marks entry or results")
 
 STALE_SCREEN = ("The saved marks for this test changed after this screen loaded them. "
                 "Reload the test, check the marks, then save again.")
@@ -187,6 +193,33 @@ def get_batch(
     if not batch:
         return None
     return _detail(db, batch)
+
+
+# Declared before any "/{batch_id}" route so "summary" is never read as an id (Gotcha #9).
+@router.get("/summary", response_model=BatchSummaryOut)
+def batches_summary(
+    session: str = Query(),
+    class_name: str | None = Query(default=None, alias="class"),
+    user: CurrentUser = Depends(_marks_progress),
+    db: Session = Depends(db_dep),
+):
+    """Marks progress for a session: every exam component of every class subject
+    in scope, with its batch's status ("draft" | "submitted", or "none" when no
+    marks are saved yet), how many students have an entry, and whether an edit
+    request is pending. Admins see every class, a teacher their own classes
+    (none assigned: no items); `class` narrows to one class (403 outside the
+    teacher's classes). An unknown session is refused (422)."""
+    if class_name:
+        assert_class_allowed(user, class_name)
+    _require_session(db, session)
+    classes = [class_name] if class_name else classes_in_scope(user)
+    items = [BatchSummaryItem(**row) for row in batch_summary(db, session, classes)]
+    totals = BatchSummaryTotals(
+        draft=sum(1 for i in items if i.status == "draft"),
+        submitted=sum(1 for i in items if i.status == "submitted"),
+        missing=sum(1 for i in items if i.status == "none"),
+    )
+    return BatchSummaryOut(session=session, items=items, totals=totals)
 
 
 @router.post("", response_model=BatchDetailOut, status_code=200)

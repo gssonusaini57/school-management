@@ -1,8 +1,11 @@
 """Menu grants are enforced on the server; roster exposes computed values; small contract rules."""
+from datetime import date
+
+from app.models.fee import FeePayment
 from app.models.pdf_template import PdfTemplate, TemplateKind
 
 from .conftest import auth, make_token
-from .factories import cached_pdf
+from .factories import cached_pdf, student
 from .test_report_cards import eighth  # noqa: F401  (shared class fixture)
 
 NO_RESULTS = ["dashboard", "attendance", "marks-entry"]   # a staff account without Marks Results
@@ -72,3 +75,21 @@ def test_roster_reports_computed_values_beside_overrides(client, eighth):
                if r["id"] == s1.id)
     assert (row["rank"], row["computed_rank"], row["overrides"]) == (7, 1, ["rank"])
     assert row["computed_attendance_pct"] == 75.0
+
+
+def test_fees_of_every_class_are_for_admins_only(client, db):
+    for cls, receipt in (("8th", "RC1"), ("9th", "RC2")):
+        s = student(db, class_name=cls)
+        db.add(FeePayment(student_id=s.id, student_name=s.name, class_name=cls, month="October", year="2026",
+                          amount=500, date=date(2026, 10, 1), receipt_no=receipt, saved_by="t"))
+    db.commit()
+    teacher = auth("staff", ["8th"], menus=["dashboard", "fees"])
+    r = client.get("/api/fees", headers=teacher)
+    assert r.status_code == 403 and r.json()["detail"] == "Admin only"
+    for role in ("admin", "super_admin"):
+        r = client.get("/api/fees", headers=auth(role))
+        assert r.status_code == 200 and sorted(f["receipt_no"] for f in r.json()) == ["RC1", "RC2"]
+    # A teacher can still list one of their own classes, and only theirs.
+    mine = client.get("/api/fees", params={"class": "8th"}, headers=teacher)
+    assert mine.status_code == 200 and [f["receipt_no"] for f in mine.json()] == ["RC1"]
+    assert client.get("/api/fees", params={"class": "9th"}, headers=teacher).status_code == 403

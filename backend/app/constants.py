@@ -19,6 +19,13 @@ def is_all_sentinel(name: str | None) -> bool:
     return (name or "").strip().lower() == "all"
 
 
+def fold_name(name: str | None) -> str:
+    """A name the way MySQL's case-insensitive collation compares it. Rows read
+    back for "L.K.G" may spell it "l.k.g", so code that maps database rows onto
+    requested names matches them on this key."""
+    return (name or "").strip().casefold()
+
+
 def expand_classes(names: list[str]) -> list[str]:
     """Expand the "All" sentinel to the full class list.
 

@@ -22,6 +22,9 @@ def list_fees(
     if class_name:
         assert_class_allowed(user, class_name)
         stmt = stmt.where(FeePayment.class_name == class_name)
+    else:
+        # Every class's payments: admins only. A teacher asks for one of their classes.
+        require_admin(user)
     if month:
         stmt = stmt.where(FeePayment.month == month)
     rows = db.execute(stmt.order_by(FeePayment.created_at.desc())).scalars().all()

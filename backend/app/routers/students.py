@@ -3,7 +3,7 @@ from decimal import Decimal, InvalidOperation
 from fastapi import APIRouter, Body, Depends, HTTPException, UploadFile, File, Path, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, or_
-from ..deps import db_dep, current_user, CurrentUser, assert_class_allowed, require_admin
+from ..deps import db_dep, current_user, CurrentUser, assert_class_allowed, classes_in_scope, require_admin
 from ..schemas.student import (
     StudentCreate, StudentUpdate, StudentOut, StudentPage, DeleteRequestBody,
 )
@@ -150,8 +150,9 @@ def list_students(
     if class_name:
         assert_class_allowed(user, class_name)
         stmt = stmt.where(Student.class_name == class_name)
-    elif user.role == "staff" and user.allowed_classes:
-        stmt = stmt.where(Student.class_name.in_(user.allowed_classes))
+    elif user.role == "staff":
+        # A teacher with no classes sees no students, never every class.
+        stmt = stmt.where(Student.class_name.in_(classes_in_scope(user)))
     # Status filter takes precedence over the default "hide deleted" rule
     # so the UI can ask explicitly for the pending_delete subset.
     if status == "pending_delete":
