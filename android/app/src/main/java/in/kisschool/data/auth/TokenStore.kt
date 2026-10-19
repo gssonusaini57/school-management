@@ -1,29 +1,14 @@
 package `in`.kisschool.data.auth
 
-import android.content.Context
 import android.content.SharedPreferences
-import androidx.security.crypto.EncryptedSharedPreferences
-import androidx.security.crypto.MasterKey
 
 /**
- * Persists the JWT and minimal user metadata (name, role, allowed_classes,
- * allowed_menus) inside an EncryptedSharedPreferences so the token is protected
- * at rest.
+ * Persists the active account's JWT and minimal user metadata (name, role,
+ * allowed_classes, allowed_menus) inside the encrypted preferences opened by
+ * [SecurePrefs], shared with [AccountStore]. Only its own keys are ever cleared,
+ * so signing out never drops the accounts saved on the phone.
  */
-class TokenStore(context: Context) {
-
-    private val prefs: SharedPreferences = run {
-        val masterKey = MasterKey.Builder(context)
-            .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
-            .build()
-        EncryptedSharedPreferences.create(
-            context,
-            "kis_secure_prefs",
-            masterKey,
-            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
-            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
-        )
-    }
+class TokenStore(private val prefs: SharedPreferences) {
 
     /**
      * [allowedMenus] null means the server didn't send menu grants: the stored value
@@ -42,6 +27,23 @@ class TokenStore(context: Context) {
             .putString(KEY_NAME, name)
             .putString(KEY_CLASSES, allowedClasses.joinToString("|"))
             .putBoolean(KEY_FORCE_PW, forcePasswordChange)
+            .putString(KEY_ROLE, role)
+            .apply {
+                if (allowedMenus == null) remove(KEY_MENUS)
+                else putString(KEY_MENUS, allowedMenus.filter { it.isNotBlank() }.joinToString("|"))
+            }
+            .apply()
+    }
+
+    /**
+     * Updates the user metadata (from GET /auth/me) and leaves the access token alone: the
+     * call that fetched it may have refreshed the session on the way, and the token it was
+     * sent with is then already replaced.
+     */
+    fun updateUser(name: String, allowedClasses: List<String>, role: String?, allowedMenus: List<String>?) {
+        prefs.edit()
+            .putString(KEY_NAME, name)
+            .putString(KEY_CLASSES, allowedClasses.joinToString("|"))
             .putString(KEY_ROLE, role)
             .apply {
                 if (allowedMenus == null) remove(KEY_MENUS)
@@ -87,11 +89,19 @@ class TokenStore(context: Context) {
             }.apply()
         }
 
-    /** Clears the session but preserves the remembered identifier across logout. */
+    /**
+     * Clears the session: the token and the user metadata. The remembered identifier and
+     * everything [AccountStore] keeps in the same file stay.
+     */
     fun clear() {
-        val remembered = rememberedIdentifier
-        prefs.edit().clear().apply()
-        if (!remembered.isNullOrBlank()) rememberedIdentifier = remembered
+        prefs.edit()
+            .remove(KEY_TOKEN)
+            .remove(KEY_NAME)
+            .remove(KEY_CLASSES)
+            .remove(KEY_FORCE_PW)
+            .remove(KEY_ROLE)
+            .remove(KEY_MENUS)
+            .apply()
     }
 
     private companion object {

@@ -20,6 +20,7 @@ import androidx.navigation.navArgument
 import `in`.kisschool.data.repo.AuthRepository
 import `in`.kisschool.data.repo.MenuKeys
 import `in`.kisschool.di.AppContainer
+import `in`.kisschool.ui.lock.BiometricGate
 import `in`.kisschool.ui.screens.approvals.ApprovalsScreen
 import `in`.kisschool.ui.screens.approvals.ApprovalsViewModel
 import `in`.kisschool.ui.screens.attendance.AttendanceScreen
@@ -45,6 +46,8 @@ import `in`.kisschool.ui.screens.notices.NoticesViewModel
 import `in`.kisschool.ui.screens.results.ReportCardPreviewScreen
 import `in`.kisschool.ui.screens.results.ResultsScreen
 import `in`.kisschool.ui.screens.results.ResultsViewModel
+import `in`.kisschool.ui.screens.settings.SettingsScreen
+import `in`.kisschool.ui.screens.settings.SettingsViewModel
 import `in`.kisschool.ui.screens.studentdetail.StudentDetailScreen
 import `in`.kisschool.ui.screens.studentdetail.StudentDetailViewModel
 import `in`.kisschool.ui.screens.studentedit.EditStudentScreen
@@ -67,6 +70,8 @@ object Routes {
     const val FORGOT_PASSWORD = "forgot-password"
     const val RESULTS = "results"
     const val NOTICES = "notices"
+    /** Theme, the app lock and the account's signed-in devices (the drawer's Settings). */
+    const val SETTINGS = "settings"
     /** One day's marked / pending / holiday classes, opened from the dashboard's classes ring. */
     const val CLASSES_TODAY = "classes-today/{kind}?date={date}"
     fun classesToday(kind: ClassDayKind, iso: String) = "classes-today/${kind.key}?date=$iso"
@@ -85,20 +90,53 @@ object Routes {
 }
 
 @Composable
-fun AppNav(navController: NavHostController, startRoute: String, container: AppContainer) {
+fun AppNav(
+    navController: NavHostController,
+    startRoute: String,
+    container: AppContainer,
+    /** The phone's fingerprint / face / PIN prompt (saved accounts, Settings → App lock). */
+    gate: BiometricGate,
+) {
+    /** Back to the login screen with nothing behind it (after Logout or Switch account). */
+    fun toLogin() {
+        navController.navigate(Routes.LOGIN) {
+            popUpTo(0) { inclusive = true }
+            launchSingleTop = true
+        }
+    }
+
     NavHost(navController = navController, startDestination = startRoute) {
 
         composable(Routes.LOGIN) {
-            val vm = viewModel { LoginViewModel(container.authRepo) }
+            val vm = viewModel {
+                LoginViewModel(
+                    auth = container.authRepo,
+                    settings = container.settings,
+                    canUseBiometrics = gate::canUse,
+                    // Why the app came here (an expired sign-in) and whose password it needs.
+                    handoff = container.loginHandoff.take(),
+                )
+            }
             LoginScreen(
                 vm = vm,
+                gate = gate,
                 onLoggedIn = { mustChange ->
                     val target = if (mustChange) Routes.CHANGE_PASSWORD else Routes.HOME
                     navController.navigate(target) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                        popUpTo(0) { inclusive = true }
                     }
                 },
                 onForgotPassword = { navController.navigate(Routes.FORGOT_PASSWORD) }
+            )
+        }
+
+        composable(Routes.SETTINGS) {
+            val vm = viewModel { SettingsViewModel(container.authRepo, container.settings) }
+            SettingsScreen(
+                vm = vm,
+                gate = gate,
+                onBack = { navController.popBackStack() },
+                onSignedOut = ::toLogin,
             )
         }
 
@@ -169,7 +207,6 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                 role = container.authRepo.role
                 dashVm.configure(container.authRepo.visibleClasses, dashboardAccess(container.authRepo))
             }
-            val themeMode by container.settings.themeMode.collectAsStateWithLifecycle()
             HomeScreen(
                 userName = userName,
                 role = role,
@@ -186,17 +223,21 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                 onNotices = { navController.navigate(Routes.NOTICES) },
                 onLogout = {
                     container.authRepo.logout()
-                    navController.navigate(Routes.LOGIN) {
-                        popUpTo(0) { inclusive = true }
-                    }
+                    toLogin()
                 },
+                // Only a session saved on this phone can be switched back to (a server
+                // without device sessions keeps the old one-hour sign-in).
+                canSwitchAccount = container.authRepo.activeAccount != null,
+                onSwitchAccount = {
+                    container.authRepo.leaveSession()
+                    toLogin()
+                },
+                onSettings = { navController.navigate(Routes.SETTINGS) },
                 isSuperAdmin = isSuperAdmin,
                 onApprovals = { navController.navigate(Routes.APPROVALS) },
                 canMarksEntry = canMarksEntry,
                 canResults = canResults,
                 onResults = { navController.navigate(Routes.RESULTS) },
-                themeMode = themeMode,
-                onThemeModeChange = container.settings::setThemeMode,
             )
         }
 
@@ -421,7 +462,6 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                     studentRepo = container.studentRepo,
                     studentId = id,
                     allowedClasses = container.authRepo.allowedClasses,
-                    authToken = container.tokenStore.token
                 )
             }
             EditStudentScreen(

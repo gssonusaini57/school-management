@@ -46,8 +46,9 @@ import `in`.kisschool.ui.theme.PlayfairDisplay
 
 /**
  * Home's navigation drawer: a brand header (crest, school name, the user and their role),
- * then every screen the user may open, each with its module's icon circle, and the app
- * settings below a divider. Marks entry, Results and Approvals follow the same grants the
+ * then every screen the user may open, each with its module's icon circle, and below a
+ * divider Settings, About and the account actions: Switch account (the accounts saved on
+ * this phone) and Logout. Marks entry, Results and Approvals follow the same grants the
  * screens themselves check.
  */
 @Composable
@@ -65,8 +66,11 @@ internal fun HomeDrawerContent(
     onResults: () -> Unit,
     onApprovals: () -> Unit,
     onNotices: () -> Unit,
-    onTheme: () -> Unit,
+    onSettings: () -> Unit,
     onAbout: () -> Unit,
+    /** Shown only for a sign-in saved on this phone (see AuthRepository.activeAccount). */
+    canSwitchAccount: Boolean,
+    onSwitchAccount: () -> Unit,
     onLogout: () -> Unit,
 ) {
     // Only the start inset (a navigation bar on that side in landscape) pads the sheet: the
@@ -108,8 +112,11 @@ internal fun HomeDrawerContent(
             HorizontalDivider(Modifier.padding(horizontal = 28.dp, vertical = 8.dp))
 
             val neutral = neutralIconColors()
-            DrawerItem("Theme", KisIcons.Theme, neutral, onClick = onTheme)
+            DrawerItem("Settings", KisIcons.Settings, neutral, onClick = onSettings)
             DrawerItem("About", KisIcons.About, neutral, onClick = onAbout)
+            if (canSwitchAccount) {
+                DrawerItem("Switch account", KisIcons.SwitchAccount, neutral, onClick = onSwitchAccount)
+            }
             DrawerItem("Logout", KisIcons.Logout, neutral, onClick = onLogout)
 
             Spacer(

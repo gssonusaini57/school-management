@@ -140,6 +140,11 @@ dependencies {
     implementation("androidx.exifinterface:exifinterface:1.3.7")
 
     implementation("androidx.security:security-crypto:1.1.0-alpha06")
+    // Biometric / PIN gate for saved sign-ins (BiometricPrompt needs a FragmentActivity).
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
+    // App-wide foreground/background events for the 15-minute re-lock.
+    implementation("androidx.lifecycle:lifecycle-process:2.8.7")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
 }

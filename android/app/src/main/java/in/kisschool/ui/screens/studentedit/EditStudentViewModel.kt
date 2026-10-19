@@ -36,7 +36,6 @@ class EditStudentViewModel(
     private val studentRepo: StudentRepository,
     private val studentId: Long,
     private val allowedClasses: List<String>,
-    private val authToken: String?,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(EditStudentUiState())
@@ -70,7 +69,12 @@ class EditStudentViewModel(
         }
     }
 
-    /** Authenticated inline URL for a document (token in query), or null if absent. */
+    /**
+     * The URL of a document for Coil, or null if absent. Plain GET /files/students/{id}/{kind}:
+     * Coil loads through the app's OkHttp client (KisApp.newImageLoader), which adds the
+     * Bearer header and refreshes the session on a 401, so no token ever goes in a URL.
+     * `v` busts Coil's cache after an upload.
+     */
     fun documentUrl(kind: String): String? {
         val present = when (kind) {
             "photo" -> _state.value.hasPhoto
@@ -78,9 +82,8 @@ class EditStudentViewModel(
             "aadhar" -> _state.value.hasAadhar
             else -> false
         }
-        if (!present || authToken.isNullOrBlank()) return null
-        return "${BuildConfig.API_BASE_URL}files/students/$studentId/$kind/inline" +
-            "?token=$authToken&v=${_state.value.docVersion}"
+        if (!present) return null
+        return "${BuildConfig.API_BASE_URL}files/students/$studentId/$kind?v=${_state.value.docVersion}"
     }
 
     fun uploadDocument(kind: String, bytes: ByteArray, mime: String) {

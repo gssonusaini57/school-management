@@ -12,14 +12,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
@@ -32,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,12 +42,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -61,7 +54,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import `in`.kisschool.BuildConfig
 import `in`.kisschool.R
-import `in`.kisschool.data.settings.ThemeMode
 import `in`.kisschool.ui.components.BrandRule
 import `in`.kisschool.ui.components.RoleChip
 import `in`.kisschool.ui.components.brandGradient
@@ -114,14 +106,16 @@ fun HomeScreen(
     canMarksEntry: Boolean = true,
     canResults: Boolean = true,
     onResults: () -> Unit = {},
-    /** Drawer → Theme: the saved choice, and how to change it (applies at once, app-wide). */
-    themeMode: ThemeMode,
-    onThemeModeChange: (ThemeMode) -> Unit,
+    /** Drawer → Settings: theme, app lock and the account's signed-in devices. */
+    onSettings: () -> Unit,
+    /** Drawer → Switch account, shown for a sign-in saved on this phone. */
+    canSwitchAccount: Boolean = false,
+    onSwitchAccount: () -> Unit = {},
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     var showAbout by remember { mutableStateOf(false) }
-    var showTheme by remember { mutableStateOf(false) }
+    var confirmLogout by remember { mutableStateOf(false) }
     val s by dashVm.state.collectAsStateWithLifecycle()
     val cards by dashVm.cards.collectAsStateWithLifecycle()
     val uriHandler = LocalUriHandler.current
@@ -155,10 +149,13 @@ fun HomeScreen(
     BackHandler(enabled = drawerOpen) { scope.launch { drawerState.close() } }
 
     if (showAbout) AboutDialog(onDismiss = { showAbout = false })
-    if (showTheme) ThemeDialog(
-        current = themeMode,
-        onSelect = onThemeModeChange,
-        onDismiss = { showTheme = false },
+    if (confirmLogout) LogoutDialog(
+        canSwitchAccount = canSwitchAccount,
+        onLogout = {
+            confirmLogout = false
+            onLogout()
+        },
+        onDismiss = { confirmLogout = false },
     )
 
     // Close the drawer, then act: a screen opened from it finds the drawer closed on return.
@@ -186,9 +183,12 @@ fun HomeScreen(
                 onResults = { fromDrawer(onResults) },
                 onApprovals = { fromDrawer(onApprovals) },
                 onNotices = { fromDrawer(onNotices) },
-                onTheme = { fromDrawer { showTheme = true } },
+                onSettings = { fromDrawer(onSettings) },
                 onAbout = { fromDrawer { showAbout = true } },
-                onLogout = { fromDrawer(onLogout) },
+                canSwitchAccount = canSwitchAccount,
+                onSwitchAccount = { fromDrawer(onSwitchAccount) },
+                // Logout now forgets the account on this phone: ask first.
+                onLogout = { fromDrawer { confirmLogout = true } },
             )
         },
     ) {
@@ -368,51 +368,26 @@ private fun AboutDialog(onDismiss: () -> Unit) {
     )
 }
 
-private val ThemeMode.label: String
-    get() = when (this) {
-        ThemeMode.LIGHT -> "Light"
-        ThemeMode.DARK -> "Dark"
-        ThemeMode.SYSTEM -> "Same as phone"
-    }
-
-/** Picking a choice re-themes the app straight away (this dialog included); Close just dismisses. */
+/**
+ * Logout signs this phone out for good: the account leaves the phone's saved list and needs
+ * its password next time. Switch account (when offered) keeps it saved instead.
+ */
 @Composable
-private fun ThemeDialog(
-    current: ThemeMode,
-    onSelect: (ThemeMode) -> Unit,
-    onDismiss: () -> Unit,
-) {
+private fun LogoutDialog(canSwitchAccount: Boolean, onLogout: () -> Unit, onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = {
-            TextButton(onClick = onDismiss) { Text("Close") }
-        },
-        title = { Text("Theme") },
+        title = { Text("Log out?") },
         text = {
-            Column(Modifier.selectableGroup()) {
-                ThemeMode.entries.forEach { mode ->
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 48.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .selectable(
-                                selected = mode == current,
-                                onClick = { onSelect(mode) },
-                                role = Role.RadioButton
-                            )
-                            .padding(horizontal = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        RadioButton(selected = mode == current, onClick = null)
-                        Text(
-                            mode.label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(start = 12.dp)
-                        )
-                    }
+            Text(
+                if (canSwitchAccount) {
+                    "This account will be removed from this phone and you'll need your password to sign in again. " +
+                        "To keep it saved, use Switch account instead."
+                } else {
+                    "You'll need your password to sign in again."
                 }
-            }
-        }
+            )
+        },
+        confirmButton = { TextButton(onClick = onLogout) { Text("Log out") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

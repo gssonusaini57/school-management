@@ -4,13 +4,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Grading
 import androidx.compose.material.icons.automirrored.outlined.Logout
 import androidx.compose.material.icons.automirrored.outlined.Rule
+import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.Badge
 import androidx.compose.material.icons.outlined.BrightnessMedium
 import androidx.compose.material.icons.outlined.Campaign
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Computer
 import androidx.compose.material.icons.outlined.CurrencyRupee
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.EventBusy
+import androidx.compose.material.icons.outlined.Fingerprint
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.HowToReg
@@ -20,7 +24,10 @@ import androidx.compose.material.icons.outlined.NotificationImportant
 import androidx.compose.material.icons.outlined.Payments
 import androidx.compose.material.icons.outlined.PendingActions
 import androidx.compose.material.icons.outlined.PersonOff
+import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.SpaceDashboard
+import androidx.compose.material.icons.outlined.SwitchAccount
 import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.outlined.Timelapse
 import androidx.compose.material.icons.outlined.WorkspacePremium
@@ -43,9 +50,18 @@ object KisIcons {
     val Notices: ImageVector get() = Icons.Outlined.Campaign
     val Fees: ImageVector get() = Icons.Outlined.CurrencyRupee
     val Staff: ImageVector get() = Icons.Outlined.Badge
+    val Settings: ImageVector get() = Icons.Outlined.Settings
     val Theme: ImageVector get() = Icons.Outlined.BrightnessMedium
     val About: ImageVector get() = Icons.Outlined.Info
+    val SwitchAccount: ImageVector get() = Icons.Outlined.SwitchAccount
     val Logout: ImageVector get() = Icons.AutoMirrored.Outlined.Logout
+
+    // ── Accounts, app lock and signed-in devices ──
+    val Account: ImageVector get() = Icons.Outlined.AccountCircle
+    val AppLock: ImageVector get() = Icons.Outlined.Fingerprint
+    val PhoneDevice: ImageVector get() = Icons.Outlined.PhoneAndroid
+    val WebDevice: ImageVector get() = Icons.Outlined.Computer
+    val Remove: ImageVector get() = Icons.Outlined.Close
 
     // ── Dashboard KPIs ──
     val Present: ImageVector get() = Icons.Outlined.HowToReg

@@ -15,6 +15,7 @@ import `in`.kisschool.data.api.dto.ChangePasswordRequest
 import `in`.kisschool.data.api.dto.ForgotPasswordRequest
 import `in`.kisschool.data.api.dto.LoginRequest
 import `in`.kisschool.data.api.dto.LoginResponse
+import `in`.kisschool.data.api.dto.LogoutRequest
 import `in`.kisschool.data.api.dto.MessageResponse
 import `in`.kisschool.data.api.dto.AppVersionDto
 import `in`.kisschool.data.api.dto.BatchDetailDto
@@ -22,6 +23,7 @@ import `in`.kisschool.data.api.dto.BatchSaveBody
 import `in`.kisschool.data.api.dto.ClassSubjectDetailDto
 import `in`.kisschool.data.api.dto.ClassSubjectDto
 import `in`.kisschool.data.api.dto.DeleteStudentBody
+import `in`.kisschool.data.api.dto.DeviceSessionDto
 import `in`.kisschool.data.api.dto.DeletionRequestListDto
 import `in`.kisschool.data.api.dto.EditRequestListDto
 import `in`.kisschool.data.api.dto.MarksEditRequestListDto
@@ -29,6 +31,7 @@ import `in`.kisschool.data.api.dto.RejectBody
 import `in`.kisschool.data.api.dto.MarkedDatesDto
 import `in`.kisschool.data.api.dto.MeResponse
 import `in`.kisschool.data.api.dto.NoticeDto
+import `in`.kisschool.data.api.dto.RefreshRequest
 import `in`.kisschool.data.api.dto.RequestEditBody
 import `in`.kisschool.data.api.dto.StudentDto
 import `in`.kisschool.data.api.dto.StudentPageDto
@@ -36,6 +39,7 @@ import `in`.kisschool.data.api.dto.StudentUpdateDto
 import `in`.kisschool.data.api.dto.SubjectEnrollmentsDto
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
+import retrofit2.Call
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -55,6 +59,27 @@ interface ApiService {
 
     @POST("auth/login")
     suspend fun login(@Body body: LoginRequest): LoginResponse
+
+    /**
+     * Trade a refresh token for a fresh access token and the NEXT refresh token (each is
+     * single-use). No Bearer needed. A plain Call, not suspend, because the OkHttp
+     * Authenticator runs it synchronously on the request's own thread; the UI runs it
+     * on Dispatchers.IO. 401 means "signed out on this device: sign in again".
+     */
+    @POST("auth/refresh")
+    fun refreshCall(@Body body: RefreshRequest): Call<LoginResponse>
+
+    /** Ends the refresh token's device session. Always 204, even for an unknown token. */
+    @POST("auth/logout")
+    suspend fun logout(@Body body: LogoutRequest): Response<Unit>
+
+    /** The caller's signed-in devices (live device sessions), newest first. */
+    @GET("auth/sessions")
+    suspend fun deviceSessions(): List<DeviceSessionDto>
+
+    /** Signs one of the caller's own devices out (another account's id is a 404). */
+    @DELETE("auth/sessions/{id}")
+    suspend fun endDeviceSession(@Path("id") id: Long): Response<Unit>
 
     @GET("auth/me")
     suspend fun me(): MeResponse
