@@ -48,7 +48,7 @@ def _first(*values: Any) -> Any:
     return None
 
 
-def _attendance(sd: Any, att: Any) -> tuple[float | None, int | None, float | None]:
+def printed_attendance(sd: Any, att: Any) -> tuple[float | None, int | None, float | None]:
     """(percentage, working days, days present) to print, treating the three as one unit.
 
     Overriding a day count recomputes the percentage from the final counts (unless
@@ -61,6 +61,13 @@ def _attendance(sd: Any, att: Any) -> tuple[float | None, int | None, float | No
     if sd.workingDays is not None or sd.daysPresent is not None:
         wd = _first(sd.workingDays, computed_wd)
         dp = _first(sd.daysPresent, computed_dp)
+        if wd is not None and dp is not None and dp > wd:
+            # One count overridden, the other computed: they can drift apart as
+            # attendance is marked. Refuse rather than print e.g. "160 of 150 days".
+            raise ValueError(
+                f"attendance override: {dp:g} days present is more than {wd} working days; "
+                "correct the attendance override for this student"
+            )
         pct = sd.attendancePct
         if pct is None and wd and dp is not None:
             pct = round(dp / wd * 100, 1)
@@ -128,7 +135,7 @@ def build_report_card_payload(inputs: Any, student_id: int, *, photo_url: str | 
         remarks = BilingualOpt(en=default_remarks["en"], pa=default_remarks.get("pa"))
     else:
         remarks = None
-    att_pct, working_days, days_present = _attendance(sd, att)
+    att_pct, working_days, days_present = printed_attendance(sd, att)
     # A rank is final only once every classmate's marks are in and submitted.
     rank_provisional = sd.rank is None and not cr.complete
 
@@ -220,13 +227,16 @@ def build_pseb_admit_payload(
         )
 
     today = DateT.today()
+    if student.dob is None:
+        # An admit card is a board document: never print an invented date of birth.
+        raise ValueError(f"{student.name} has no date of birth on record; add it before printing the admit card")
     candidate = PsebCandidate(
         rollNo=roll_no,
         regNo=reg_no,
         name=_bi(student.name),
         fatherName=_bi(student.father),
         motherName=_bi(student.mother),
-        dob=student.dob or DateT(2010, 1, 1),
+        dob=student.dob,
         differentlyAbled=student_data.get("differentlyAbled", "N.A."),
         category=student_data.get("category", "Regular"),
         photoUrl=None,

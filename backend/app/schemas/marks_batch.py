@@ -43,8 +43,13 @@ class BatchSaveBody(BaseModel):
     # 0 / null when the test had no saved marks. When sent, the save is
     # refused (409) if the server's batch for the 4-tuple is a different one,
     # so a stale or failed load can't overwrite or prune saved marks.
-    # Older apps omit it and keep the unchecked behaviour.
+    # Older apps omit it: their saves go through unchecked, except that they
+    # may not remove saved marks (409).
     base_batch_id: int | None = Field(default=None, ge=0)
+    # The `revision` of the batch the screen loaded. When sent and the batch
+    # exists, the save is refused (409) if the batch changed since: an
+    # outdated screen can't put back old marks or prune newer ones.
+    base_revision: int | None = Field(default=None, ge=0)
 
 
 class BatchOut(BaseModel):
@@ -61,6 +66,7 @@ class BatchOut(BaseModel):
     submitted_at: datetime | None = None
     submitted_by: str | None = None
     updated_at: datetime
+    revision: int         # send back as base_revision on the next save
 
 
 class BatchDetailOut(BatchOut):

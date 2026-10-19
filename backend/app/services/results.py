@@ -70,14 +70,17 @@ def grade_for(marks: float, max_marks: float) -> str | None:
 
 
 def grade_legend() -> list[dict[str, str]]:
-    """[{grade: "A1", range: "91–100"}, …, {grade: "D", range: "below 41"}]."""
+    """[{grade: "A1", range: "91–100", range_pa: "91–100"}, …,
+    {grade: "D", range: "below 41", range_pa: "41 ਤੋਂ ਘੱਟ"}] (range_pa: the Punjabi range)."""
     out = []
     upper = 100
     for i, (letter, lo) in enumerate(GRADE_BANDS):
         if i == len(GRADE_BANDS) - 1:
-            out.append({"grade": letter, "range": f"below {GRADE_BANDS[i - 1][1]:g}"})
+            below = f"{GRADE_BANDS[i - 1][1]:g}"
+            out.append({"grade": letter, "range": f"below {below}", "range_pa": f"{below} ਤੋਂ ਘੱਟ"})
         else:
-            out.append({"grade": letter, "range": f"{lo:g}–{upper:g}"})
+            span = f"{lo:g}–{upper:g}"
+            out.append({"grade": letter, "range": span, "range_pa": span})
             upper = lo - 1
     return out
 
@@ -187,7 +190,7 @@ class SubjectResult:
     obtained: float
     max: float
     percentage: float | None   # None when max == 0 (grading subjects)
-    grade: str | None
+    grade: str | None          # None until every in-scope component is in (as on the card)
     components_total: int
     components_marked: int
     status: str                # "complete" | "partial" | "missing"
@@ -206,7 +209,7 @@ class StudentResult:
     total_obtained: float
     total_max: float           # sum over graded subjects (max > 0) only
     percentage: float | None
-    grade: str | None
+    grade: str | None          # None while any subject in scope is incomplete (as on the card)
     has_marks: bool = False
     rank: int | None = None
     pass_status: str | None = None          # pass | fail | incomplete | None (no marks)
@@ -396,7 +399,9 @@ def _subject_result(
         obtained=obtained,
         max=smax,
         percentage=round(pct, 2) if pct is not None else None,
-        grade=grade_for(obtained, smax) if smax > 0 else None,
+        # Marks entered so far over the whole scope's max would understate the
+        # grade (P.T. First alone is 35 of 150): the report card's rule.
+        grade=grade_for(obtained, smax) if smax > 0 and status == "complete" else None,
         components_total=total,
         components_marked=marked,
         status=status,
@@ -500,13 +505,14 @@ def aggregate_class_results(
                 total_max += sr.max
                 has_marks = has_marks or sr.components_marked > 0
         pct = (total_obtained / total_max * 100.0) if total_max > 0 else None
+        all_complete = all(sr.status == "complete" for sr in subjects)
         st = StudentResult(
             student_id=sid,
             subjects=subjects,
             total_obtained=total_obtained,
             total_max=total_max,
             percentage=round(pct, 2) if pct is not None else None,
-            grade=grade_for(total_obtained, total_max) if total_max > 0 else None,
+            grade=grade_for(total_obtained, total_max) if total_max > 0 and all_complete else None,
             has_marks=has_marks,
             draft_components=drafts_left_out,
         )

@@ -39,7 +39,7 @@ from .roster import active_roster
 from .sessions import get_session, scope_dates
 
 # Bump when report-card.html.j2 or the payload shape changes, so cached cards re-render.
-REPORT_CARD_TEMPLATE_REVISION = 3
+REPORT_CARD_TEMPLATE_REVISION = 4
 
 SCOPE_LABELS = {"term1": "Term I", "term2": "Term II", "annual": "Annual"}
 

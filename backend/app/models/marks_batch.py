@@ -52,6 +52,10 @@ class MarksBatch(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
+    # +1 on every change to the batch's marks or status. A save sends the
+    # revision its screen loaded and is refused when it no longer matches
+    # (updated_at can't tell: a marks save leaves this row untouched).
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     edit_requests: Mapped[list["MarksEditRequest"]] = relationship(
         "MarksEditRequest",

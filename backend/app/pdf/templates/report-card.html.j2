@@ -23,7 +23,9 @@
 
 {% block extra_head %}
 <style>
-  .rc-head { padding:16px 40px 12px; display:flex; gap:16px; align-items:center; border-bottom:1.5px solid var(--blue); }
+  .rc-head { padding:16px 40px 12px; display:flex; align-items:center; border-bottom:1.5px solid var(--blue); }
+  /* WeasyPrint ignores `gap` in flex rows, so flex children are spaced with margins. */
+  .rc-head > * + * { margin-left:16px; }
   .rc-badge { display:inline-block; background:var(--blue); color:#fff; padding:4px 11px; border-radius:3px;
               font-family:'Cinzel', serif; font-size:9pt; letter-spacing:0.16em; font-weight:600; text-align:center; }
   .rc-badge .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; letter-spacing:0; font-size:8.5pt; font-weight:500; }
@@ -47,7 +49,9 @@
   table.marks td.grade { font-weight:800; color:var(--blue); }
   table.marks tr.total td { border-top:2px solid var(--blue); border-bottom:none; background:#fff;
                             font-family:'Playfair Display', serif; font-weight:800; color:var(--blue); font-size:10.5pt; }
-  .tiles { display:flex; gap:9px; }
+  .tiles { display:flex; }
+  .tiles > * + * { margin-left:9px; }
+  .cosch-row > * + * { margin-left:14px; }
   .tile { flex:1; background:#FBFAF6; border:1px solid #ECE6C5; border-radius:8px; padding:6px 10px; }
   .tile .v { font-family:'Playfair Display', serif; font-weight:800; font-size:15pt; color:var(--ink); line-height:1.1; margin-top:3px; }
   .tile .v.text { font-size:10.5pt; line-height:1.3; }
@@ -60,7 +64,8 @@
   .remark { font-size:10.5pt; line-height:1.45; color:var(--ink); border-left:3px solid var(--gold); padding-left:10px; }
   .remark .pa { display:block; font-family:'Noto Sans Gurmukhi', sans-serif; font-size:9.5pt; color:var(--ink-soft); margin-top:3px; }
   .legend { font-size:8pt; color:var(--ink-soft); line-height:1.55; column-count:2; column-gap:12px; }
-  .sigs { padding:20px 40px 0; display:flex; justify-content:space-between; gap:10px; }
+  .sigs { padding:20px 40px 0; display:flex; justify-content:space-between; }
+  .sigs > * + * { margin-left:10px; }
   .sig { text-align:center; flex:1; }
   .sig .name { font-size:9pt; color:var(--ink-soft); height:16px; line-height:16px; overflow:hidden; }
   .sig .line { border-top:1px solid var(--ink); margin-top:4px; padding-top:3px; font-size:8.5pt; font-weight:700; }
@@ -81,19 +86,19 @@
     </div>
     <div style="text-align:right; flex-shrink:0;">
       <div class="rc-badge">{{ data.title.en | upper }}{% if data.title.pa %}<span class="pa">{{ data.title.pa }}</span>{% endif %}</div>
-      <div style="font-size:9pt; color:var(--ink-soft); margin-top:6px;">{{ L.session.en }} / {{ L.session.pa }} <b style="color:var(--ink);">{{ data.session }}</b></div>
+      <div style="font-size:9pt; color:var(--ink-soft); margin-top:6px;">{{ L.session.en }} / <span class="gurmukhi" lang="pa">{{ L.session.pa }}</span> <b style="color:var(--ink);">{{ data.session }}</b></div>
     </div>
   </header>
 
   {# ── Student panel ── #}
-  <div style="padding:10px 40px 0; display:flex; gap:14px; align-items:flex-start;">
+  <div style="padding:10px 40px 0; display:flex; align-items:flex-start;">
     {% if opt.showPhoto %}
-    <div style="width:74px; height:92px; border:1px dashed #B8B09A; border-radius:5px; overflow:hidden; background:#FBFAF6;
+    <div style="width:74px; height:92px; margin-right:14px; border:1px dashed #B8B09A; border-radius:5px; overflow:hidden; background:#FBFAF6;
                 flex-shrink:0; display:flex; align-items:center; justify-content:center; text-align:center;
                 font-size:7pt; color:var(--ink-faint); letter-spacing:0.08em;">
       {% if data.student.photoUrl %}
-      <img src="{{ data.student.photoUrl }}" alt="" style="width:100%; height:100%; object-fit:cover;">
-      {% else %}{{ L.photo.en | upper }}{% endif %}
+      <img src="{{ data.student.photoUrl }}" alt="" style="display:block; width:74px; height:92px; object-fit:cover;">
+      {% else %}<div>{{ L.photo.en | upper }}<span class="gurmukhi" lang="pa" style="display:block; letter-spacing:0; margin-top:3px;">{{ L.photo.pa }}</span></div>{% endif %}
     </div>
     {% endif %}
     <div style="flex:1; display:grid; grid-template-columns:1fr 1fr 1fr; gap:7px 16px;">
@@ -174,7 +179,7 @@
       {% if opt.showRank and S.rank %}
       <div class="tile">
         <div class="lbl">{{ bi(L.rank) }}</div>
-        <div class="v">{{ S.rank }}{% if S.classSize %}<span style="font-size:10pt; color:var(--ink-soft);"> {{ L.of.en }} {{ S.classSize }}</span>{% endif %}</div>
+        <div class="v">{{ S.rank }}{% if S.classSize %}<span style="font-size:10pt; color:var(--ink-soft);"> {{ L.of.en }} {{ S.classSize }}</span><span class="pa" lang="pa">{{ S.classSize }} {{ L.of.pa }} {{ S.rank }}</span>{% endif %}</div>
         {% if S.rankProvisional %}<div class="sub">{{ L.rankProvisional.en }} · <span lang="pa" style="font-family:'Noto Sans Gurmukhi', sans-serif;">{{ L.rankProvisional.pa }}</span></div>{% endif %}
       </div>
       {% endif %}
@@ -182,7 +187,7 @@
       <div class="tile">
         <div class="lbl">{{ bi(L.attendance) }}</div>
         <div class="v">{{ S.attendancePct | pct(1) }}</div>
-        {% if S.workingDays %}<div class="sub">{{ S.daysPresent | num }} {{ L.of.en }} {{ S.workingDays }} {{ L.workingDays.en }}</div>{% endif %}
+        {% if S.workingDays %}<div class="sub">{{ S.daysPresent | num }} {{ L.of.en }} {{ S.workingDays }} {{ L.workingDays.en }}<span class="gurmukhi" lang="pa" style="display:block;">{{ S.workingDays }} {{ L.workingDays.pa }} {{ L.of.pa }} {{ S.daysPresent | num }}</span></div>{% endif %}
       </div>
       {% endif %}
       {% if S.promotionLabel %}
@@ -197,7 +202,7 @@
   {# ── Co-scholastic (grading subjects) + grading scale ── #}
   {% set two_terms = data.scope == "annual" and components %}
   {% if data.coScholastic or opt.showGradingScale %}
-  <div class="section" style="display:flex; gap:14px; align-items:flex-start;">
+  <div class="section cosch-row" style="display:flex; align-items:flex-start;">
     {% if data.coScholastic %}
     <div style="flex:1.4;">
       <div class="lbl section-title">{{ bi(L.coScholastic) }}</div>
@@ -227,7 +232,7 @@
     <div style="flex:1;">
       <div class="lbl section-title">{{ bi(L.gradingScale) }}</div>
       <div class="legend">
-        {% for row in data.gradeLegend %}<b>{{ row.grade }}</b> &nbsp;{{ row.range }}<br>{% endfor %}
+        {% for row in data.gradeLegend %}<b>{{ row.grade }}</b> &nbsp;{{ row.range }}{% if row.range_pa and row.range_pa != row.range %} / <span class="gurmukhi" lang="pa">{{ row.range_pa }}</span>{% endif %}<br>{% endfor %}
       </div>
     </div>
     {% endif %}

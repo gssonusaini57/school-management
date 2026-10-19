@@ -58,9 +58,9 @@ def test_scope_from_term_has_no_silent_fallback(term, scope):
 
 def test_grade_legend_matches_bands():
     legend = grade_legend()
-    assert legend[0] == {"grade": "A1", "range": "91–100"}
-    assert legend[5] == {"grade": "C2", "range": "41–50"}
-    assert legend[-1] == {"grade": "D", "range": "below 41"}
+    assert legend[0] == {"grade": "A1", "range": "91–100", "range_pa": "91–100"}
+    assert legend[5] == {"grade": "C2", "range": "41–50", "range_pa": "41–50"}
+    assert legend[-1] == {"grade": "D", "range": "below 41", "range_pa": "41 ਤੋਂ ਘੱਟ"}
 
 
 def test_competition_ranking_and_unranked_without_marks():
@@ -161,3 +161,20 @@ def test_null_term_component_is_reported():
     oral = subj("Hindi", [comp("Oral", 20, None), comp("P.T. First", 35, 1)])
     res = run("term1", [oral], [], [1])
     assert any("Oral" in w for w in res.warnings)
+
+
+def test_grades_wait_until_the_scope_is_complete():
+    """After P.T. First alone (35 of a 150-mark term) a full-marks student is no 'D'."""
+    term1 = [comp("P.T. First", 35, 1, 0), comp("P.T. Second", 35, 1, 1), comp("Semester First", 80, 1, 2)]
+    subjects = [subj("Mathematics", term1), subj("English", term1, order=1), COMPUTER]
+    rows = [mark(1, s, "P.T. First", 35) for s in ("Mathematics", "English")]
+    st = run("term1", subjects, rows, [1]).students[0]
+    maths = st.subjects[0]
+    assert (maths.status, maths.percentage, maths.grade) == ("partial", 23.33, None)
+    assert (st.total_obtained, st.percentage, st.grade, st.pass_status) == (70, 23.33, None, "incomplete")
+    rows += [mark(1, s, e, v) for s in ("Mathematics", "English") for e, v in (("P.T. Second", 35), ("Semester First", 80))]
+    st = run("term1", subjects, rows, [1]).students[0]
+    assert [s.grade for s in st.subjects[:2]] == ["A1", "A1"]
+    assert st.grade is None                       # Computer's Term 1 letter is still missing
+    rows.append(mark(1, "Computer", "Term 1 Grade", grade="A2"))
+    assert run("term1", subjects, rows, [1]).students[0].grade == "A1"

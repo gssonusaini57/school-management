@@ -18,6 +18,17 @@ class AcademicSessionOut(BaseModel):
     updated_by: str = ""
 
 
+class AcademicSessionDefaults(BaseModel):
+    """The calendar a new session gets when its dates are left out (services.sessions.default_dates)."""
+    session: str
+    starts_on: date
+    ends_on: date
+    term1_start: date
+    term1_end: date
+    term2_start: date
+    term2_end: date
+
+
 class AcademicSessionCreate(BaseModel):
     """Dates left out default to Apr 1 - Mar 31 with terms split at Oct 1."""
     session: str = Field(min_length=7, max_length=16)

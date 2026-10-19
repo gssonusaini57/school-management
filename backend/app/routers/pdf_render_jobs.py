@@ -4,7 +4,8 @@
   GET  /pdf/render-jobs?template_id=      recent jobs for a template
   GET  /pdf/render-jobs/{id}              progress + per-student results
   POST /pdf/render-jobs/{id}/cancel       stop after the current student
-  GET  /pdf/render-jobs/{id}/zip          every finished card in one ZIP (+ /zip/inline?token=)
+  GET  /pdf/render-jobs/{id}/zip          every finished card that is still current, in one ZIP
+                                          (+ /zip/inline?token=); X-Cards-Included / X-Cards-Outdated
 """
 from __future__ import annotations
 
@@ -21,15 +22,15 @@ from ..models.pdf_render_job import PdfRenderJob, RenderJobStatus
 from ..models.pdf_template import PdfTemplate
 from ..services import render_jobs
 from ..services.roster import active_roster
-from .pdf_templates import ADMIN_ROLES, _safe, assert_template_access, pdf_filename
+from .pdf_templates import ADMIN_ROLES, _safe, assert_template_access, pdf_filename, render_options
 
 router = APIRouter(prefix="/pdf", tags=["pdf-render-jobs"])
 
 
 class RenderJobCreate(BaseModel):
     student_ids: list[int] | None = None   # None = every active student in the class
-    force: bool = False
-    include_drafts: bool | None = None     # super-admin only
+    force: bool = False                    # admins only; ignored from staff
+    include_drafts: bool | None = None     # super-admin only; default = template setting
 
 
 class RenderJobResult(BaseModel):
@@ -87,13 +88,19 @@ def create_render_job(
     db: Session = Depends(db_dep),
 ):
     t = _template(db, user, template_id)
-    if body.include_drafts and user.role != "super_admin":
-        raise HTTPException(status_code=403, detail="Only super-admin can choose whether draft marks print.")
-    # Serialise starts for this template (two workers, double clicks): lock its row.
+    include_drafts, force = render_options(user, body.include_drafts, body.force)
+    # Serialise starts for this template (two workers, double clicks) by locking its
+    # row, as the first statement of a new transaction: under MySQL's REPEATABLE READ
+    # every plain SELECT in a transaction reads the snapshot its first one took, so
+    # checks made after waiting on the lock would miss the run the previous holder
+    # just committed. Runs whose runner is gone are swept first, because a sweep
+    # commits and a commit would release the lock.
+    render_jobs.sweep_active(db)
+    db.commit()   # this transaction has only read
     db.execute(select(PdfTemplate.id).where(PdfTemplate.id == t.id).with_for_update())
-    if render_jobs.active_job(db, t.id):
+    if render_jobs.active_job(db, t.id, sweep=False):
         raise HTTPException(status_code=409, detail="Cards for this class are already being generated. Wait for that run to finish.")
-    if render_jobs.active_job_count(db) >= render_jobs.MAX_ACTIVE_JOBS:
+    if render_jobs.active_job_count(db, sweep=False) >= render_jobs.MAX_ACTIVE_JOBS:
         raise HTTPException(
             status_code=429,
             detail="Report cards for other classes are being generated right now. Try again in a minute.",
@@ -102,7 +109,7 @@ def create_render_job(
     ids = roster_ids if body.student_ids is None else [i for i in body.student_ids if i in set(roster_ids)]
     if not ids:
         raise HTTPException(status_code=422, detail="No active students selected in this class.")
-    job = render_jobs.create_job(db, t, ids, include_drafts=body.include_drafts, force=body.force, actor=user.name)
+    job = render_jobs.create_job(db, t, ids, include_drafts=include_drafts, force=force, actor=user.name)
     render_jobs.start_job(job.id)
     return _out(job)
 
@@ -143,7 +150,8 @@ def _zip_response(db: Session, user: CurrentUser, job_id: int) -> StreamingRespo
     job, t = _job(db, user, job_id)
     if job.status in render_jobs.ACTIVE:
         raise HTTPException(status_code=409, detail="This run is still in progress.")
-    spool = render_jobs.zip_file(db, job, pdf_filename)
+    zipped = render_jobs.zip_file(db, job, pdf_filename)
+    spool = zipped.spool
     name = f"{t.kind.value}s_{_safe(t.class_name)}_{_safe(t.term or t.session)}.zip"
 
     def chunks():
@@ -156,8 +164,12 @@ def _zip_response(db: Session, user: CurrentUser, job_id: int) -> StreamingRespo
         finally:
             spool.close()
 
-    return StreamingResponse(chunks(), media_type="application/zip",
-                             headers={"Content-Disposition": f'attachment; filename="{name}"'})
+    # Cards that changed since the run are left out (listed in CARDS_NOT_INCLUDED.txt).
+    return StreamingResponse(chunks(), media_type="application/zip", headers={
+        "Content-Disposition": f'attachment; filename="{name}"',
+        "X-Cards-Included": str(zipped.included),
+        "X-Cards-Outdated": str(zipped.outdated),
+    })
 
 
 @router.get("/render-jobs/{job_id}/zip")

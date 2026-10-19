@@ -33,7 +33,7 @@ from ..schemas.marks_batch import (
     RequestEditBody, RejectRequestBody,
     MarksEditRequestOut, MarksEditRequestList,
 )
-from ..services.marks_batches import component_max, find_batch, upsert_batch_marks
+from ..services.marks_batches import bump_revision, component_max, find_batch, upsert_batch_marks
 from ..services.results import GRADE_LETTERS, normalize_grade_letter
 from ..services.sessions import get_session
 
@@ -84,6 +84,7 @@ def _detail(db: Session, batch: MarksBatch) -> BatchDetailOut:
         submitted_at=batch.submitted_at,
         submitted_by=batch.submitted_by,
         updated_at=batch.updated_at,
+        revision=batch.revision or 0,
         items=[MarkItemOut.model_validate(m) for m in items],
         pending_edit_request_id=pending.id if pending else None,
         last_rejection=last_rej,
@@ -131,6 +132,21 @@ def _validate_items(items, max_marks: int) -> tuple[dict[int, int], dict[int, st
 # Teachers need the Marks Entry menu grant to load or change batches (admins always pass).
 _marks_entry = require_menu("marks-entry", "marks entry")
 
+STALE_SCREEN = ("The saved marks for this test changed after this screen loaded them. "
+                "Reload the test, check the marks, then save again.")
+# Saves without base_batch_id come from app builds 19/20 (and web tabs opened
+# before it was added). They can't tell a blank sheet from a cleared one.
+OLD_CLIENT_PRUNE = ("This version of the app can't remove saved marks. "
+                    "Update the app, or use the website, to change these marks.")
+
+
+def _require_session(db: Session, session: str) -> None:
+    if get_session(db, session) is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Session {session!r} is not an academic session. Pick the current session (e.g. 2026-27).",
+        )
+
 
 # ── Batch endpoints ─────────────────────────────────────────────
 @router.get("", response_model=BatchDetailOut | None)
@@ -142,8 +158,11 @@ def get_batch(
     user: CurrentUser = Depends(_marks_entry),
     db: Session = Depends(db_dep),
 ):
-    """Return the single batch matching the 4-tuple, or `null` if none exists."""
+    """Return the single batch matching the 4-tuple, or `null` if none exists.
+    An unknown session is refused like the save is, so a mistyped year never
+    shows a blank sheet for a test that has saved marks in the real one."""
     assert_class_allowed(user, class_name)
+    _require_session(db, session)
     batch = find_batch(db, class_name, subject, exam_type, session)
     if not batch:
         return None
@@ -162,13 +181,12 @@ def save_batch(
       (they must request edit).
     - Creates a new draft batch if none exists for the 4-tuple.
     - Otherwise replaces the entire mark set under that batch via per-row upsert.
+    - Refuses (409) a save made from a screen that loaded another batch
+      (base_batch_id) or an older revision of this one (base_revision), and a
+      save without base_batch_id that would remove saved marks.
     """
     assert_class_allowed(user, payload.class_name)
-    if get_session(db, payload.session) is None:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Session {payload.session!r} is not an academic session. Pick the current session (e.g. 2026-27).",
-        )
+    _require_session(db, payload.session)
     marks_by_student, grades_by_student = _validate_items(payload.items, payload.max_marks)
     master_max = component_max(db, payload.class_name, payload.subject, payload.exam_type)
     if master_max is None:
@@ -183,17 +201,24 @@ def save_batch(
         )
 
     batch = find_batch(db, payload.class_name, payload.subject, payload.exam_type, payload.session)
-    if "base_batch_id" in payload.model_fields_set and (payload.base_batch_id or None) != (batch.id if batch else None):
-        raise HTTPException(
-            status_code=409,
-            detail="The saved marks for this test changed after this screen loaded them. "
-                   "Reload the test, check the marks, then save again.",
-        )
+    if batch is not None:
+        # Lock the row until commit, so the revision checked here is still the
+        # one this save replaces (two devices saving at once can't both pass).
+        db.refresh(batch, with_for_update=True)
+    sent_base = "base_batch_id" in payload.model_fields_set
+    if sent_base and (payload.base_batch_id or None) != (batch.id if batch else None):
+        raise HTTPException(status_code=409, detail=STALE_SCREEN)
+    if batch is not None and payload.base_revision is not None and payload.base_revision != batch.revision:
+        raise HTTPException(status_code=409, detail=STALE_SCREEN)
     if batch and batch.status == MarksBatchStatus.submitted and user.role != "super_admin":
         raise HTTPException(
             status_code=409,
             detail="Batch is submitted (locked). Request edit before changing marks.",
         )
+    if batch is not None and not sent_base:
+        saved_ids = set(db.scalars(select(Marks.student_id).where(Marks.batch_id == batch.id)))
+        if saved_ids - set(marks_by_student):
+            raise HTTPException(status_code=409, detail=OLD_CLIENT_PRUNE)
 
     # The form sends the complete on-screen set, so students the teacher
     # cleared are removed (prune_missing=True).
@@ -249,6 +274,7 @@ def submit_batch(
     batch.status = MarksBatchStatus.submitted
     batch.submitted_at = datetime.utcnow()
     batch.submitted_by = user.name
+    bump_revision(batch)
     db.commit()
     db.refresh(batch)
     broker.publish("marks_batches", "upsert", id=batch.id)
@@ -373,6 +399,7 @@ def approve_request(
     # Approval flips the batch back to draft so the teacher can edit + re-submit.
     # submitted_at / submitted_by are kept as the last-known submission audit.
     batch.status = MarksBatchStatus.draft
+    bump_revision(batch)
     req.status = MarksEditRequestStatus.approved
     req.reviewed_at = datetime.utcnow()
     req.reviewed_by = user.name
@@ -410,6 +437,8 @@ def reject_request(
     if req.status != MarksEditRequestStatus.pending:
         raise HTTPException(status_code=409, detail="Already reviewed")
     batch = db.get(MarksBatch, req.batch_id)
+    if batch is not None:
+        bump_revision(batch)
     req.status = MarksEditRequestStatus.rejected
     req.reviewed_at = datetime.utcnow()
     req.reviewed_by = user.name

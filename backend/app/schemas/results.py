@@ -118,3 +118,7 @@ class ClassResultsOut(BaseModel):
     engine_version: int = 2
     session_dates: SessionDatesOut | None = None
     warnings: list[str] = Field(default_factory=list)
+    # The pass rule pass_status / failed_subjects / promotion were worked out with:
+    # the class template's promotionRule, else the school default.
+    pass_pct: float = 33.0
+    conditional_max_fails: int = 2

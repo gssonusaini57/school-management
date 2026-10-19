@@ -92,9 +92,12 @@ def test_import_is_admin_only(client, eighth):
 def test_form_save_prunes_students_cleared_on_screen(client, db, eighth):
     a, b, _ = eighth
     body = {"class_name": "8th", "subject": "Mathematics", "exam_type": "P.T. First", "session": "2026-27",
-            "max_marks": 35, "items": [{"student_id": a.id, "marks": 30}, {"student_id": b.id, "marks": 20}]}
-    assert client.post("/api/marks/batches", json=body, headers=auth("staff", ["8th"])).status_code == 200
-    body["items"] = [{"student_id": a.id, "marks": 31}]
+            "max_marks": 35, "items": [{"student_id": a.id, "marks": 30}, {"student_id": b.id, "marks": 20}],
+            "base_batch_id": None}
+    first = client.post("/api/marks/batches", json=body, headers=auth("staff", ["8th"]))
+    assert first.status_code == 200
+    body.update(items=[{"student_id": a.id, "marks": 31}], base_batch_id=first.json()["id"],
+                base_revision=first.json()["revision"])
     r = client.post("/api/marks/batches", json=body, headers=auth("staff", ["8th"]))
     assert [(i["student_id"], i["marks"]) for i in r.json()["items"]] == [(a.id, 31)]
 
@@ -158,12 +161,49 @@ def test_save_naming_a_batch_that_no_longer_exists_is_refused(client, db, eighth
     assert db.query(MarksBatch).count() == 0
 
 
-def test_older_apps_that_omit_the_base_keep_the_unchecked_save(client, db, eighth):
+def test_older_apps_that_omit_the_base_may_not_remove_saved_marks(client, db, eighth):
+    """App builds 19/20 send no base_batch_id and can't tell a blank sheet from a
+    cleared one (e.g. after the wrong session was typed): they never prune."""
     a, b, _ = eighth
-    batch(db, "8th", "Mathematics", "P.T. First", marks={a.id: 10, b.id: 20})
+    saved = batch(db, "8th", "Mathematics", "P.T. First", marks={a.id: 10, b.id: 20})
     db.commit()
     r = client.post("/api/marks/batches", json=_form(a.id), headers=auth("staff", ["8th"]))
+    assert r.status_code == 409 and "can't remove saved marks" in r.json()["detail"]
+    r = client.post("/api/marks/batches", json=_form(a.id, items=[]), headers=auth("staff", ["8th"]))
+    assert r.status_code == 409
+    db.expire_all()
+    assert {m.student_id: m.marks for m in db.query(Marks).filter(Marks.batch_id == saved.id)} == {a.id: 10, b.id: 20}
+    assert db.get(MarksBatch, saved.id).revision == 0
+
+
+def test_older_apps_that_omit_the_base_still_save_when_nothing_is_removed(client, db, eighth):
+    a, b, _ = eighth
+    saved = batch(db, "8th", "Mathematics", "P.T. First", marks={a.id: 10})
+    db.commit()
+    body = _form(a.id, items=[{"student_id": a.id, "marks": 12}, {"student_id": b.id, "marks": 20}])
+    r = client.post("/api/marks/batches", json=body, headers=auth("staff", ["8th"]))
     assert r.status_code == 200
+    assert [(i["student_id"], i["marks"]) for i in r.json()["items"]] == [(a.id, 12), (b.id, 20)]
+    # A first save (no batch yet) has nothing to remove either.
+    other = _form(a.id, exam_type="P.T. Second")
+    assert client.post("/api/marks/batches", json=other, headers=auth("staff", ["8th"])).status_code == 200
+    db.expire_all()
+    assert db.get(MarksBatch, saved.id).revision == 1
+
+
+def test_an_unknown_session_is_refused_when_loading_too(client, db, eighth):
+    """The old app took the session from the calendar year: from January it asked
+    for "2027-28" and was shown a blank sheet for a test with saved marks."""
+    a, _, _ = eighth
+    batch(db, "8th", "Mathematics", "P.T. First", marks={a.id: 10})
+    db.commit()
+    q = {"class": "8th", "subject": "Mathematics", "exam_type": "P.T. First"}
+    r = client.get("/api/marks/batches", params={**q, "session": "2027-28"}, headers=auth("staff", ["8th"]))
+    assert r.status_code == 422 and "not an academic session" in r.json()["detail"]
+    saved = client.post("/api/marks/batches", json=_form(a.id, session="2027-28"), headers=auth("staff", ["8th"]))
+    assert saved.status_code == 422 and saved.json()["detail"] == r.json()["detail"]
+    r = client.get("/api/marks/batches", params={**q, "session": "2026-27"}, headers=auth("staff", ["8th"]))
+    assert r.status_code == 200 and r.json()["items"][0]["marks"] == 10
 
 
 def test_marks_entry_needs_the_menu_grant_on_the_server(client, db, eighth):

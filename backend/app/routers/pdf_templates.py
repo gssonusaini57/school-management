@@ -34,14 +34,16 @@ from ..deps import (
 from ..models.pdf_template import PdfCache, PdfStudentData, PdfTemplate, TemplateKind
 from ..models.record_status import RecordStatus
 from ..models.student import Student
+from ..pdf.builder import printed_attendance
 from ..pdf.render import render_html, render_pdf
 from ..pdf.render_or_cache import pseb_payload, render_students, report_card_payload
-from ..pdf.schemas import STUDENT_DATA_SCHEMA_BY_KIND, TEMPLATE_SCHEMA_BY_KIND
+from ..pdf.schemas import ReportCardStudentData, STUDENT_DATA_SCHEMA_BY_KIND, TEMPLATE_SCHEMA_BY_KIND
 from ..services.report_cards import (
     SCOPE_LABELS, gather_class_inputs, photo_data_uri, resolve_template, template_scope, term_key,
 )
+from ..services.attendance_summary import attendance_summary
 from ..services.results import scope_from_term
-from ..services.sessions import get_session
+from ..services.sessions import get_session, scope_dates
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/pdf/templates", tags=["pdf-templates"])
@@ -58,6 +60,8 @@ KIND_MENU = {TemplateKind.report_card: ("marks-results", "report cards"),
 MAX_SYNC_RENDER = 20
 # What a class teacher may write on a card; everything else is admin-only.
 STAFF_STUDENT_FIELDS = {"remarks", "house"}
+# Attendance day-count overrides (admin-only), checked against the computed counts.
+DAY_COUNT_FIELDS = {"workingDays", "daysPresent"}
 
 
 # ── Request / response shapes ────────────────────────────────────────────
@@ -182,7 +186,7 @@ class RosterOut(BaseModel):
 
 class RenderRequest(BaseModel):
     student_ids: list[int] = Field(min_length=1)
-    force: bool = False
+    force: bool = False                  # admins only; ignored from staff
     include_drafts: bool | None = None   # super-admin only; default = template setting
 
 
@@ -224,14 +228,96 @@ def _validate_template_data(kind: TemplateKind, data: dict) -> dict:
         raise HTTPException(status_code=422, detail=_errors(e))
 
 
-def _validate_student_data(kind: TemplateKind, data: dict) -> dict:
+def _student_name(db: Session, student_id: int) -> str:
+    s = db.get(Student, student_id)
+    return s.name if s else f"Student {student_id}"
+
+
+def _readable(e: ValidationError) -> str:
+    """Pydantic errors as one line ("rank: Input should be greater than or equal to 1; …")."""
+    parts = []
+    for err in e.errors(include_url=False, include_context=False):
+        msg = err["msg"].removeprefix("Value error, ")
+        loc = [str(p) for p in err["loc"]]
+        parts.append(f"{'.'.join(loc)}: {msg}" if loc and not msg.startswith(loc[0]) else msg)
+    return "; ".join(parts)
+
+
+def _validate_student_data(db: Session, kind: TemplateKind, student_id: int, data: dict) -> dict:
+    """One student's merged row, validated. One bad row refuses the whole save,
+    so the 422 names the student whose row it is."""
     schema_cls = STUDENT_DATA_SCHEMA_BY_KIND.get(kind.value)
     if not schema_cls:
         raise HTTPException(status_code=500, detail=f"no student-data schema for {kind.value}")
     try:
-        return schema_cls.model_validate(data).model_dump(mode="json")
+        out = schema_cls.model_validate(data).model_dump(mode="json")
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=_errors(e))
+        raise HTTPException(status_code=422, detail=f"{_student_name(db, student_id)}: {_readable(e)}")
+    remarks = out.get("remarks") if kind == TemplateKind.report_card else None
+    if remarks and remarks.get("pa") is None:
+        # "" rather than null: the builder prod ran before v2 (54db9cd) reads a remark
+        # as {en: str, pa: str}, and a code-only rollback keeps this database. Read
+        # back here, "" means no Punjabi line.
+        remarks["pa"] = ""
+    return out
+
+
+def render_options(user: CurrentUser, include_drafts: bool | None, force: bool) -> tuple[bool | None, bool]:
+    """The (include_drafts, force) a render request may use.
+
+    Only the super-admin decides whether cards print draft marks: `true` from
+    anyone else is refused, and `false` is ignored (the template's setting
+    applies), so a teacher's render can't replace the super-admin's card with
+    one that leaves the drafts out. Force re-render is admin-only: from a
+    teacher it is ignored, and the cache answers as usual.
+    """
+    if include_drafts and user.role != "super_admin":
+        raise HTTPException(status_code=403, detail="Only super-admin can choose whether draft marks print.")
+    return (include_drafts if user.role == "super_admin" else None), (force and user.role in ADMIN_ROLES)
+
+
+def _guard_include_drafts(user: CurrentUser, new: dict, old: dict | None) -> None:
+    """Only the super-admin decides whether report cards count draft marks."""
+    if user.role == "super_admin":
+        return
+    if bool(new.get("includeDrafts", False)) != bool((old or {}).get("includeDrafts", False)):
+        raise HTTPException(
+            status_code=403,
+            detail="Only the super-admin can change whether report cards include draft marks.",
+        )
+
+
+def _card_attendance(sd: dict, att) -> float | None:
+    """The attendance % a student's card prints (override, else computed, recomputed
+    from overridden day counts); falls back to the stored values if they don't validate."""
+    try:
+        return printed_attendance(ReportCardStudentData.model_validate(sd), att)[0]
+    except ValueError:  # includes pydantic's ValidationError
+        if sd.get("attendancePct") is not None:
+            return sd.get("attendancePct")
+        return att.pct if att else None
+
+
+def _check_one_sided_attendance(db: Session, t: PdfTemplate, items: list[tuple[int, dict]]) -> None:
+    """Days present may not exceed working days when only one of the two is
+    overridden and the other is computed from attendance: the card's own rule.
+    Called only for rows whose day counts the request changes."""
+    one_sided = [(sid, d) for sid, d in items if (d.get("workingDays") is None) != (d.get("daysPresent") is None)]
+    if not one_sided:
+        return
+    scope = template_scope(t)
+    session_row = get_session(db, t.session)
+    if scope is None or session_row is None:
+        return
+    start, end = scope_dates(session_row, scope)
+    ids = [sid for sid, _ in one_sided]
+    att = attendance_summary(db, student_ids=ids, start=start, end=end)
+    names = dict(db.execute(select(Student.id, Student.name).where(Student.id.in_(ids))).all())
+    for sid, d in one_sided:
+        try:
+            printed_attendance(ReportCardStudentData.model_validate(d), att.get(sid))
+        except ValueError as e:
+            raise HTTPException(status_code=422, detail=f"{names.get(sid, f'Student {sid}')}: {e}")
 
 
 def _serialize_template(t: PdfTemplate) -> TemplateOut:
@@ -287,6 +373,20 @@ def _scope_taken(db: Session, kind: TemplateKind, class_name: str, session: str,
         if kind == TemplateKind.report_card and scope and template_scope(t) == scope:
             return True
     return False
+
+
+def _unscoped_template(db: Session, class_name: str, session: str) -> PdfTemplate | None:
+    """A report-card template of this class + session whose scope can't be told
+    (a legacy term label such as "Half Yearly"). Its remarks and overrides are
+    keyed by that label, so a new template beside it would strand them: its
+    scope gets set instead (PATCH scope)."""
+    for t in db.scalars(select(PdfTemplate).where(
+        PdfTemplate.kind == TemplateKind.report_card, PdfTemplate.class_name == class_name,
+        PdfTemplate.session == session,
+    )):
+        if template_scope(t) is None:
+            return t
+    return None
 
 
 def _new_template(kind: TemplateKind, class_name: str, session: str, term: str | None, scope: str | None,
@@ -358,6 +458,8 @@ def create_template(
 ):
     kind = _kind_or_404(body.kind)
     validated = _validate_template_data(kind, body.data)
+    if kind == TemplateKind.report_card:
+        _guard_include_drafts(user, validated, None)
     _require_session(db, body.session)
 
     scope: str | None = None
@@ -373,6 +475,14 @@ def create_template(
             status_code=409,
             detail=f"A {body.kind} template already exists for {body.class_name}, {body.session}, "
                    f"{term or scope or '—'}. Edit it instead.",
+        )
+    legacy = _unscoped_template(db, body.class_name, body.session) if kind == TemplateKind.report_card else None
+    if legacy is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=f'The report-card template "{legacy.term}" for {legacy.class_name}, {legacy.session} has no '
+                   "result scope yet. Set its scope (Term 1, Term 2 or Annual) instead of creating another "
+                   "template, so its remarks and overrides carry over.",
         )
     t = _new_template(kind, body.class_name, body.session, term, scope, body.layout, validated, user.name)
     db.add(t)
@@ -392,6 +502,7 @@ def bulk_create(
     if kind != TemplateKind.report_card:
         raise HTTPException(status_code=422, detail="Bulk create is for report cards only.")
     validated = _validate_template_data(kind, body.data)
+    _guard_include_drafts(user, validated, None)
     _require_session(db, body.session)
     term = body.term or SCOPE_LABELS[body.scope]
 
@@ -411,6 +522,10 @@ def bulk_create(
     for cls in classes:
         if _scope_taken(db, kind, cls, body.session, body.scope, term):
             skipped.append(SkippedClass(class_name=cls, reason="a template for this term already exists"))
+            continue
+        legacy = _unscoped_template(db, cls, body.session)
+        if legacy is not None:
+            skipped.append(SkippedClass(class_name=cls, reason=f'set the scope of "{legacy.term}" instead'))
             continue
         t = _new_template(kind, cls, body.session, term, body.scope, body.layout, validated, user.name)
         db.add(t)
@@ -439,10 +554,23 @@ def update_template(
     if body.scope is not None and body.scope != t.scope:
         if t.kind != TemplateKind.report_card or t.scope is not None:
             raise HTTPException(status_code=409, detail="A template's scope is fixed once set. Create a new template instead.")
+        siblings = db.scalars(select(PdfTemplate).where(
+            PdfTemplate.kind == t.kind, PdfTemplate.class_name == t.class_name,
+            PdfTemplate.session == t.session, PdfTemplate.id != t.id,
+        )).all()
+        if any(template_scope(o) == body.scope for o in siblings):
+            raise HTTPException(
+                status_code=409,
+                detail=f"Another report-card template already covers {t.class_name}, {t.session}, "
+                       f"{SCOPE_LABELS[body.scope]}. Use that one, or delete one of them first.",
+            )
         t.scope = body.scope
         changed = True
     if body.data is not None:
-        t.data = _validate_template_data(t.kind, body.data)
+        validated = _validate_template_data(t.kind, body.data)
+        if t.kind == TemplateKind.report_card:
+            _guard_include_drafts(user, validated, t.data)
+        t.data = validated
         changed = True
     if body.layout is not None and body.layout != (t.layout or "summary"):
         t.layout = body.layout
@@ -513,7 +641,8 @@ def upsert_student_data_bulk(
     is_admin = user.role in ADMIN_ROLES
     valid_ids = _active_ids(db, t.class_name)
 
-    saved: list[StudentDataOut] = []
+    pending: list[tuple[int, PdfStudentData | None, dict]] = []
+    day_changes: list[tuple[int, dict]] = []
     for entry in body.entries:
         if entry.student_id not in valid_ids:
             raise HTTPException(status_code=422, detail=f"student {entry.student_id} is not in class {t.class_name}")
@@ -533,14 +662,25 @@ def upsert_student_data_bulk(
             )
         )
         merged = {**((existing.data or {}) if existing else {}), **entry.data}
-        validated = _validate_student_data(t.kind, merged)
+        validated = _validate_student_data(db, t.kind, entry.student_id, merged)
+        pending.append((entry.student_id, existing, validated))
+        # A stored day count can drift past the computed one as attendance is
+        # marked; only a request that changes the counts is held to them, so
+        # it never blocks a remark (the card itself refuses to print it).
+        if DAY_COUNT_FIELDS & set(entry.data):
+            day_changes.append((entry.student_id, validated))
+    if t.kind == TemplateKind.report_card and day_changes:
+        _check_one_sided_attendance(db, t, day_changes)
+
+    saved: list[StudentDataOut] = []
+    for student_id, existing, validated in pending:
         if existing:
             existing.data = validated
             existing.updated_by = user.name
             row = existing
         else:
             row = PdfStudentData(
-                kind=t.kind, student_id=entry.student_id, session=t.session,
+                kind=t.kind, student_id=student_id, session=t.session,
                 term=t.term, term_key=term_key(t.term), data=validated, updated_by=user.name,
             )
             db.add(row)
@@ -576,6 +716,17 @@ def delete_student_data(
 # ── Roster + card state for the render screen ────────────────────────────
 
 
+def _set_card_state(row: StudentRosterRow, cached: PdfCache | None, t: PdfTemplate, source_hash: str) -> None:
+    """Fresh when the stored card is this template version's and matches what
+    would print now (the render's cache rule); any other stored card is stale."""
+    if cached is None:
+        return
+    if cached.template_version == t.version and cached.source_hash == source_hash:
+        row.cached_pdf_id = cached.id
+    else:
+        row.stale_pdf_id = cached.id
+
+
 @router.get("/{template_id}/roster", response_model=RosterOut)
 def template_roster_v2(
     template_id: int,
@@ -585,13 +736,15 @@ def template_roster_v2(
     """Every active student with what their card would show and whether the
     stored PDF still matches it (fresh) or predates a change (stale)."""
     t = _template_for(db, user, template_id)
-    cache_rows = {
-        c.student_id: c for c in db.scalars(
-            select(PdfCache).where(
-                PdfCache.kind == t.kind, PdfCache.template_id == t.id, PdfCache.template_version == t.version,
-            )
-        )
-    }
+    # Each student's newest card for this template, whatever its version: after a
+    # settings change the earlier cards read "needs update" and stay downloadable,
+    # instead of looking never generated. Ascending order, so the newest wins.
+    cache_rows: dict[int, PdfCache] = {}
+    for c in db.scalars(
+        select(PdfCache).where(PdfCache.kind == t.kind, PdfCache.template_id == t.id)
+        .order_by(PdfCache.template_version)
+    ):
+        cache_rows[c.student_id] = c
     if t.kind != TemplateKind.report_card:
         roster = sorted(
             db.scalars(select(Student).where(Student.class_name == t.class_name,
@@ -609,13 +762,12 @@ def template_roster_v2(
                                    cached_pdf_id=None, missing_dob=s.dob is None)
             try:
                 _, source_hash = pseb_payload(db, t, s)
-                if cached and cached.source_hash == source_hash:
-                    row.cached_pdf_id = cached.id
-                elif cached:
-                    row.stale_pdf_id = cached.id
+                _set_card_state(row, cached, t, source_hash)
             except ValueError as e:
                 row.error = str(e)
-                row.stale_pdf_id = cached.id if cached else None
+                # Admit cards made before the date-of-birth check printed an invented
+                # date (2010-01-01): never offer one as the outdated card.
+                row.stale_pdf_id = cached.id if cached and s.dob is not None else None
             rows_out.append(row)
         return RosterOut(template_id=t.id, scope=None, class_size=len(roster), students=rows_out)
 
@@ -638,8 +790,7 @@ def template_roster_v2(
             house=sd.get("house") or inputs.houses.get(s.id),
             rank=sd.get("rank") if sd.get("rank") is not None else res.rank,
             total=res.total_obtained, max=res.total_max, percentage=res.percentage,
-            attendance_pct=sd.get("attendancePct") if sd.get("attendancePct") is not None
-            else (att.pct if att else None),
+            attendance_pct=_card_attendance(sd, att),
             computed_rank=res.rank,
             computed_attendance_pct=att.pct if att else None,
             computed_working_days=att.working_days if att else None,
@@ -652,10 +803,7 @@ def template_roster_v2(
             summ = payload["summary"]
             row.provisional = bool(summ["incomplete"] or summ["hasDrafts"]
                                    or (summ["rankProvisional"] and inputs.settings.get("showRank", True)))
-            if cached and cached.source_hash == source_hash:
-                row.cached_pdf_id = cached.id
-            elif cached:
-                row.stale_pdf_id = cached.id
+            _set_card_state(row, cached, t, source_hash)
         except (ValueError, ValidationError) as e:
             row.error = str(e)
             row.stale_pdf_id = cached.id if cached else None
@@ -685,16 +833,15 @@ def render_bulk(
     db: Session = Depends(db_dep),
 ):
     t = _template_for(db, user, template_id)
-    if body.include_drafts and user.role != "super_admin":
-        raise HTTPException(status_code=403, detail="Only super-admin can choose whether draft marks print.")
+    include_drafts, force = render_options(user, body.include_drafts, body.force)
     if len(body.student_ids) > MAX_SYNC_RENDER:
         raise HTTPException(
             status_code=413,
             detail=f"More than {MAX_SYNC_RENDER} cards at once: start a background run (POST /pdf/templates/{t.id}/render-jobs).",
         )
     results = render_students(
-        db, template=t, student_ids=body.student_ids, force=body.force, actor=user.name,
-        include_drafts=body.include_drafts,
+        db, template=t, student_ids=body.student_ids, force=force, actor=user.name,
+        include_drafts=include_drafts,
     )
     return RenderResponse(results=[RenderResultRow(**r) for r in results])
 
@@ -755,6 +902,12 @@ def _serve_cache_row(db: Session, user: CurrentUser, pdf_id: int) -> Response:
     assert_class_allowed(user, student.class_name if student else "")
     key, what = KIND_MENU.get(row.kind, ("templates", "PDF templates"))
     assert_menu(user, key, what)
+    if row.kind == TemplateKind.pseb_admit_card and student is not None and student.dob is None:
+        # Made before the date-of-birth check, so it printed an invented date.
+        raise HTTPException(
+            status_code=409,
+            detail=f"{student.name} has no date of birth on record; add it and generate the admit card again.",
+        )
     return Response(
         content=row.data,
         media_type=row.mime_type,

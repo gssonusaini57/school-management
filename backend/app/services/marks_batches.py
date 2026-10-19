@@ -53,6 +53,12 @@ def find_batch(
     ).scalar_one_or_none()
 
 
+def bump_revision(batch: MarksBatch) -> None:
+    """Record a change to the batch's marks or status, so a screen that loaded
+    the earlier revision can't save over it (BatchSaveBody.base_revision)."""
+    batch.revision = (batch.revision or 0) + 1
+
+
 def upsert_batch_marks(
     db: Session,
     *,
@@ -76,7 +82,7 @@ def upsert_batch_marks(
     UNIQUE, so re-saving never duplicates.
 
     Grading components (max 0) pass `grades_by_student` with a letter per
-    student; their `marks` stay 0.
+    student; their `marks` stay 0. Every call bumps the batch's revision.
     """
     if batch is None:
         batch = find_batch(db, class_name, subject, exam_type, session)
@@ -89,12 +95,14 @@ def upsert_batch_marks(
             max_marks=max_marks,
             status=MarksBatchStatus.draft,
             created_by=actor,
+            revision=0,
         )
         db.add(batch)
         db.flush()  # need batch.id for the FK below
 
     # Keep the batch in step with the master if super-admin changed max marks.
     batch.max_marks = max_marks
+    bump_revision(batch)
 
     existing = {
         m.student_id: m
@@ -131,19 +139,21 @@ def upsert_batch_marks(
 
 # ── Keeping marks attached when the class-subjects master changes ─────────
 # Marks reference their subject and exam component by name, so a rename in the
-# master must rename the marks and batches in the same transaction.
+# master must rename the marks and batches in the same transaction. Each one
+# bumps the batches' revision, so a screen loaded before it can't save.
 
 def rename_subject_marks(db: Session, class_name: str, old: str, new: str) -> None:
     db.execute(update(Marks).where(Marks.class_name == class_name, Marks.subject == old).values(subject=new))
     db.execute(update(MarksBatch).where(MarksBatch.class_name == class_name, MarksBatch.subject == old)
-               .values(subject=new))
+               .values(subject=new, revision=MarksBatch.revision + 1))
 
 
 def rename_component_marks(db: Session, class_name: str, subject: str, old: str, new: str) -> None:
     db.execute(update(Marks).where(Marks.class_name == class_name, Marks.subject == subject,
                                    Marks.exam_type == old).values(exam_type=new))
     db.execute(update(MarksBatch).where(MarksBatch.class_name == class_name, MarksBatch.subject == subject,
-                                        MarksBatch.exam_type == old).values(exam_type=new))
+                                        MarksBatch.exam_type == old)
+               .values(exam_type=new, revision=MarksBatch.revision + 1))
 
 
 def component_mark_stats(db: Session, class_name: str, subject: str, component: str) -> tuple[int, int | None]:
@@ -159,4 +169,5 @@ def sync_component_max(db: Session, class_name: str, subject: str, component: st
     db.execute(update(Marks).where(Marks.class_name == class_name, Marks.subject == subject,
                                    Marks.exam_type == component).values(max_marks=new_max))
     db.execute(update(MarksBatch).where(MarksBatch.class_name == class_name, MarksBatch.subject == subject,
-                                        MarksBatch.exam_type == component).values(max_marks=new_max))
+                                        MarksBatch.exam_type == component)
+               .values(max_marks=new_max, revision=MarksBatch.revision + 1))

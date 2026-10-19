@@ -58,10 +58,14 @@ def format_num(v) -> str:
 
 
 def format_pct(v, places: int = 2) -> str:
-    """Percentage for print: 66.67 %; None prints a dash."""
+    """Percentage for print: 66.67%, 87.5%, and 80% not 80.00% (like format_num
+    and the portal's formatNumber); None prints a dash."""
     if v is None or v == "":
         return "—"
-    return f"{float(v):.{places}f}%"
+    s = f"{float(v):.{places}f}"
+    if "." in s:
+        s = s.rstrip("0").rstrip(".")
+    return f"{s}%"
 
 
 def format_date_long(d: str | date | datetime) -> str:

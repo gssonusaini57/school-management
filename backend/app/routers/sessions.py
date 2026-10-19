@@ -3,14 +3,16 @@
 Anyone signed in can list them and read the current one (every class picker
 and results screen needs that). Only super-admin creates or edits them.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from ..deps import CurrentUser, current_user, db_dep, require_super_admin
 from ..logging_config import get_logger
 from ..models.academic_session import AcademicSession
-from ..schemas.academic_session import AcademicSessionCreate, AcademicSessionOut, AcademicSessionUpdate
+from ..schemas.academic_session import (
+    AcademicSessionCreate, AcademicSessionDefaults, AcademicSessionOut, AcademicSessionUpdate,
+)
 from ..services.sessions import current_session, date_errors, default_dates, get_session, is_valid_session_name
 
 router = APIRouter(prefix="/sessions", tags=["sessions"])
@@ -34,6 +36,17 @@ def get_current(user: CurrentUser = Depends(current_user), db: Session = Depends
     if not row:
         raise HTTPException(status_code=404, detail="No current academic session configured")
     return row
+
+
+# Declared before any "/{session_id}" route so "defaults" is never read as an id.
+@router.get("/defaults", response_model=AcademicSessionDefaults)
+def get_defaults(session: str = Query(), user: CurrentUser = Depends(require_super_admin)):
+    """The dates a new session gets by default, so the Sessions page pre-fills
+    the server's calendar instead of keeping its own copy."""
+    name = session.strip()
+    if not is_valid_session_name(name):
+        raise HTTPException(status_code=422, detail="Session must look like 2026-27 (consecutive years)")
+    return AcademicSessionDefaults(session=name, **default_dates(name))
 
 
 @router.post("", response_model=AcademicSessionOut, status_code=201)

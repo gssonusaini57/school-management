@@ -90,13 +90,15 @@ def class_results(
     # Same pass/promotion rule as the class's report card, so screen and card agree.
     template = resolve_template(db, class_name=class_name, session=session, scope=scope)
     rule = ((template.data or {}).get("promotionRule") if template else None) or {}
+    pass_pct = float(rule.get("passPct", PASS_PCT_DEFAULT))
+    conditional_max_fails = int(rule.get("conditionalMaxFails", CONDITIONAL_MAX_FAILS_DEFAULT))
     agg = aggregate_class_results(
         class_name=class_name, session=session, scope=scope,
         class_subjects=subjects, marks_rows=marks_rows, student_ids=student_ids,
         batch_status_by_key=batch_status_map(db, class_name, session),
         include_drafts=include_drafts,
-        pass_pct=float(rule.get("passPct", PASS_PCT_DEFAULT)),
-        conditional_max_fails=int(rule.get("conditionalMaxFails", CONDITIONAL_MAX_FAILS_DEFAULT)),
+        pass_pct=pass_pct,
+        conditional_max_fails=conditional_max_fails,
     )
 
     warnings = list(agg.warnings)
@@ -135,6 +137,8 @@ def class_results(
         engine_version=agg.engine_version,
         session_dates=session_dates,
         warnings=warnings,
+        pass_pct=pass_pct,
+        conditional_max_fails=conditional_max_fails,
     )
 
 

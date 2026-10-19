@@ -36,7 +36,8 @@ REPORT_CARD_LABELS: dict[str, dict[str, str]] = {
     "coScholastic": {"en": "Co-scholastic areas", "pa": "ਸਹਿ-ਸ਼ੈਖਿਕ ਖੇਤਰ"},
     "marks": {"en": "Marks", "pa": "ਅੰਕ"},
     "max": {"en": "Max", "pa": "ਵੱਧ ਤੋਂ ਵੱਧ"},
-    "workingDays": {"en": "working days", "pa": "ਕੰਮਕਾਜੀ ਦਿਨ"},
+    # Printed as "1.5 of 2 working days" / "2 ਕੰਮਕਾਜੀ ਦਿਨਾਂ ਵਿੱਚੋਂ 1.5" (oblique ਦਿਨਾਂ before ਵਿੱਚੋਂ).
+    "workingDays": {"en": "working days", "pa": "ਕੰਮਕਾਜੀ ਦਿਨਾਂ"},
     "result": {"en": "Result", "pa": "ਨਤੀਜਾ"},
     "gradingScale": {"en": "Grading scale", "pa": "ਗ੍ਰੇਡਿੰਗ ਸਕੇਲ"},
     "classTeacher": {"en": "Class teacher", "pa": "ਕਲਾਸ ਟੀਚਰ"},

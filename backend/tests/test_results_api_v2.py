@@ -128,3 +128,13 @@ def test_meta_lists_reference_data(client):
     assert body["grade_letters"] == ["A1", "A2", "B1", "B2", "C1", "C2", "D"]
     assert body["houses"] == ["Ravidas", "Tagore", "Bhagat Singh", "Nanak"]
     assert "L.K.G" in body["classes"] and body["pass_pct"] == 33.0
+
+
+def test_grades_only_once_a_subject_is_complete(client, eighth):
+    """The table, its CSV and the app show only the grades the report card prints."""
+    by_roll = {s["roll_no"]: s for s in _get(client).json()["students"]}
+    maths = {roll: by_roll[roll]["subjects"][0] for roll in ("1", "10")}
+    assert (maths["1"]["status"], maths["1"]["grade"]) == ("complete", "C1")      # 40 of 70, draft counted
+    assert (maths["10"]["status"], maths["10"]["grade"]) == ("partial", None)     # P.T. Second not in yet
+    assert by_roll["10"]["percentage"] == 42.86 and by_roll["10"]["grade"] is None
+    assert by_roll["1"]["grade"] is None                                          # Computer's letter is missing
