@@ -47,6 +47,7 @@ from app.models import (  # noqa: E402,F401
     student_edit_request, class_subject, marks_batch, password_reset, academic_session, pdf_render_job,
 )
 from app.main import app  # noqa: E402
+from app.permissions import DEFAULT_STAFF_MENUS  # noqa: E402
 from app.security import create_token  # noqa: E402
 
 
@@ -93,10 +94,15 @@ def client(session_factory):
     app.dependency_overrides.clear()
 
 
-def make_token(role: str = "admin", classes: list[str] | None = None, name: str = "Test User") -> str:
-    return create_token(sub="1", role=role, name=name, allowed_classes=classes or [], allowed_menus=[])
+def make_token(role: str = "admin", classes: list[str] | None = None, name: str = "Test User",
+               menus: list[str] | None = None) -> str:
+    # Staff get the real default menus unless a test says otherwise; admins have none (they bypass).
+    if menus is None:
+        menus = list(DEFAULT_STAFF_MENUS) if role == "staff" else []
+    return create_token(sub="1", role=role, name=name, allowed_classes=classes or [], allowed_menus=menus)
 
 
-def auth(role: str = "admin", classes: list[str] | None = None, name: str = "Test User") -> dict[str, str]:
-    """Bearer header for a role: "admin", "super_admin" or "staff" (+ its classes)."""
-    return {"Authorization": f"Bearer {make_token(role, classes, name)}"}
+def auth(role: str = "admin", classes: list[str] | None = None, name: str = "Test User",
+         menus: list[str] | None = None) -> dict[str, str]:
+    """Bearer header for a role: "admin", "super_admin" or "staff" (+ its classes and menus)."""
+    return {"Authorization": f"Bearer {make_token(role, classes, name, menus)}"}

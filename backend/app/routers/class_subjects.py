@@ -18,7 +18,7 @@ Routes:
   PUT    /class-subjects/{id}/components            — REPLACE all components atomically
 """
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, selectinload
 
@@ -112,8 +112,19 @@ def update_subject(
     if "subject_name" in data and data["subject_name"]:
         new_name = data["subject_name"].strip()
         if new_name != row.subject_name:
+            # MySQL compares names case-insensitively, so check the same way.
+            clash = db.scalar(select(ClassSubject.id).where(
+                ClassSubject.class_name == row.class_name, ClassSubject.id != row.id,
+                func.lower(ClassSubject.subject_name) == new_name.lower(),
+            ))
+            if clash:
+                raise HTTPException(status_code=409, detail=f"{new_name} already exists for {row.class_name}")
             # Marks reference the subject by name: carry them along.
-            rename_subject_marks(db, row.class_name, row.subject_name, new_name)
+            try:
+                rename_subject_marks(db, row.class_name, row.subject_name, new_name)
+            except IntegrityError:
+                db.rollback()
+                raise HTTPException(status_code=409, detail=f"Marks already exist under {new_name!r} in {row.class_name}; rename refused.")
             row.subject_name = new_name
     if "subject_name_pa" in data:
         v = (data["subject_name_pa"] or "").strip()
@@ -314,15 +325,19 @@ def update_component(
     subject = db.get(ClassSubject, row.class_subject_id)
     data = payload.model_dump(exclude_unset=True)
     if "max_marks" in data and data["max_marks"] is not None and data["max_marks"] != row.max_marks:
-        _check_new_max(db, subject, row.component_name, data["max_marks"])
+        _check_new_max(db, subject, row.component_name, data["max_marks"], row.max_marks)
         sync_component_max(db, subject.class_name, subject.subject_name, row.component_name, data["max_marks"])
         row.max_marks = data["max_marks"]
     if "component_name" in data and data["component_name"]:
         new_name = data["component_name"].strip()
         if new_name != row.component_name:
-            if any(c.component_name == new_name for c in subject.components if c.id != row.id):
+            if any(c.component_name.lower() == new_name.lower() for c in subject.components if c.id != row.id):
                 raise HTTPException(status_code=409, detail="Another component already has that name for this subject")
-            rename_component_marks(db, subject.class_name, subject.subject_name, row.component_name, new_name)
+            try:
+                rename_component_marks(db, subject.class_name, subject.subject_name, row.component_name, new_name)
+            except IntegrityError:
+                db.rollback()
+                raise HTTPException(status_code=409, detail=f"Marks already exist under {new_name!r} for this subject; rename refused.")
             row.component_name = new_name
     if "order_index" in data and data["order_index"] is not None:
         row.order_index = data["order_index"]
@@ -356,14 +371,30 @@ def delete_component(
             detail=f"{row.component_name} has {count} marks entered. Delete anyway with force, or keep it.",
         )
     subject_id = row.class_subject_id
+    if count:
+        archive_component_marks(db, subject.class_name, subject.subject_name, row.component_name, row.id)
     db.delete(row)
     db.commit()
     broker.publish("class_subjects", "upsert", id=subject_id)
 
 
-def _check_new_max(db: Session, subject: ClassSubject, component: str, new_max: int) -> None:
-    """Refuse a max below marks already entered: they would exceed 100 %."""
+def archive_component_marks(db: Session, class_name: str, subject: str, component: str, component_id: int) -> None:
+    """Keep a deleted exam's marks and batches, renamed so a new exam with the
+    same name starts empty instead of silently reviving them."""
+    archived = f"[deleted #{component_id}] {component}"[:80]
+    rename_component_marks(db, class_name, subject, component, archived)
+
+
+def _check_new_max(db: Session, subject: ClassSubject, component: str, new_max: int, old_max: int) -> None:
+    """Refuse a max below marks already entered (they would exceed 100 %), and a
+    switch between letter grades (max 0) and marks while either is entered."""
     count, top = component_mark_stats(db, subject.class_name, subject.subject_name, component)
+    if count and (old_max == 0) != (new_max == 0):
+        kind = "letter grades" if old_max == 0 else "marks"
+        raise HTTPException(
+            status_code=409,
+            detail=f"{component} already has {count} {kind} entered, so it can't switch between grades and marks. Add a new exam instead.",
+        )
     if count and top is not None and top > new_max:
         raise HTTPException(
             status_code=409,
@@ -423,9 +454,37 @@ def replace_components(
         raise HTTPException(status_code=409, detail=f"These components already have marks: {listed}. Keep them, or delete with force.")
     for row, item in plan:
         if row is not None and item.max_marks != row.max_marks:
-            _check_new_max(db, subject, row.component_name, item.max_marks)
+            _check_new_max(db, subject, row.component_name, item.max_marks, row.max_marks)
 
+    try:
+        _apply_component_plan(db, subject, plan, to_delete)
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="That rename collides with marks already stored under the new name.")
+    db.refresh(subject)
+    broker.publish("class_subjects", "upsert", id=subject_id)
+    log.info(
+        "exam components replaced",
+        extra={"event": "exam_components_replaced", "subject_id": subject_id, "count": len(payload.components),
+               "deleted": len(to_delete), "actor": user.name},
+    )
+    return db.execute(
+        select(ClassSubject)
+        .where(ClassSubject.id == subject_id)
+        .options(selectinload(ClassSubject.components))
+        .execution_options(populate_existing=True)
+    ).scalar_one()
+
+
+def _apply_component_plan(db: Session, subject: ClassSubject, plan, to_delete) -> None:
+    """Deletes (archiving any marks), renames via a temporary name, then inserts
+    and updates, all inside the caller's transaction."""
+    subject_id = subject.id
     for old in to_delete:
+        n, _ = component_mark_stats(db, subject.class_name, subject.subject_name, old.component_name)
+        if n:
+            archive_component_marks(db, subject.class_name, subject.subject_name, old.component_name, old.id)
         db.delete(old)
     db.flush()
 
@@ -457,21 +516,3 @@ def replace_components(
             row.max_marks = item.max_marks
         row.order_index = item.order_index or idx
         row.term = item.term
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=409, detail="Duplicate component name (DB rejected)")
-    db.refresh(subject)
-    broker.publish("class_subjects", "upsert", id=subject_id)
-    log.info(
-        "exam components replaced",
-        extra={"event": "exam_components_replaced", "subject_id": subject_id, "count": len(payload.components),
-               "renamed": len(renames), "deleted": len(to_delete), "actor": user.name},
-    )
-    return db.execute(
-        select(ClassSubject)
-        .where(ClassSubject.id == subject_id)
-        .options(selectinload(ClassSubject.components))
-        .execution_options(populate_existing=True)
-    ).scalar_one()

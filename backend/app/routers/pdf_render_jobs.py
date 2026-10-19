@@ -11,7 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -21,7 +21,7 @@ from ..models.pdf_render_job import PdfRenderJob, RenderJobStatus
 from ..models.pdf_template import PdfTemplate
 from ..services import render_jobs
 from ..services.roster import active_roster
-from .pdf_templates import ADMIN_ROLES, _safe, pdf_filename
+from .pdf_templates import ADMIN_ROLES, _safe, assert_template_access, pdf_filename
 
 router = APIRouter(prefix="/pdf", tags=["pdf-render-jobs"])
 
@@ -68,7 +68,7 @@ def _template(db: Session, user: CurrentUser, template_id: int) -> PdfTemplate:
     t = db.get(PdfTemplate, template_id)
     if not t:
         raise HTTPException(status_code=404, detail="Template not found")
-    assert_class_allowed(user, t.class_name)
+    assert_template_access(user, t)
     return t
 
 
@@ -87,10 +87,17 @@ def create_render_job(
     db: Session = Depends(db_dep),
 ):
     t = _template(db, user, template_id)
-    if body.include_drafts is not None and user.role != "super_admin":
+    if body.include_drafts and user.role != "super_admin":
         raise HTTPException(status_code=403, detail="Only super-admin can choose whether draft marks print.")
+    # Serialise starts for this template (two workers, double clicks): lock its row.
+    db.execute(select(PdfTemplate.id).where(PdfTemplate.id == t.id).with_for_update())
     if render_jobs.active_job(db, t.id):
         raise HTTPException(status_code=409, detail="Cards for this class are already being generated. Wait for that run to finish.")
+    if render_jobs.active_job_count(db) >= render_jobs.MAX_ACTIVE_JOBS:
+        raise HTTPException(
+            status_code=429,
+            detail="Report cards for other classes are being generated right now. Try again in a minute.",
+        )
     roster_ids = [s.id for s in active_roster(db, t.class_name)]
     ids = roster_ids if body.student_ids is None else [i for i in body.student_ids if i in set(roster_ids)]
     if not ids:
@@ -132,14 +139,25 @@ def cancel_render_job(job_id: int, user: CurrentUser = Depends(current_user), db
     return _out(job)
 
 
-def _zip_response(db: Session, user: CurrentUser, job_id: int) -> Response:
+def _zip_response(db: Session, user: CurrentUser, job_id: int) -> StreamingResponse:
     job, t = _job(db, user, job_id)
     if job.status in render_jobs.ACTIVE:
         raise HTTPException(status_code=409, detail="This run is still in progress.")
-    data = render_jobs.zip_bytes(db, job, pdf_filename)
+    spool = render_jobs.zip_file(db, job, pdf_filename)
     name = f"{t.kind.value}s_{_safe(t.class_name)}_{_safe(t.term or t.session)}.zip"
-    return Response(content=data, media_type="application/zip",
-                    headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+    def chunks():
+        try:
+            while True:
+                block = spool.read(64 * 1024)
+                if not block:
+                    break
+                yield block
+        finally:
+            spool.close()
+
+    return StreamingResponse(chunks(), media_type="application/zip",
+                             headers={"Content-Disposition": f'attachment; filename="{name}"'})
 
 
 @router.get("/render-jobs/{job_id}/zip")

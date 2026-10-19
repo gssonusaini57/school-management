@@ -175,6 +175,7 @@
       <div class="tile">
         <div class="lbl">{{ bi(L.rank) }}</div>
         <div class="v">{{ S.rank }}{% if S.classSize %}<span style="font-size:10pt; color:var(--ink-soft);"> {{ L.of.en }} {{ S.classSize }}</span>{% endif %}</div>
+        {% if S.rankProvisional %}<div class="sub">{{ L.rankProvisional.en }} · <span lang="pa" style="font-family:'Noto Sans Gurmukhi', sans-serif;">{{ L.rankProvisional.pa }}</span></div>{% endif %}
       </div>
       {% endif %}
       {% if opt.showAttendance and S.attendancePct is not none %}

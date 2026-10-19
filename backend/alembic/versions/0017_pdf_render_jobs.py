@@ -48,5 +48,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_pdf_render_jobs_template_created", table_name="pdf_render_jobs")
+    # Dropping the table drops its indexes and FK. Dropping the composite index
+    # first fails on MySQL (error 1553) because it is the index backing the FK.
     op.drop_table("pdf_render_jobs")

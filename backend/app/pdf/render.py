@@ -20,6 +20,7 @@ from __future__ import annotations
 import logging
 from pathlib import Path
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
@@ -68,6 +69,50 @@ def render_html(kind: str, data: dict[str, Any]) -> str:
     )
 
 
+# ── Resource fetching ────────────────────────────────────────────────────
+# WeasyPrint fetches every stylesheet, font and image a document references,
+# including anything inside an embedded SVG. Only three kinds of resource are
+# legitimate here: data: URIs (embedded photos), our own assets under PDF_DIR,
+# and the brand fonts from Google Fonts. Everything else (other files on the
+# server, internal or arbitrary URLs) is refused, and the fonts are cached in
+# memory so a bulk render doesn't download them again for every card.
+_ALLOWED_REMOTE_PREFIXES = ("https://fonts.googleapis.com/", "https://fonts.gstatic.com/")
+_FETCH_CACHE: dict[str, dict[str, Any]] = {}
+_FETCH_CACHE_MAX = 256
+
+
+def _is_local_asset(url: str) -> bool:
+    path = Path(unquote(urlparse(url).path)).resolve()
+    return path == PDF_DIR or PDF_DIR in path.parents
+
+
+def safe_url_fetcher(url: str, timeout: int = 10, ssl_context: Any = None) -> dict[str, Any]:
+    """WeasyPrint url_fetcher: data: URIs, files under PDF_DIR and the Google
+    Fonts hosts only (cached); anything else raises, and WeasyPrint skips it."""
+    remote = url.startswith(_ALLOWED_REMOTE_PREFIXES)
+    if url.startswith("file://"):
+        if not _is_local_asset(url):
+            raise ValueError("blocked local file outside the PDF assets")
+    elif not (url.startswith("data:") or remote):
+        raise ValueError("blocked URL in a PDF document")
+    if remote and url in _FETCH_CACHE:
+        return dict(_FETCH_CACHE[url])
+
+    from weasyprint.urls import default_url_fetcher  # lazy: needs Pango at import time
+
+    result = default_url_fetcher(url, timeout=timeout, ssl_context=ssl_context)
+    if remote:
+        if "file_obj" in result:
+            file_obj = result.pop("file_obj")
+            try:
+                result["string"] = file_obj.read()
+            finally:
+                file_obj.close()
+        if len(_FETCH_CACHE) < _FETCH_CACHE_MAX:
+            _FETCH_CACHE[url] = dict(result)
+    return result
+
+
 def render_pdf(kind: str, data: dict[str, Any]) -> bytes:
     """Render `data` to PDF bytes via WeasyPrint."""
     # Import inside the function so module import doesn't fail if WeasyPrint
@@ -84,4 +129,4 @@ def render_pdf(kind: str, data: dict[str, Any]) -> bytes:
         ) from e
 
     html = render_html(kind, data)
-    return HTML(string=html, base_url=str(PDF_DIR)).write_pdf()
+    return HTML(string=html, base_url=str(PDF_DIR), url_fetcher=safe_url_fetcher).write_pdf()

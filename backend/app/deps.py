@@ -67,5 +67,27 @@ def assert_class_allowed(user: CurrentUser, class_name: str | None) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Class not in scope")
 
 
+def has_menu(user: CurrentUser, key: str) -> bool:
+    """Mirror of the web's canAccessMenu: admins pass, staff need the grant."""
+    return user.role in ("admin", "super_admin") or key in (user.allowed_menus or [])
+
+
+def assert_menu(user: CurrentUser, key: str, what: str) -> None:
+    """Enforce a staff menu grant on the server, not just in the navigation."""
+    if not has_menu(user, key):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Your account doesn't have access to {what}. Ask an admin to enable it.",
+        )
+
+
+def require_menu(key: str, what: str):
+    """Dependency form of assert_menu for routes behind one menu."""
+    def dep(user: CurrentUser = Depends(current_user)) -> CurrentUser:
+        assert_menu(user, key, what)
+        return user
+    return dep
+
+
 def db_dep(db: Session = Depends(get_db)) -> Session:
     return db

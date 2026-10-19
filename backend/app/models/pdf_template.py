@@ -118,6 +118,7 @@ class PdfCache(Base):
     source_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     mime_type: Mapped[str] = mapped_column(String(64), nullable=False, default="application/pdf")
     byte_size: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    data: Mapped[bytes] = mapped_column(LONGBLOB, nullable=False)
+    # Deferred: rosters and cache lookups only need id/hash; the bytes load on download.
+    data: Mapped[bytes] = mapped_column(LONGBLOB, nullable=False, deferred=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.current_timestamp())
     created_by: Mapped[str] = mapped_column(String(120), nullable=False, default="")

@@ -23,6 +23,7 @@ from typing import Any, Callable
 
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models.pdf_template import PdfCache, PdfStudentData, PdfTemplate, TemplateKind
@@ -64,27 +65,39 @@ def cache_lookup(
 
 def _store(db: Session, template: PdfTemplate, student_id: int, pdf_bytes: bytes,
            source_hash: str, actor: str) -> PdfCache:
-    """Replace the row at the unique key (one PDF per student per template version)."""
-    row = db.scalar(
-        select(PdfCache).where(
-            PdfCache.kind == template.kind,
-            PdfCache.student_id == student_id,
-            PdfCache.template_id == template.id,
-            PdfCache.template_version == template.version,
+    """Replace the row at the unique key (one PDF per student per template version).
+
+    Two renders of the same student can race (a background run and a teacher's
+    single-card render): if the other one inserts first, the INSERT here hits
+    the unique key, so roll back and write over its row instead.
+    """
+    for attempt in (1, 2):
+        row = db.scalar(
+            select(PdfCache).where(
+                PdfCache.kind == template.kind,
+                PdfCache.student_id == student_id,
+                PdfCache.template_id == template.id,
+                PdfCache.template_version == template.version,
+            )
         )
-    )
-    if row is None:
-        row = PdfCache(
-            kind=template.kind, student_id=student_id, template_id=template.id,
-            template_version=template.version, mime_type="application/pdf",
-        )
-        db.add(row)
-    row.data = pdf_bytes
-    row.byte_size = len(pdf_bytes)
-    row.source_hash = source_hash
-    row.created_by = actor
-    db.flush()
-    return row
+        if row is None:
+            row = PdfCache(
+                kind=template.kind, student_id=student_id, template_id=template.id,
+                template_version=template.version, mime_type="application/pdf",
+            )
+            db.add(row)
+        row.data = pdf_bytes
+        row.byte_size = len(pdf_bytes)
+        row.source_hash = source_hash
+        row.created_by = actor
+        try:
+            db.flush()
+            return row
+        except IntegrityError:
+            db.rollback()
+            if attempt == 2:
+                raise
+    raise RuntimeError("unreachable")
 
 
 # ── report cards ─────────────────────────────────────────────────────────
@@ -126,6 +139,24 @@ def _render_report_card(db: Session, inputs: ClassRenderInputs, student_id: int,
 
 
 # ── PSEB admit cards ─────────────────────────────────────────────────────
+def pseb_payload(db: Session, template: PdfTemplate, student: Student) -> tuple[dict[str, Any], str]:
+    """(admit-card payload, its cache hash). Raises ValueError when the card can't be built."""
+    row = db.scalar(select(PdfStudentData).where(
+        PdfStudentData.kind == template.kind, PdfStudentData.student_id == student.id,
+        PdfStudentData.session == template.session, PdfStudentData.term_key == term_key(template.term),
+    ))
+    try:
+        model = build_pseb_admit_payload(template_data=template.data, student=student,
+                                         student_data=(row.data if row else None) or {},
+                                         session=template.session)
+    except (ValidationError, KeyError) as e:
+        raise ValueError(str(e)) from e
+    payload = model.model_dump(by_alias=True, mode="json")
+    stable = {k: v for k, v in payload.items() if k != "printedOn"}   # printedOn changes daily
+    source_hash = hashlib.sha1(("pseb\n" + json.dumps(stable, sort_keys=True, default=str)).encode()).hexdigest()
+    return payload, source_hash
+
+
 def _render_pseb(db: Session, template: PdfTemplate, student_id: int, *, force: bool, actor: str) -> dict[str, Any]:
     student = db.get(Student, student_id)
     if not student or student.status == RecordStatus.deleted:
@@ -133,19 +164,10 @@ def _render_pseb(db: Session, template: PdfTemplate, student_id: int, *, force: 
     if student.class_name != template.class_name:
         return _result(student_id, "error",
                        error=f"student is in class {student.class_name}, not {template.class_name}")
-    row = db.scalar(select(PdfStudentData).where(
-        PdfStudentData.kind == template.kind, PdfStudentData.student_id == student_id,
-        PdfStudentData.session == template.session, PdfStudentData.term_key == term_key(template.term),
-    ))
     try:
-        model = build_pseb_admit_payload(template_data=template.data, student=student,
-                                         student_data=(row.data if row else None) or {},
-                                         session=template.session)
-    except (ValidationError, ValueError, KeyError) as e:
+        payload, source_hash = pseb_payload(db, template, student)
+    except ValueError as e:
         return _result(student_id, "error", error=str(e))
-    payload = model.model_dump(by_alias=True, mode="json")
-    stable = {k: v for k, v in payload.items() if k != "printedOn"}   # printedOn changes daily
-    source_hash = hashlib.sha1(("pseb\n" + json.dumps(stable, sort_keys=True, default=str)).encode()).hexdigest()
     if not force:
         hit = cache_lookup(db, kind=template.kind, student_id=student_id, template_id=template.id,
                            version=template.version, source_hash=source_hash)
@@ -186,10 +208,15 @@ def render_students(
                     on_result(r)
             return out
     for sid in student_ids:
-        if inputs is not None:
-            r = _render_report_card(db, inputs, sid, force=force, actor=actor)
-        else:
-            r = _render_pseb(db, template, sid, force=force, actor=actor)
+        try:
+            if inputs is not None:
+                r = _render_report_card(db, inputs, sid, force=force, actor=actor)
+            else:
+                r = _render_pseb(db, template, sid, force=force, actor=actor)
+        except Exception as e:  # one student's failure must not abort the request or the run
+            log.exception("card render failed", extra={"student_id": sid, "template_id": template.id})
+            db.rollback()
+            r = _result(sid, "error", error=f"unexpected error: {str(e)[:300]}")
         results.append(r)
         if on_result:
             on_result(r)

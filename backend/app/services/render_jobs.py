@@ -9,11 +9,12 @@ poll; re-running is cheap because finished cards come back from the cache.
 """
 from __future__ import annotations
 
-import io
 import logging
 import os
 import subprocess
 import sys
+import tempfile
+import threading
 import zipfile
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -32,6 +33,9 @@ log = logging.getLogger(__name__)
 
 STALE_AFTER = timedelta(seconds=120)
 ACTIVE = (RenderJobStatus.queued, RenderJobStatus.running)
+# Each runner is a full Python + WeasyPrint process; the prod box also runs
+# MySQL, Tomcat and the TEST instance, so only a couple may render at once.
+MAX_ACTIVE_JOBS = 2
 BACKEND_DIR = Path(__file__).resolve().parents[2]   # holds the `app` package
 
 
@@ -59,6 +63,12 @@ def sweep_stale(db: Session, job: PdfRenderJob) -> PdfRenderJob:
     return job
 
 
+def active_job_count(db: Session) -> int:
+    """Runs in progress across every template (stale ones are swept first)."""
+    jobs = db.scalars(select(PdfRenderJob).where(PdfRenderJob.status.in_(ACTIVE))).all()
+    return sum(1 for j in jobs if sweep_stale(db, j).status in ACTIVE)
+
+
 def active_job(db: Session, template_id: int) -> PdfRenderJob | None:
     for job in db.scalars(
         select(PdfRenderJob).where(PdfRenderJob.template_id == template_id, PdfRenderJob.status.in_(ACTIVE))
@@ -76,6 +86,9 @@ def create_job(
         template_id=template.id, template_version=template.version, requested_by=actor,
         status=RenderJobStatus.queued, include_drafts=include_drafts, force=force,
         student_ids=list(student_ids), total=len(student_ids), done_count=0, error_count=0, results=[],
+        # Set here, not by MySQL's CURRENT_TIMESTAMP (session time zone): every job
+        # timestamp must come from the same UTC clock as the stale-job sweep.
+        created_at=_now(),
     )
     db.add(job)
     db.commit()
@@ -91,11 +104,13 @@ def start_job(job_id: int) -> None:
         log_dir = BACKEND_DIR / log_dir
     log_dir.mkdir(parents=True, exist_ok=True)
     with open(log_dir / "render-jobs.log", "ab") as out:
-        subprocess.Popen(
+        proc = subprocess.Popen(
             [sys.executable, "-m", "app.jobs.render_job", str(job_id)],
             cwd=str(BACKEND_DIR), stdout=out, stderr=subprocess.STDOUT,
             stdin=subprocess.DEVNULL, start_new_session=True, env=os.environ.copy(),
         )
+    # Reap the child when it exits so it never lingers as a zombie under the worker.
+    threading.Thread(target=proc.wait, name=f"render-job-{job_id}", daemon=True).start()
 
 
 def run_job(job_id: int, session_factory: Callable[[], Session] = SessionLocal) -> None:
@@ -151,17 +166,28 @@ def run_job(job_id: int, session_factory: Callable[[], Session] = SessionLocal) 
         db.close()
 
 
-def zip_bytes(db: Session, job: PdfRenderJob, filename_for: Callable[[str, Student | None, int], str]) -> bytes:
-    """A ZIP of every card the job produced (rendered or reused from cache)."""
+def zip_file(db: Session, job: PdfRenderJob, filename_for: Callable[[str, Student | None, int], str]):
+    """A ZIP of every card the job produced (rendered or reused from cache), as a
+    spooled temp file positioned at the start. Cards are read one at a time, so
+    a large class never holds every PDF in memory at once."""
     ids = [r["pdf_id"] for r in (job.results or []) if r.get("pdf_id") and r["status"] in ("rendered", "cached")]
-    buf = io.BytesIO()
+    students = {s.id: s for s in db.scalars(
+        select(Student).where(Student.id.in_(
+            select(PdfCache.student_id).where(PdfCache.id.in_(ids))
+        ))
+    )} if ids else {}
+    spool = tempfile.SpooledTemporaryFile(max_size=16 * 1024 * 1024)
     used: set[str] = set()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for row in db.scalars(select(PdfCache).where(PdfCache.id.in_(ids))) if ids else []:
-            student = db.get(Student, row.student_id)
-            name = filename_for(row.kind.value, student, row.student_id)
+    with zipfile.ZipFile(spool, "w", zipfile.ZIP_DEFLATED) as zf:
+        for pdf_id in ids:
+            row = db.get(PdfCache, pdf_id)
+            if row is None:
+                continue
+            name = filename_for(row.kind.value, students.get(row.student_id), row.student_id)
             if name in used:
                 name = name.replace(".pdf", f"_{row.student_id}.pdf")
             used.add(name)
             zf.writestr(name, row.data)
-    return buf.getvalue()
+            db.expunge(row)   # drop the blob before loading the next one
+    spool.seek(0)
+    return spool

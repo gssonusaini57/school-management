@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 import json
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -38,7 +39,7 @@ from .roster import active_roster
 from .sessions import get_session, scope_dates
 
 # Bump when report-card.html.j2 or the payload shape changes, so cached cards re-render.
-REPORT_CARD_TEMPLATE_REVISION = 2
+REPORT_CARD_TEMPLATE_REVISION = 3
 
 SCOPE_LABELS = {"term1": "Term I", "term2": "Term II", "annual": "Annual"}
 
@@ -171,12 +172,40 @@ def payload_hash(payload: dict[str, Any], photo: PhotoMeta | None = None) -> str
     return hashlib.sha1(raw.encode("utf-8")).hexdigest()
 
 
+PHOTO_MAX_PX = 360          # the card's photo box is 74 x 92 px; this stays sharp in print
+SAFE_PHOTO_FORMATS = ("JPEG", "PNG", "WEBP")
+
+
+def safe_photo_jpeg(data: bytes, max_px: int = PHOTO_MAX_PX) -> bytes | None:
+    """Decode an uploaded photo as a real raster image and re-encode it as a small JPEG.
+
+    Anything that isn't a JPEG/PNG/WebP picture (an SVG, an HTML file renamed
+    to .jpg, a corrupt upload) returns None, so only pixels we produced
+    ourselves ever reach the PDF renderer. Shrinking also keeps cards small
+    when phones upload multi-megabyte camera photos.
+    """
+    try:
+        from PIL import Image, ImageOps  # Pillow ships with WeasyPrint
+        with Image.open(io.BytesIO(data)) as im:
+            if im.format not in SAFE_PHOTO_FORMATS:
+                return None
+            im = ImageOps.exif_transpose(im)
+            im.thumbnail((max_px, max_px))
+            out = io.BytesIO()
+            im.convert("RGB").save(out, "JPEG", quality=85, optimize=True)
+            return out.getvalue()
+    except Exception:
+        return None
+
+
 def photo_data_uri(db: Session, doc_id: int) -> str | None:
     doc = db.get(StudentDocument, doc_id)
     if not doc or not doc.data:
         return None
-    mime = doc.mime_type if (doc.mime_type or "").startswith("image/") else "image/jpeg"
-    return f"data:{mime};base64,{base64.b64encode(doc.data).decode('ascii')}"
+    jpeg = safe_photo_jpeg(doc.data)
+    if jpeg is None:
+        return None
+    return f"data:image/jpeg;base64,{base64.b64encode(jpeg).decode('ascii')}"
 
 
 def resolve_template(

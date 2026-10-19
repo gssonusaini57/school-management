@@ -41,11 +41,33 @@ def _opt(en: str | None, pa: str | None = None) -> BilingualOpt:
 
 
 def _first(*values: Any) -> Any:
-    """The first value that is not None (an override, else the computed value)."""
+    """The first value that is set (an override, else the computed value); '' counts as unset."""
     for v in values:
-        if v is not None:
+        if v is not None and v != "":
             return v
     return None
+
+
+def _attendance(sd: Any, att: Any) -> tuple[float | None, int | None, float | None]:
+    """(percentage, working days, days present) to print, treating the three as one unit.
+
+    Overriding a day count recomputes the percentage from the final counts (unless
+    the percentage is overridden too); overriding only the percentage hides the
+    day counts. A card never prints a percentage that contradicts its own days.
+    """
+    computed_pct = att.pct if att else None
+    computed_wd = att.working_days if att and att.working_days else None
+    computed_dp = att.days_present if att and att.working_days else None
+    if sd.workingDays is not None or sd.daysPresent is not None:
+        wd = _first(sd.workingDays, computed_wd)
+        dp = _first(sd.daysPresent, computed_dp)
+        pct = sd.attendancePct
+        if pct is None and wd and dp is not None:
+            pct = round(dp / wd * 100, 1)
+        return pct, wd, dp
+    if sd.attendancePct is not None:
+        return sd.attendancePct, None, None
+    return computed_pct, computed_wd, computed_dp
 
 
 def build_report_card_payload(inputs: Any, student_id: int, *, photo_url: str | None = None) -> ReportCard:
@@ -100,7 +122,15 @@ def build_report_card_payload(inputs: Any, student_id: int, *, photo_url: str | 
     incomplete = any(s.status != "complete" for s in res.subjects)
     promotion = _first(sd.promotion, res.promotion)
     default_remarks = settings.get("remarksDefault")
-    remarks = sd.remarks or (BilingualOpt(**default_remarks) if default_remarks else None)
+    if sd.remarks is not None:
+        remarks = BilingualOpt(en=sd.remarks.en, pa=sd.remarks.pa)
+    elif default_remarks:
+        remarks = BilingualOpt(en=default_remarks["en"], pa=default_remarks.get("pa"))
+    else:
+        remarks = None
+    att_pct, working_days, days_present = _attendance(sd, att)
+    # A rank is final only once every classmate's marks are in and submitted.
+    rank_provisional = sd.rank is None and not cr.complete
 
     summary = ReportCardSummary(
         total=res.total_obtained,
@@ -109,9 +139,10 @@ def build_report_card_payload(inputs: Any, student_id: int, *, photo_url: str | 
         grade=res.grade if not incomplete else None,
         rank=_first(sd.rank, res.rank),
         classSize=_first(sd.classSize, cr.class_size or None),
-        attendancePct=_first(sd.attendancePct, att.pct if att else None),
-        workingDays=_first(sd.workingDays, att.working_days if att and att.working_days else None),
-        daysPresent=_first(sd.daysPresent, att.days_present if att and att.working_days else None),
+        attendancePct=att_pct,
+        workingDays=working_days,
+        daysPresent=days_present,
+        rankProvisional=rank_provisional,
         remarks=remarks,
         promotion=promotion,
         promotionLabel=(BilingualOpt(**PROMOTION_LABELS[promotion]) if promotion in PROMOTION_LABELS

@@ -7,7 +7,10 @@ body before passing the dict into the Jinja template.
 """
 from typing import Literal
 from datetime import date as DateT
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+
+from ..constants import HOUSES
+from ..services.results import CONDITIONAL_MAX_FAILS_DEFAULT, PASS_PCT_DEFAULT
 
 
 class Bilingual(BaseModel):
@@ -144,6 +147,7 @@ class ReportCardSummary(BaseModel):
     percentage: float | None = None
     grade: str | None = None
     rank: int | None = None
+    rankProvisional: bool = False       # some classmates' marks are still missing or drafts
     classSize: int | None = None
     attendancePct: float | None = None
     workingDays: int | None = None
@@ -301,9 +305,42 @@ SCHEMA_BY_KIND: dict[str, type[BaseModel]] = {
 # Marks, rank, class size, attendance and promotion are computed; this holds
 # only what the school decides per class. Unknown keys from the v1 shape
 # (coScholasticHeads, gradingScale, promotionDefault) are dropped on save.
+REMARK_MAX = 600   # characters per language; a remark is a sentence or two on the card
+
+
+def _blank_to_none(value):
+    """'' and whitespace-only strings mean "not set", everywhere in these models."""
+    if isinstance(value, str):
+        value = value.strip()
+        return value or None
+    return value
+
+
+def _clean_remark(value):
+    """Normalise a {en, pa} remark: blanks are dropped; both blank means no remark.
+    A Punjabi line without the English one is refused (the card prints English first)."""
+    if value is None or isinstance(value, BaseModel):
+        return value
+    if isinstance(value, dict):
+        en = _blank_to_none(value.get("en"))
+        pa = _blank_to_none(value.get("pa"))
+        if en is None and pa is None:
+            return None
+        if en is None:
+            raise ValueError("add the English remark too; the Punjabi line prints under it")
+        return {"en": en, "pa": pa}
+    return value
+
+
+class RemarkText(BaseModel):
+    en: str = Field(max_length=REMARK_MAX)
+    pa: str | None = Field(default=None, max_length=REMARK_MAX)
+
+
 class ReportCardPromotionRule(BaseModel):
-    passPct: float = Field(default=33.0, ge=0, le=100)
-    conditionalMaxFails: int = Field(default=2, ge=0, le=20)
+    # Defaults come from the results engine so the screen, /api/meta and cards agree.
+    passPct: float = Field(default=PASS_PCT_DEFAULT, ge=0, le=100)
+    conditionalMaxFails: int = Field(default=CONDITIONAL_MAX_FAILS_DEFAULT, ge=0, le=20)
 
 
 class ReportCardTemplateData(BaseModel):
@@ -315,8 +352,15 @@ class ReportCardTemplateData(BaseModel):
     showPhoto: bool = True
     showGradingScale: bool = True
     includeDrafts: bool = False      # print marks whose batch is still a draft
-    promotionRule: ReportCardPromotionRule = Field(default_factory=ReportCardPromotionRule)
-    remarksDefault: BilingualOpt | None = None   # printed when a student has no remark
+    # None = the school's default rule (results engine constants), so a policy
+    # change reaches every template; set only when this class differs.
+    promotionRule: ReportCardPromotionRule | None = None
+    remarksDefault: RemarkText | None = None   # printed when a student has no remark
+
+    @field_validator("remarksDefault", mode="before")
+    @classmethod
+    def _remarks_default(cls, v):
+        return _clean_remark(v)
 
 
 # Report card — per student. Remarks and house are entered by the class
@@ -324,7 +368,7 @@ class ReportCardTemplateData(BaseModel):
 class ReportCardStudentData(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    remarks: BilingualOpt | None = None
+    remarks: RemarkText | None = None
     house: str | None = Field(default=None, max_length=40)
     rank: int | None = Field(default=None, ge=1)
     classSize: int | None = Field(default=None, ge=1)
@@ -333,6 +377,33 @@ class ReportCardStudentData(BaseModel):
     daysPresent: float | None = Field(default=None, ge=0)
     promotion: str | None = Field(default=None, max_length=60)
     admissionNo: str | None = Field(default=None, max_length=40)
+
+    @field_validator("house", "promotion", "admissionNo", "rank", "classSize", "attendancePct",
+                     "workingDays", "daysPresent", mode="before")
+    @classmethod
+    def _blanks(cls, v):
+        return _blank_to_none(v)
+
+    @field_validator("remarks", mode="before")
+    @classmethod
+    def _remarks(cls, v):
+        return _clean_remark(v)
+
+    @field_validator("house")
+    @classmethod
+    def _house(cls, v):
+        if v is None:
+            return None
+        for h in HOUSES:
+            if h.lower() == v.lower():
+                return h
+        raise ValueError(f"house must be one of: {', '.join(HOUSES)}")
+
+    @model_validator(mode="after")
+    def _days(self):
+        if self.workingDays is not None and self.daysPresent is not None and self.daysPresent > self.workingDays:
+            raise ValueError("days present can't be more than working days")
+        return self
 
 
 # PSEB admit card — class-level

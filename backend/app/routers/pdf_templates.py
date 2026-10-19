@@ -23,18 +23,19 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import HTMLResponse, Response
 from pydantic import BaseModel, Field, ValidationError, field_validator
-from sqlalchemy import select
+from sqlalchemy import false, select
 from sqlalchemy.orm import Session
 
 from ..constants import CLASSES, canonical_class
 from ..deps import (
-    CurrentUser, assert_class_allowed, current_user, current_user_sse, db_dep, require_admin,
+    CurrentUser, assert_class_allowed, assert_menu, current_user, current_user_sse, db_dep, has_menu,
+    require_admin,
 )
 from ..models.pdf_template import PdfCache, PdfStudentData, PdfTemplate, TemplateKind
 from ..models.record_status import RecordStatus
 from ..models.student import Student
 from ..pdf.render import render_html, render_pdf
-from ..pdf.render_or_cache import render_students, report_card_payload
+from ..pdf.render_or_cache import pseb_payload, render_students, report_card_payload
 from ..pdf.schemas import STUDENT_DATA_SCHEMA_BY_KIND, TEMPLATE_SCHEMA_BY_KIND
 from ..services.report_cards import (
     SCOPE_LABELS, gather_class_inputs, photo_data_uri, resolve_template, template_scope, term_key,
@@ -48,9 +49,13 @@ router = APIRouter(prefix="/pdf/templates", tags=["pdf-templates"])
 ScopeT = Literal["term1", "term2", "annual"]
 LayoutT = Literal["summary", "components"]
 ADMIN_ROLES = ("admin", "super_admin")
+# Staff menu grant each template kind sits behind (admins bypass): report cards
+# live under Marks Results, PSEB admit cards under PDF Templates.
+KIND_MENU = {TemplateKind.report_card: ("marks-results", "report cards"),
+             TemplateKind.pseb_admit_card: ("templates", "PSEB admit cards")}
 # Bigger batches go through background render jobs (routers/pdf_render_jobs.py)
 # so a request never outlives gunicorn's 120 s timeout.
-MAX_SYNC_RENDER = 40
+MAX_SYNC_RENDER = 20
 # What a class teacher may write on a card; everything else is admin-only.
 STAFF_STUDENT_FIELDS = {"remarks", "house"}
 
@@ -93,6 +98,8 @@ class TemplateBulkCreate(BaseModel):
 class TemplateUpdate(BaseModel):
     data: dict | None = None
     layout: LayoutT | None = None
+    # Only to fill a missing scope on a legacy template; a set scope never changes.
+    scope: ScopeT | None = None
 
 
 class TemplateOut(BaseModel):
@@ -156,7 +163,12 @@ class StudentRosterRow(BaseModel):
     total: float | None = None
     max: float | None = None
     percentage: float | None = None
-    attendance_pct: float | None = None
+    attendance_pct: float | None = None  # value the card prints (override, else computed)
+    computed_rank: int | None = None      # what the system computes, shown beside an override
+    computed_attendance_pct: float | None = None
+    computed_working_days: int | None = None
+    computed_days_present: float | None = None
+    overrides: list[str] = Field(default_factory=list)   # per-student keys that replace a computed value
     error: str | None = None             # why a card can't be produced yet
 
 
@@ -196,6 +208,12 @@ def _kind_or_404(kind: str) -> TemplateKind:
         raise HTTPException(status_code=404, detail=f"unknown template kind: {kind!r}")
 
 
+def _errors(e: ValidationError) -> list[dict]:
+    """Pydantic errors as plain JSON (the raw ctx can hold exception objects)."""
+    return [{"loc": list(err["loc"]), "msg": err["msg"], "type": err["type"]}
+            for err in e.errors(include_url=False, include_context=False)]
+
+
 def _validate_template_data(kind: TemplateKind, data: dict) -> dict:
     schema_cls = TEMPLATE_SCHEMA_BY_KIND.get(kind.value)
     if not schema_cls:
@@ -203,7 +221,7 @@ def _validate_template_data(kind: TemplateKind, data: dict) -> dict:
     try:
         return schema_cls.model_validate(data).model_dump(mode="json")
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=e.errors())
+        raise HTTPException(status_code=422, detail=_errors(e))
 
 
 def _validate_student_data(kind: TemplateKind, data: dict) -> dict:
@@ -213,7 +231,7 @@ def _validate_student_data(kind: TemplateKind, data: dict) -> dict:
     try:
         return schema_cls.model_validate(data).model_dump(mode="json")
     except ValidationError as e:
-        raise HTTPException(status_code=422, detail=e.errors())
+        raise HTTPException(status_code=422, detail=_errors(e))
 
 
 def _serialize_template(t: PdfTemplate) -> TemplateOut:
@@ -233,10 +251,17 @@ def _get_template_or_404(db: Session, template_id: int) -> PdfTemplate:
     return t
 
 
-def _template_for(db: Session, user: CurrentUser, template_id: int) -> PdfTemplate:
-    """The template, if the caller may see its class (staff: own classes only)."""
-    t = _get_template_or_404(db, template_id)
+def assert_template_access(user: CurrentUser, t: PdfTemplate) -> None:
+    """Staff: own classes only, and the menu grant for the template's kind."""
     assert_class_allowed(user, t.class_name)
+    key, what = KIND_MENU.get(t.kind, ("templates", "PDF templates"))
+    assert_menu(user, key, what)
+
+
+def _template_for(db: Session, user: CurrentUser, template_id: int) -> PdfTemplate:
+    """The template, if the caller may see it (see assert_template_access)."""
+    t = _get_template_or_404(db, template_id)
+    assert_template_access(user, t)
     return t
 
 
@@ -292,6 +317,8 @@ def list_templates(
         stmt = stmt.where(PdfTemplate.session == session)
     if user.role not in ADMIN_ROLES:
         stmt = stmt.where(PdfTemplate.class_name.in_(user.allowed_classes or []))
+        kinds = [k for k, (key, _) in KIND_MENU.items() if has_menu(user, key)]
+        stmt = stmt.where(PdfTemplate.kind.in_(kinds)) if kinds else stmt.where(false())
     return [_serialize_template(t) for t in db.scalars(stmt)]
 
 
@@ -307,7 +334,10 @@ def resolve(
 ):
     """The template for a class, session and scope, or null when none exists yet."""
     assert_class_allowed(user, class_name)
-    t = resolve_template(db, class_name=class_name, session=session, scope=scope, kind=_kind_or_404(kind))
+    k = _kind_or_404(kind)
+    key, what = KIND_MENU[k]
+    assert_menu(user, key, what)
+    t = resolve_template(db, class_name=class_name, session=session, scope=scope, kind=k)
     return _serialize_template(t) if t else None
 
 
@@ -366,7 +396,10 @@ def bulk_create(
     term = body.term or SCOPE_LABELS[body.scope]
 
     classes: list[str] = []
-    for raw in body.class_names or CLASSES:
+    requested = CLASSES if body.class_names is None else body.class_names
+    if not requested:
+        raise HTTPException(status_code=422, detail="Pick at least one class (or leave the list out for all classes).")
+    for raw in requested:
         canon = canonical_class(raw)
         if canon is None:
             raise HTTPException(status_code=422, detail=f"unknown class {raw!r}")
@@ -403,6 +436,11 @@ def update_template(
     """Edit settings and/or layout; class, session, term and scope are fixed at creation."""
     t = _get_template_or_404(db, template_id)
     changed = False
+    if body.scope is not None and body.scope != t.scope:
+        if t.kind != TemplateKind.report_card or t.scope is not None:
+            raise HTTPException(status_code=409, detail="A template's scope is fixed once set. Create a new template instead.")
+        t.scope = body.scope
+        changed = True
     if body.data is not None:
         t.data = _validate_template_data(t.kind, body.data)
         changed = True
@@ -564,12 +602,22 @@ def template_roster_v2(
             PdfStudentData.kind == t.kind, PdfStudentData.session == t.session,
             PdfStudentData.term_key == term_key(t.term),
         )))
-        return RosterOut(template_id=t.id, scope=None, class_size=len(roster), students=[
-            StudentRosterRow(id=s.id, name=s.name, roll_no=s.roll_no, has_data=s.id in filled,
-                             cached_pdf_id=cache_rows[s.id].id if s.id in cache_rows else None,
-                             missing_dob=s.dob is None)
-            for s in roster
-        ])
+        rows_out: list[StudentRosterRow] = []
+        for s in roster:
+            cached = cache_rows.get(s.id)
+            row = StudentRosterRow(id=s.id, name=s.name, roll_no=s.roll_no, has_data=s.id in filled,
+                                   cached_pdf_id=None, missing_dob=s.dob is None)
+            try:
+                _, source_hash = pseb_payload(db, t, s)
+                if cached and cached.source_hash == source_hash:
+                    row.cached_pdf_id = cached.id
+                elif cached:
+                    row.stale_pdf_id = cached.id
+            except ValueError as e:
+                row.error = str(e)
+                row.stale_pdf_id = cached.id if cached else None
+            rows_out.append(row)
+        return RosterOut(template_id=t.id, scope=None, class_size=len(roster), students=rows_out)
 
     try:
         inputs = gather_class_inputs(db, t)
@@ -580,6 +628,8 @@ def template_roster_v2(
         res = inputs.results_by_student[s.id]
         sd = inputs.student_data.get(s.id) or {}
         att = inputs.attendance.get(s.id)
+        overridden = [k for k in ("rank", "classSize", "attendancePct", "workingDays", "daysPresent", "promotion")
+                      if sd.get(k) not in (None, "")]
         row = StudentRosterRow(
             id=s.id, name=s.name, roll_no=s.roll_no, has_data=s.id in inputs.student_data,
             cached_pdf_id=None, has_marks=res.has_marks, draft_marks=res.draft_components,
@@ -590,11 +640,18 @@ def template_roster_v2(
             total=res.total_obtained, max=res.total_max, percentage=res.percentage,
             attendance_pct=sd.get("attendancePct") if sd.get("attendancePct") is not None
             else (att.pct if att else None),
+            computed_rank=res.rank,
+            computed_attendance_pct=att.pct if att else None,
+            computed_working_days=att.working_days if att else None,
+            computed_days_present=att.days_present if att else None,
+            overrides=overridden,
         )
         cached = cache_rows.get(s.id)
         try:
             payload, source_hash = report_card_payload(inputs, s.id)
-            row.provisional = bool(payload["summary"]["incomplete"] or payload["summary"]["hasDrafts"])
+            summ = payload["summary"]
+            row.provisional = bool(summ["incomplete"] or summ["hasDrafts"]
+                                   or (summ["rankProvisional"] and inputs.settings.get("showRank", True)))
             if cached and cached.source_hash == source_hash:
                 row.cached_pdf_id = cached.id
             elif cached:
@@ -628,7 +685,7 @@ def render_bulk(
     db: Session = Depends(db_dep),
 ):
     t = _template_for(db, user, template_id)
-    if body.include_drafts is not None and user.role != "super_admin":
+    if body.include_drafts and user.role != "super_admin":
         raise HTTPException(status_code=403, detail="Only super-admin can choose whether draft marks print.")
     if len(body.student_ids) > MAX_SYNC_RENDER:
         raise HTTPException(
@@ -696,6 +753,8 @@ def _serve_cache_row(db: Session, user: CurrentUser, pdf_id: int) -> Response:
     # so the student row always exists here.
     student = db.get(Student, row.student_id)
     assert_class_allowed(user, student.class_name if student else "")
+    key, what = KIND_MENU.get(row.kind, ("templates", "PDF templates"))
+    assert_menu(user, key, what)
     return Response(
         content=row.data,
         media_type=row.mime_type,

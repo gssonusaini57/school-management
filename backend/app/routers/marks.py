@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, 
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import select
 from ..constants import CLASSES, canonical_class
-from ..deps import db_dep, current_user, CurrentUser, assert_class_allowed, require_admin
+from ..deps import db_dep, current_user, CurrentUser, assert_class_allowed, require_admin, require_menu
 from ..events import broker
 from ..schemas.marks import MarkOut
 from ..schemas.results import (
@@ -18,13 +18,17 @@ from ..models.marks_batch import MarksBatch, MarksBatchStatus
 from ..models.class_subject import ClassSubject, SubjectExamComponent
 from ..models.student import Student
 from ..models.record_status import RecordStatus
-from ..services.results import GRADE_LETTERS, aggregate_class_results, normalize_grade_letter
+from ..services.report_cards import resolve_template
+from ..services.results import (
+    CONDITIONAL_MAX_FAILS_DEFAULT, GRADE_LETTERS, PASS_PCT_DEFAULT, aggregate_class_results,
+    normalize_grade_letter,
+)
 from ..services.marks_batches import batch_status_map, find_batch, upsert_batch_marks
 from ..services.roster import roll_sort_key
 from ..services.attendance_summary import attendance_summary
 from ..services.sessions import get_session, scope_dates
 from ..logging_config import get_logger
-from ._bulk import read_csv, must_str, opt_str, must_int, FieldError, error_dict
+from ._bulk import parse_csv, must_str, opt_str, must_int, FieldError, error_dict
 
 router = APIRouter(prefix="/marks", tags=["marks"])
 log = get_logger("app.audit.marks")
@@ -50,7 +54,7 @@ def class_results(
     scope: Literal["term1", "term2", "annual"] = Query(default="annual"),
     include_drafts: bool = Query(default=True),
     with_attendance: bool = Query(default=True),
-    user: CurrentUser = Depends(current_user),
+    user: CurrentUser = Depends(require_menu("marks-results", "results")),
     db: Session = Depends(db_dep),
 ):
     """Component-aware results for a class and session, rolled up to per-subject
@@ -83,11 +87,16 @@ def class_results(
         select(Marks).where(Marks.class_name == class_name, Marks.session == session)
     ).scalars().all()
 
+    # Same pass/promotion rule as the class's report card, so screen and card agree.
+    template = resolve_template(db, class_name=class_name, session=session, scope=scope)
+    rule = ((template.data or {}).get("promotionRule") if template else None) or {}
     agg = aggregate_class_results(
         class_name=class_name, session=session, scope=scope,
         class_subjects=subjects, marks_rows=marks_rows, student_ids=student_ids,
         batch_status_by_key=batch_status_map(db, class_name, session),
         include_drafts=include_drafts,
+        pass_pct=float(rule.get("passPct", PASS_PCT_DEFAULT)),
+        conditional_max_fails=int(rule.get("conditionalMaxFails", CONDITIONAL_MAX_FAILS_DEFAULT)),
     )
 
     warnings = list(agg.warnings)
@@ -189,7 +198,7 @@ def _active_student_ids(db: Session, class_name: str) -> set[int]:
 
 
 @router.post("/bulk-import", status_code=201)
-async def bulk_import_marks(
+def bulk_import_marks(
     file: UploadFile = File(...),
     user: CurrentUser = Depends(require_admin),
     db: Session = Depends(db_dep),
@@ -209,7 +218,9 @@ async def bulk_import_marks(
 
     Atomic: if any row fails validation, nothing is saved.
     """
-    rows = await read_csv(file)
+    # A plain def (thread pool), not async: the validation and upserts below run
+    # hundreds of queries and must not stall the event loop for other requests.
+    rows = list(parse_csv(file.file.read()))
     errors: list[dict] = []
     comp_cache: dict[str, dict[tuple[str, str], int]] = {}
     roster_cache: dict[str, set[int]] = {}

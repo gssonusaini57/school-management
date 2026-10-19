@@ -44,6 +44,8 @@ PASS_PCT_DEFAULT = 33.0
 CONDITIONAL_MAX_FAILS_DEFAULT = 2
 PROMOTION_VALUES: tuple[str, ...] = ("Promoted", "Conditional", "Detained")
 
+BOTH_TERMS_GROUP = "Both terms"
+
 # Components named "Semester First — Written" / "Semester First — Practical"
 # share the column "Semester First" on per-exam layouts.
 GROUP_SEP = " — "
@@ -293,7 +295,12 @@ def group_columns(plans: list[_SubjectScope], scope: str) -> list[GroupColumn]:
     numeric = [p for p in plans if not p.is_grading]
     if scope == "annual":
         terms = sorted({c.term for p in numeric for c in p.components if c.term in (1, 2)})
-        return [GroupColumn(f"Term {t}", t, i) for i, t in enumerate(terms)]
+        cols = [GroupColumn(f"Term {t}", t, i) for i, t in enumerate(terms)]
+        # Components with no term count once in the annual total; give them their
+        # own column so the columns of an annual card always add up to its total.
+        if any(c.term is None and c.max > 0 for p in numeric for c in p.components):
+            cols.append(GroupColumn(BOTH_TERMS_GROUP, None, len(cols)))
+        return cols
     seen: dict[str, tuple[int, int, int, int]] = {}
     appearance = 0
     for p in numeric:

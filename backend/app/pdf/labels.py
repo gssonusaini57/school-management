@@ -44,6 +44,7 @@ REPORT_CARD_LABELS: dict[str, dict[str, str]] = {
     "term1": {"en": "Term 1", "pa": "ਟਰਮ 1"},
     "term2": {"en": "Term 2", "pa": "ਟਰਮ 2"},
     "of": {"en": "of", "pa": "ਵਿੱਚੋਂ"},
+    "rankProvisional": {"en": "provisional", "pa": "ਆਰਜ਼ੀ"},
     "provisional": {
         "en": "Provisional: some marks for this term are not yet entered or submitted.",
         "pa": "ਆਰਜ਼ੀ: ਇਸ ਟਰਮ ਦੇ ਕੁਝ ਅੰਕ ਅਜੇ ਦਰਜ ਜਾਂ ਜਮ੍ਹਾਂ ਨਹੀਂ ਹੋਏ।",
@@ -77,4 +78,5 @@ EXAM_GROUP_PA: dict[str, str] = {
     "Term 1": "ਟਰਮ 1",
     "Term 2": "ਟਰਮ 2",
     "Pre-Board": "ਪ੍ਰੀ-ਬੋਰਡ",
+    "Both terms": "ਦੋਵੇਂ ਟਰਮ",
 }

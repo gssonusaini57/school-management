@@ -15,6 +15,7 @@ from ..events import broker
 from ..notifications import notify_student_edit_request
 from ..logging_config import get_logger
 from ..constants import CLASSES, canonical_class
+from ..services.report_cards import safe_photo_jpeg
 from ._bulk import read_csv, title_case, parse_date_field, must_str, opt_str, FieldError, error_dict
 
 router = APIRouter(prefix="/students", tags=["students"])
@@ -447,6 +448,9 @@ async def upload_document(
     blob = await file.read()
     if not blob:
         raise HTTPException(status_code=400, detail="Empty file")
+    if kind == DocumentKind.photo and safe_photo_jpeg(blob) is None:
+        # Photos are printed on report cards: accept only real pictures.
+        raise HTTPException(status_code=415, detail="The photo must be a JPEG, PNG or WebP image.")
     existing = db.execute(
         select(StudentDocument).where(
             StudentDocument.student_id == sid, StudentDocument.kind == kind
@@ -456,6 +460,8 @@ async def upload_document(
         existing.mime_type = file.content_type or "application/octet-stream"
         existing.byte_size = len(blob)
         existing.data = blob
+        # A new upload is a new photo: report cards key their cache on this.
+        existing.uploaded_at = datetime.utcnow()
     else:
         db.add(StudentDocument(
             student_id=sid,
