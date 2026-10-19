@@ -8,6 +8,10 @@ import `in`.kisschool.data.repo.AppUpdateRepository
 import `in`.kisschool.data.repo.AttendanceRepository
 import `in`.kisschool.data.repo.AuthRepository
 import `in`.kisschool.data.repo.MarksRepository
+import `in`.kisschool.data.repo.MetaRepository
+import `in`.kisschool.data.repo.ReportCardRepository
+import `in`.kisschool.data.repo.ResultsRepository
+import `in`.kisschool.data.repo.SessionRepository
 import `in`.kisschool.data.repo.StudentRepository
 import kotlinx.coroutines.flow.MutableSharedFlow
 import okhttp3.OkHttpClient
@@ -56,12 +60,27 @@ class AppContainer(context: Context) {
 
     val api: ApiService = retrofit.create(ApiService::class.java)
 
+    // Same client (auth + 401 handling + logging) with a longer read timeout, for
+    // report-card renders and PDF downloads: a first render can outlast 30 s.
+    private val renderApi: ApiService = retrofit.newBuilder()
+        .client(httpClient.newBuilder().readTimeout(120, TimeUnit.SECONDS).build())
+        .build()
+        .create(ApiService::class.java)
+
     val authRepo = AuthRepository(api, tokenStore)
     val studentRepo = StudentRepository(api)
     val attendanceRepo = AttendanceRepository(api)
     val marksRepo = MarksRepository(api)
     val appUpdateRepo = AppUpdateRepository(api)
     val adminRepo = AdminRepository(api)
+    val sessionRepo = SessionRepository(api)
+    val metaRepo = MetaRepository(api)
+    val resultsRepo = ResultsRepository(api)
+    val reportCardRepo = ReportCardRepository(
+        api = api,
+        renderApi = renderApi,
+        cacheDir = context.applicationContext.cacheDir,
+    )
 }
 
 /** Tiny indirection so we can read BuildConfig.DEBUG without importing it everywhere. */

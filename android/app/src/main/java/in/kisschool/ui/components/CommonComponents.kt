@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -51,9 +52,11 @@ private fun PickerField(
     leadingIcon: (@Composable () -> Unit)? = null,
     trailingIcon: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
-    Column(modifier) {
+    // Material's disabled look: the whole field at 38% and no click.
+    Column(modifier.alpha(if (enabled) 1f else 0.38f)) {
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
@@ -65,7 +68,7 @@ private fun PickerField(
                 .fillMaxWidth()
                 .height(56.dp)
                 .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
-                .clickable { onClick() }
+                .clickable(enabled = enabled) { onClick() }
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -91,7 +94,8 @@ fun ClassDropdown(
     selected: String?,
     onSelect: (String) -> Unit,
     modifier: Modifier = Modifier,
-    label: String = "Class"
+    label: String = "Class",
+    enabled: Boolean = true,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier) {
@@ -99,9 +103,10 @@ fun ClassDropdown(
             label = label,
             value = selected.orEmpty(),
             trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-            onClick = { expanded = true }
+            onClick = { expanded = true },
+            enabled = enabled,
         )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        DropdownMenu(expanded = expanded && enabled, onDismissRequest = { expanded = false }) {
             if (classes.isEmpty()) {
                 DropdownMenuItem(
                     text = { Text("No classes assigned") },

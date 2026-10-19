@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- FileProvider roots. The camera capture flow writes a temp JPEG into
-     cacheDir/captures/ and shares a content:// uri for it with the system
-     camera app (see ImagePick.newCaptureTarget + AndroidManifest provider). -->
+<!-- FileProvider roots.
+     captures/ : the camera capture flow writes a temp JPEG into cacheDir/captures/
+                 and shares a content:// uri for it with the system camera app
+                 (see ImagePick.newCaptureTarget + AndroidManifest provider).
+     pdfs/     : downloaded report cards, one folder per student, each card under the
+                 server's file name (cacheDir/pdfs/<studentId>/report-card_<class>_….pdf),
+                 shared with a viewer or the share sheet (see ReportCardRepository +
+                 ReportCardPreviewScreen). -->
 <paths>
     <cache-path name="captures" path="captures/" />
+    <cache-path name="pdfs" path="pdfs/" />
 </paths>

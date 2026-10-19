@@ -1,6 +1,12 @@
 package `in`.kisschool.data.api
 
+import `in`.kisschool.data.api.dto.AcademicSessionDto
 import `in`.kisschool.data.api.dto.AttendanceDto
+import `in`.kisschool.data.api.dto.ClassResultsDto
+import `in`.kisschool.data.api.dto.MetaDto
+import `in`.kisschool.data.api.dto.PdfTemplateDto
+import `in`.kisschool.data.api.dto.RenderRequestBody
+import `in`.kisschool.data.api.dto.RenderResponseDto
 import `in`.kisschool.data.api.dto.ChangePasswordRequest
 import `in`.kisschool.data.api.dto.ForgotPasswordRequest
 import `in`.kisschool.data.api.dto.LoginRequest
@@ -23,6 +29,7 @@ import `in`.kisschool.data.api.dto.StudentDto
 import `in`.kisschool.data.api.dto.StudentPageDto
 import `in`.kisschool.data.api.dto.StudentUpdateDto
 import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
@@ -35,6 +42,7 @@ import retrofit2.http.PUT
 import retrofit2.http.Part
 import retrofit2.http.Path
 import retrofit2.http.Query
+import retrofit2.http.Streaming
 import retrofit2.http.Url
 
 interface ApiService {
@@ -175,4 +183,53 @@ interface ApiService {
 
     @DELETE("admin/deletion-requests/{kind}/{id}")
     suspend fun purgeDeletion(@Path("kind") kind: String, @Path("id") id: Long): Response<Unit>
+
+    // ── Results, sessions, reference lists, report cards ────────────────────
+    // All return Response<…> so the repositories can turn an older server's
+    // 404/422 (endpoint not there yet) into a readable message instead of throwing.
+
+    /** Term-scoped class results; scope ∈ term1 | term2 | annual. */
+    @GET("marks/results")
+    suspend fun classResults(
+        @Query("class") className: String,
+        @Query("session") session: String,
+        @Query("scope") scope: String,
+    ): Response<ClassResultsDto>
+
+    /** Every academic session, newest first. */
+    @GET("sessions")
+    suspend fun sessions(): Response<List<AcademicSessionDto>>
+
+    /** The current academic session; 404 when none is configured. */
+    @GET("sessions/current")
+    suspend fun currentSession(): Response<AcademicSessionDto>
+
+    /** Reference lists: classes, grade letters, houses, … */
+    @GET("meta")
+    suspend fun meta(): Response<MetaDto>
+
+    /** The report-card template for class + session + scope; the body is JSON null when none exists. */
+    @GET("pdf/templates/resolve")
+    suspend fun resolveTemplate(
+        @Query("class") className: String,
+        @Query("session") session: String,
+        @Query("scope") scope: String,
+        @Query("kind") kind: String = "report-card",
+    ): Response<PdfTemplateDto>
+
+    /** Render (or reuse the cached) PDF for the given students; staff may call it for their own classes. */
+    @POST("pdf/templates/{id}/render")
+    suspend fun renderTemplate(
+        @Path("id") templateId: Long,
+        @Body body: RenderRequestBody,
+    ): Response<RenderResponseDto>
+
+    /**
+     * A rendered PDF's bytes. Authenticated by the Bearer header the OkHttp
+     * interceptor adds, never the `/inline?token=` variant: the JWT must not end
+     * up in a URL. @Streaming so the body is read straight to a file.
+     */
+    @Streaming
+    @GET("pdf/cache/{id}")
+    suspend fun downloadCachedPdf(@Path("id") pdfId: Long): Response<ResponseBody>
 }

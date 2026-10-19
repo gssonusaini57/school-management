@@ -14,6 +14,8 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import `in`.kisschool.data.repo.AuthRepository
+import `in`.kisschool.data.repo.MenuKeys
 import `in`.kisschool.di.AppContainer
 import `in`.kisschool.ui.screens.approvals.ApprovalsScreen
 import `in`.kisschool.ui.screens.approvals.ApprovalsViewModel
@@ -31,9 +33,13 @@ import `in`.kisschool.ui.screens.login.LoginScreen
 import `in`.kisschool.ui.screens.login.LoginViewModel
 import `in`.kisschool.ui.screens.marks.MarksEntryScreen
 import `in`.kisschool.ui.screens.marks.MarksEntryViewModel
+import `in`.kisschool.ui.screens.results.ReportCardPreviewScreen
+import `in`.kisschool.ui.screens.results.ResultsScreen
+import `in`.kisschool.ui.screens.results.ResultsViewModel
 import `in`.kisschool.ui.screens.studentdetail.StudentDetailScreen
 import `in`.kisschool.ui.screens.studentdetail.StudentDetailViewModel
 import `in`.kisschool.ui.screens.studentedit.EditStudentScreen
+import `in`.kisschool.ui.screens.studentedit.CLASSES
 import `in`.kisschool.ui.screens.studentedit.EditStudentViewModel
 import `in`.kisschool.ui.screens.students.StudentsScreen
 import `in`.kisschool.ui.screens.students.StudentsViewModel
@@ -50,11 +56,27 @@ object Routes {
     const val MARKS = "marks"
     const val APPROVALS = "approvals"
     const val FORGOT_PASSWORD = "forgot-password"
+    const val RESULTS = "results"
+    const val REPORT_CARD = "report-card/{studentId}?name={name}"
+    fun reportCard(studentId: Long, name: String) = "report-card/$studentId?name=${Uri.encode(name)}"
     fun studentDetail(id: Long) = "student/$id"
     fun studentEdit(id: Long) = "student/$id/edit"
     // Attendance pre-set to a (class, date) — used by the dashboard calendar tap-through.
     fun attendanceFor(className: String, iso: String) =
         "$ATTENDANCE?class=${Uri.encode(className)}&date=$iso"
+}
+
+/**
+ * Classes the Marks and Results pickers offer. Admins and super-admins carry an empty
+ * allowed_classes and see every class; a staff member sees their own, which may be
+ * none (the screens then say "No classes assigned yet."), so emptiness alone can't
+ * tell the two apart. A role not stored yet (an install that logged in before the
+ * app kept it, until /auth/me fills it in) keeps the old any-empty-means-all rule.
+ */
+private fun pickerClasses(auth: AuthRepository): List<String> = when {
+    auth.isAdmin -> CLASSES
+    auth.role == null -> auth.allowedClasses.ifEmpty { CLASSES }
+    else -> auth.allowedClasses
 }
 
 @Composable
@@ -116,10 +138,16 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
             // Hydrate role on home open so the Approvals tile appears for super-admins
             // even on installs that logged in before the app stored role (refreshMe
             // is best-effort; failure leaves role as-is → tile stays hidden).
+            // Menu grants (allowed_menus) refresh the same way, gating the Marks and
+            // Results tiles (admins and super-admins always see both).
             var isSuperAdmin by remember { mutableStateOf(container.authRepo.isSuperAdmin) }
+            var canMarksEntry by remember { mutableStateOf(container.authRepo.canAccess(MenuKeys.MARKS_ENTRY)) }
+            var canResults by remember { mutableStateOf(container.authRepo.canAccess(MenuKeys.MARKS_RESULTS)) }
             LaunchedEffect(Unit) {
                 runCatching { container.authRepo.refreshMe() }
                 isSuperAdmin = container.authRepo.isSuperAdmin
+                canMarksEntry = container.authRepo.canAccess(MenuKeys.MARKS_ENTRY)
+                canResults = container.authRepo.canAccess(MenuKeys.MARKS_RESULTS)
             }
             HomeScreen(
                 userName = container.authRepo.displayName ?: "Teacher",
@@ -137,6 +165,44 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                 },
                 isSuperAdmin = isSuperAdmin,
                 onApprovals = { navController.navigate(Routes.APPROVALS) },
+                canMarksEntry = canMarksEntry,
+                canResults = canResults,
+                onResults = { navController.navigate(Routes.RESULTS) },
+            )
+        }
+
+        composable(Routes.RESULTS) {
+            val vm = viewModel {
+                ResultsViewModel(
+                    resultsRepo = container.resultsRepo,
+                    sessionRepo = container.sessionRepo,
+                    reportCardRepo = container.reportCardRepo,
+                    classOptions = pickerClasses(container.authRepo),
+                )
+            }
+            ResultsScreen(
+                vm = vm,
+                onBack = { navController.popBackStack() },
+                onOpenReportCard = { id, name -> navController.navigate(Routes.reportCard(id, name)) },
+            )
+        }
+
+        composable(
+            route = Routes.REPORT_CARD,
+            arguments = listOf(
+                navArgument("studentId") { type = NavType.LongType },
+                navArgument("name") { type = NavType.StringType; defaultValue = "" },
+            )
+        ) { entry ->
+            val id = entry.arguments?.getLong("studentId") ?: 0L
+            val name = entry.arguments?.getString("name").orEmpty()
+            // Looked up once: the card keeps the server's file name, so finding it lists a folder.
+            val file = remember(id) { container.reportCardRepo.fileFor(id) }
+            ReportCardPreviewScreen(
+                file = file,
+                studentName = name,
+                warnings = container.reportCardRepo.warningsFor(id),
+                onBack = { navController.popBackStack() },
             )
         }
 
@@ -150,7 +216,10 @@ fun AppNav(navController: NavHostController, startRoute: String, container: AppC
                 MarksEntryViewModel(
                     studentRepo = container.studentRepo,
                     marksRepo = container.marksRepo,
-                    allowedClasses = container.authRepo.allowedClasses
+                    sessionRepo = container.sessionRepo,
+                    metaRepo = container.metaRepo,
+                    classOptions = pickerClasses(container.authRepo),
+                    isSuperAdmin = container.authRepo.isSuperAdmin,
                 )
             }
             MarksEntryScreen(vm = vm, onBack = { navController.popBackStack() })

@@ -6,16 +6,15 @@ import `in`.kisschool.data.api.dto.BatchSaveBody
 import `in`.kisschool.data.api.dto.ClassSubjectDetailDto
 import `in`.kisschool.data.api.dto.ClassSubjectDto
 import `in`.kisschool.data.api.dto.RequestEditBody
-import org.json.JSONObject
-import retrofit2.Response
 
 class MarksRepository(private val api: ApiService) {
 
-    /** Academic subjects for a class (excludes the "grading" category, like the web). */
+    /**
+     * Every subject of a class, in display order. Graded subjects (Computer, P.E., …)
+     * are included: their exam components have max 0 and take a letter grade.
+     */
     suspend fun subjects(className: String): List<ClassSubjectDto> =
-        api.classSubjects(className)
-            .filter { it.category != "grading" }
-            .sortedBy { it.orderIndex }
+        api.classSubjects(className).sortedBy { it.orderIndex }
 
     suspend fun subjectDetail(subjectId: Long): ClassSubjectDetailDto =
         api.classSubjectDetail(subjectId)
@@ -26,43 +25,31 @@ class MarksRepository(private val api: ApiService) {
     ): BatchDetailDto? {
         val resp = api.getMarksBatch(className, subject, examType, session)
         if (resp.isSuccessful) return resp.body() // body is null when no batch exists
-        throw RuntimeException(detailOf(resp) ?: "Failed to load batch (HTTP ${resp.code()})")
+        throw ApiException(resp.apiError().message ?: "Failed to load batch (HTTP ${resp.code()})", resp.code())
     }
 
     suspend fun saveBatch(body: BatchSaveBody): BatchDetailDto {
         val resp = api.saveMarksBatch(body)
-        if (resp.isSuccessful) return resp.body() ?: throw RuntimeException("Empty response")
-        throw RuntimeException(detailOf(resp) ?: "Save failed (HTTP ${resp.code()})")
+        if (resp.isSuccessful) return resp.body() ?: throw ApiException("Empty response")
+        val err = resp.apiError()
+        // A server from before letter grades rejects max 0 / items without marks
+        // with a request-validation list; say so instead of "Field required".
+        if (resp.code() == 422 && err.validation && body.maxMarks == 0) {
+            throw ApiException("This server can't save letter grades yet. It needs the latest update.", 422)
+        }
+        throw ApiException(err.message ?: "Save failed (HTTP ${resp.code()})", resp.code())
     }
 
     suspend fun submit(batchId: Long): BatchDetailDto {
         val resp = api.submitMarksBatch(batchId)
-        if (resp.isSuccessful) return resp.body() ?: throw RuntimeException("Empty response")
-        throw RuntimeException(detailOf(resp) ?: "Submit failed (HTTP ${resp.code()})")
+        if (resp.isSuccessful) return resp.body() ?: throw ApiException("Empty response")
+        throw ApiException(resp.apiError().message ?: "Submit failed (HTTP ${resp.code()})", resp.code())
     }
 
     suspend fun requestEdit(batchId: Long, reason: String) {
         val resp = api.requestMarksEdit(batchId, RequestEditBody(reason))
         if (!resp.isSuccessful) {
-            throw RuntimeException(detailOf(resp) ?: "Request failed (HTTP ${resp.code()})")
-        }
-    }
-
-    /** FastAPI `detail` may be a plain string OR an object `{message, rows}` (the
-     *  out-of-range validation error) — surface a readable message for either. */
-    private fun detailOf(resp: Response<*>): String? {
-        val raw = resp.errorBody()?.string() ?: return null
-        return try {
-            val root = JSONObject(raw)
-            val d = root.opt("detail")
-            when (d) {
-                is JSONObject -> d.optString("message").ifBlank { d.toString() }
-                is String -> d.ifBlank { null }
-                null -> null
-                else -> d.toString()
-            }
-        } catch (_: Exception) {
-            null
+            throw ApiException(resp.apiError().message ?: "Request failed (HTTP ${resp.code()})", resp.code())
         }
     }
 }

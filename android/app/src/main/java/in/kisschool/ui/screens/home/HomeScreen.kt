@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Assessment
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.automirrored.filled.FactCheck
 import androidx.compose.material.icons.automirrored.filled.Logout
@@ -73,6 +74,10 @@ fun HomeScreen(
     onLogout: () -> Unit,
     isSuperAdmin: Boolean = false,
     onApprovals: () -> Unit = {},
+    /** Staff need the "marks-entry" / "marks-results" menu grants; admins always see both. */
+    canMarksEntry: Boolean = true,
+    canResults: Boolean = true,
+    onResults: () -> Unit = {},
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var showAbout by remember { mutableStateOf(false) }
@@ -203,12 +208,22 @@ fun HomeScreen(
                 icon = Icons.Default.People,
                 onClick = onViewStudents
             )
-            ActionTile(
-                title = "Marks entry",
-                subtitle = "Enter marks · save draft · submit for lock",
-                icon = Icons.Default.EditNote,
-                onClick = onMarksEntry
-            )
+            if (canMarksEntry) {
+                ActionTile(
+                    title = "Marks entry",
+                    subtitle = "Enter marks or grades · save draft · submit for lock",
+                    icon = Icons.Default.EditNote,
+                    onClick = onMarksEntry
+                )
+            }
+            if (canResults) {
+                ActionTile(
+                    title = "Results & report cards",
+                    subtitle = "Term results · open and share report cards",
+                    icon = Icons.Default.Assessment,
+                    onClick = onResults
+                )
+            }
         }
     }
 }

@@ -6,8 +6,9 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 
 /**
- * Persists the JWT and minimal user metadata (name, allowed_classes) inside an
- * EncryptedSharedPreferences so the token is protected at rest.
+ * Persists the JWT and minimal user metadata (name, role, allowed_classes,
+ * allowed_menus) inside an EncryptedSharedPreferences so the token is protected
+ * at rest.
  */
 class TokenStore(context: Context) {
 
@@ -24,12 +25,17 @@ class TokenStore(context: Context) {
         )
     }
 
+    /**
+     * [allowedMenus] null means the server didn't send menu grants: the stored value
+     * is removed and [allowedMenus] reads back as null ("unknown").
+     */
     fun saveSession(
         token: String,
         name: String,
         allowedClasses: List<String>,
         forcePasswordChange: Boolean = false,
         role: String? = null,
+        allowedMenus: List<String>? = null,
     ) {
         prefs.edit()
             .putString(KEY_TOKEN, token)
@@ -37,6 +43,10 @@ class TokenStore(context: Context) {
             .putString(KEY_CLASSES, allowedClasses.joinToString("|"))
             .putBoolean(KEY_FORCE_PW, forcePasswordChange)
             .putString(KEY_ROLE, role)
+            .apply {
+                if (allowedMenus == null) remove(KEY_MENUS)
+                else putString(KEY_MENUS, allowedMenus.filter { it.isNotBlank() }.joinToString("|"))
+            }
             .apply()
     }
 
@@ -53,6 +63,20 @@ class TokenStore(context: Context) {
             ?: emptyList()
     val forcePasswordChange: Boolean get() = prefs.getBoolean(KEY_FORCE_PW, false)
     val role: String? get() = prefs.getString(KEY_ROLE, null)
+
+    /**
+     * Menu keys granted to a staff member (e.g. "marks-entry"); an empty list means
+     * none. null when unknown: an install that logged in before the app stored
+     * menus, until the next /auth/me refresh fills them in.
+     */
+    val allowedMenus: List<String>?
+        get() {
+            if (!prefs.contains(KEY_MENUS)) return null
+            return prefs.getString(KEY_MENUS, null)
+                ?.split("|")
+                ?.filter { it.isNotBlank() }
+                ?: emptyList()
+        }
 
     /** "Remember me" identifier — survives logout so the login field can prefill. */
     var rememberedIdentifier: String?
@@ -76,6 +100,7 @@ class TokenStore(context: Context) {
         const val KEY_CLASSES = "allowed_classes"
         const val KEY_FORCE_PW = "force_password_change"
         const val KEY_ROLE = "role"
+        const val KEY_MENUS = "allowed_menus"
         const val KEY_REMEMBER_ID = "remembered_identifier"
     }
 }
