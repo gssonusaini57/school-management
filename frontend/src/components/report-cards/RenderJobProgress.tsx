@@ -137,7 +137,7 @@ export function RenderJobProgress({
     ) {
       return;
     }
-    downloadRenderJobZip(job.id);
+    void downloadRenderJobZip(job.id);
   };
   // The server lets the person who started the run, or an admin, cancel it.
   const canCancel = active && (isAdmin || job.requested_by === user?.name);

@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/components/ui/toaster";
 import { api, apiError, fileUrl } from "@/lib/api";
 import { CLASSES, RELIGIONS, toTitleCase, digitsOnly, dobBounds, cn } from "@/lib/utils";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useToken } from "@/lib/auth";
 import { compressImage } from "@/lib/compress";
 import type { Student, DocumentKind } from "@/types/api";
 
@@ -440,22 +440,47 @@ function F({ label, error, required, children }: { label: string; error?: string
   );
 }
 
+/**
+ * The `?token=` URL of a student document, resolved asynchronously (fileUrl
+ * refreshes a token about to expire) and rebuilt whenever the token rotates, so
+ * the <img>/<a> never keeps a dead token. "" until resolved or when not present.
+ */
+function useFileUrl(sid: number, kind: DocumentKind, present: boolean, version: number): string {
+  const token = useToken();
+  const [url, setUrl] = useState("");
+  useEffect(() => {
+    if (!present) {
+      setUrl("");
+      return;
+    }
+    let cancelled = false;
+    // The API URL is stable across replacements; append `&v=N` so the browser
+    // re-fetches after the parent bumps `version` on successful upload.
+    // (`fileUrl` already carries `?token=...`, so use `&`, not `?`.)
+    const buster = version > 0 ? `&v=${version}` : "";
+    void fileUrl(sid, kind).then((u) => {
+      if (!cancelled) setUrl(`${u}${buster}`);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [sid, kind, present, version, token]);
+  return url;
+}
+
 function DocSlot({ label, sid, kind, present, version, onUpload }: {
   label: string; sid: number; kind: DocumentKind; present: boolean;
   version: number; onUpload: (f: File) => void;
 }) {
-  // The API URL is stable across replacements; append `&v=N` so the browser
-  // re-fetches after the parent bumps `version` on successful upload.
-  // (`fileUrl` already carries `?token=...`, so use `&`, not `?`.)
-  const buster = version > 0 ? `&v=${version}` : "";
+  const url = useFileUrl(sid, kind, present, version);
   return (
     <div className="space-y-2">
       <Label className="text-sm">{label}</Label>
-      {present && kind === "photo" && (
-        <img src={`${fileUrl(sid, "photo")}${buster}`} alt="Student" className="h-24 w-24 object-cover rounded" />
+      {url && kind === "photo" && (
+        <img src={url} alt="Student" className="h-24 w-24 object-cover rounded" />
       )}
-      {present && kind !== "photo" && (
-        <a href={`${fileUrl(sid, kind)}${buster}`} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline block">Open uploaded {label.toLowerCase()}</a>
+      {url && kind !== "photo" && (
+        <a href={url} target="_blank" rel="noreferrer" className="text-sm text-blue-600 underline block">Open uploaded {label.toLowerCase()}</a>
       )}
       <label className="block border border-dashed rounded p-3 text-center text-xs cursor-pointer hover:bg-muted/40">
         <Upload className="h-4 w-4 mx-auto mb-1" />

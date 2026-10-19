@@ -81,7 +81,12 @@
       "errorInvalid": "Invalid credentials. Please try again.",
       "mustChangePassword": "You're using a temporary password. Please change it from your profile.",
       "forgotLink": "Forgot password?",
-      "footer": "Need help signing in? Contact the office at +91 93563-31762."
+      "footer": "Need help signing in? Contact the office at +91 93563-31762.",
+      "rememberHint": "Stay signed in on this browser for 30 days"
+    },
+    "auth": {
+      "signedOut": "Your session ended. Please sign in again.",
+      "restoring": "Signing you in…"
     },
     "forgot": {
       "title": "Forgot password",

@@ -18,6 +18,11 @@ export interface LoginResponse {
   allowed_classes: string[];
   allowed_menus?: string[];
   force_password_change?: boolean;
+  /** Device-session id behind `token`; null for a sign-in without "Remember me". */
+  session_id?: number | null;
+  /** Android only — the web receives its refresh token as an HttpOnly cookie instead. */
+  refresh_token?: string | null;
+  refresh_expires_at?: string | null;
 }
 
 export interface Student extends SoftDeleteFields {

@@ -3,6 +3,7 @@ import { LogOut, Menu, KeyRound, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth, clearAuth } from "@/lib/auth";
+import { api } from "@/lib/api";
 import { useNavMode } from "@/lib/nav-mode";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,14 @@ export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [pwdOpen, setPwdOpen] = useState(false);
 
-  const logout = () => {
+  const logout = async () => {
+    // End the device session (refresh cookie) server-side first. The Bearer is
+    // optional there, and a failure must never keep anyone signed in locally.
+    try {
+      await api.post("/auth/logout", {}, { timeout: 5_000 });
+    } catch {
+      // Offline or already signed out: fall through to the local sign-out.
+    }
     clearAuth();
     setUser(null);
     nav("/login", { replace: true });

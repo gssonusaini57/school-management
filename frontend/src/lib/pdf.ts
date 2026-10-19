@@ -1,6 +1,7 @@
 import axios from "axios";
 import { queryOptions } from "@tanstack/react-query";
-import { api, apiError, getToken } from "./api";
+import { api, apiError } from "./api";
+import { ensureFreshToken } from "./auth";
 import i18n from "./i18n";
 import { toast } from "@/components/ui/toaster";
 import type { PdfRoster, PdfTemplate, RenderJob, ResultScope } from "@/types/api";
@@ -29,21 +30,27 @@ export async function downloadPdf(kind: string, payload: unknown, filename: stri
 /**
  * URL for a server-cached PDF blob, embedding the JWT as a query param so an
  * <a href download> works without the browser needing to send Bearer headers.
- * Mirrors the existing `fileUrl()` pattern for student documents.
+ * Mirrors the `fileUrl()` pattern for student documents: async because a token
+ * about to expire is refreshed first (the 401 interceptor never sees these).
  */
-export function cachedPdfUrl(pdfId: number): string {
-  const t = getToken();
+export async function cachedPdfUrl(pdfId: number): Promise<string> {
+  const t = await ensureFreshToken();
   return `${baseURL}/pdf/cache/${pdfId}/inline?token=${encodeURIComponent(t)}`;
 }
 
-/** Trigger a browser download of a cached PDF by id. */
-export function downloadCachedPdf(pdfId: number, filename: string): void {
+/** Click a throwaway <a download> pointing at `href`. */
+function triggerDownload(href: string, download: string): void {
   const a = document.createElement("a");
-  a.href = cachedPdfUrl(pdfId);
-  a.download = filename.endsWith(".pdf") ? filename : `${filename}.pdf`;
+  a.href = href;
+  a.setAttribute("download", download);
   document.body.appendChild(a);
   a.click();
   a.remove();
+}
+
+/** Trigger a browser download of a cached PDF by id (the URL is built at click time, with a fresh token). */
+export async function downloadCachedPdf(pdfId: number, filename: string): Promise<void> {
+  triggerDownload(await cachedPdfUrl(pdfId), filename.endsWith(".pdf") ? filename : `${filename}.pdf`);
 }
 
 // ── Report-card render jobs + preview ────────────────────────────────
@@ -96,19 +103,14 @@ export function templateRosterQuery(templateId: number) {
 }
 
 /** URL of the ZIP with every card a finished render job produced (JWT in the query, like cachedPdfUrl). */
-export function renderJobZipUrl(jobId: number): string {
-  const t = getToken();
+export async function renderJobZipUrl(jobId: number): Promise<string> {
+  const t = await ensureFreshToken();
   return `${baseURL}/pdf/render-jobs/${jobId}/zip/inline?token=${encodeURIComponent(t)}`;
 }
 
 /** Trigger a browser download of a finished render job's ZIP. The server names the file. */
-export function downloadRenderJobZip(jobId: number): void {
-  const a = document.createElement("a");
-  a.href = renderJobZipUrl(jobId);
-  a.setAttribute("download", "");
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
+export async function downloadRenderJobZip(jobId: number): Promise<void> {
+  triggerDownload(await renderJobZipUrl(jobId), "");
 }
 
 /** apiError() for a `responseType: "blob"` request, whose error body also arrives as a Blob. */
