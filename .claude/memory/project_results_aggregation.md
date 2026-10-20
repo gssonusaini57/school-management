@@ -7,7 +7,7 @@ metadata:
 
 **Term-scoped result aggregation** — Session 18 (2026-10-18), now commit `014c069` after the history rewrite. **Live on prod** since the 2026-06-07 deploy (prod schema 0013, verified 2026-10-19).
 
-**Status 2026-10-19:** v2 is complete and on TEST (schema 0021, Sessions 18–19): academic sessions, letter grades, rank/attendance, report card v2 with layouts and photo, background renders + ZIP, batch revision guard (0018), v1 overrides cleared (0019), optional subjects (0020, `not_taken`). Prod still runs v1 (0013) until the owner approves the deploy. The v1 notes below describe what prod runs; on TEST drafts are flagged on screen and left off cards. Detail: `.claude/SESSION_HISTORY_19.md`; rules: [[project_results_policy]], [[project_optional_subjects]].
+**Status 2026-10-19:** v2 is complete and on TEST (schema 0021, Sessions 18–19): academic sessions, letter grades, rank/attendance, report card v2 with layouts and photo, background renders + ZIP, batch revision guard (0018), v1 overrides cleared (0019), optional subjects (0020, `not_taken`). v2 went live on prod on 2026-10-20 (schema 0021). The v1 notes below are historical: drafts are now flagged on screen and left off cards. Detail: `.claude/SESSION_HISTORY_19.md`; rules: [[project_results_policy]], [[project_optional_subjects]].
 
 Marks are entered per exam *component* (`marks.exam_type` holds a `component_name` like "Semester Second — Practical"), but there was no notion of which term a component belonged to, so nothing could produce a Term-1 or Term-2 total. The results screen also filtered on a hardcoded free-text exam list unrelated to the class-subjects master, and the report-card PDF did its own flat per-subject sum with its own private grade function.
 

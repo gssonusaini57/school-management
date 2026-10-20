@@ -16,3 +16,5 @@ metadata:
 **How to apply:** build after the Results cross-check is committed and on TEST; see [[project_results_policy]] for the confirmed rules it must keep.
 
 **Status 2026-10-19 15:2x:** built and on TEST (commits 2ebe2e1 server / 585a5ed web / 32e1871 app, migration 0020; TEST app 1.3.1 build 22). On TEST, 11th and 12th Mathematics are optional with NO students ticked yet (the school ticks the real takers on Class Subjects → Mathematics). Not on prod.
+
+**Prod 2026-10-20:** live; 11th and 12th Mathematics set optional on prod with NO takers ticked — nobody can enter Mathematics marks there until the super-admin ticks the takers (Class Subjects → Mathematics).

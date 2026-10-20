@@ -1,5 +1,5 @@
 # Project Memory
-**Last Updated:** 2026-10-19 | **Sessions:** 19 (1–16 archived or in memory; 18–19 detail in archives) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in since 2026-10-20 11:33 — dev `339c013`, schema **0021** (Results v2, optional subjects, role dashboards, stay-signed-in), Android prod **v1.3.4 build 25** — **and** TEST at http://69.62.72.137/kisschool/admin/ (second instance on the prod box, Gotcha #23) on the same code with staging app **v1.3.3 build 24**.
+**Last Updated:** 2026-10-20 | **Sessions:** 19 (1–16 archived or in memory; 18–19 detail in archives) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in since 2026-10-20 11:33 — dev `339c013`, schema **0021** (Results v2, optional subjects, role dashboards, stay-signed-in), Android prod **v1.3.4 build 25** — **and** TEST at http://69.62.72.137/kisschool/admin/ (second instance on the prod box, Gotcha #23) on the same code with staging app **v1.3.3 build 24**.
 > **Admin logins (both instances):** admin `gssonusaini57@gmail.com` · super-admin `khalsainternationalschool@gmail.com` (hardcoded `ADMIN_EMAIL`/`SUPER_ADMIN_EMAIL` in auth.py since a20133c). Passwords are user-known only — `admin123` is rejected on prod (verified 2026-10-19). Staff log in by email-or-phone + password. TEST's DB is a prod clone, so every hash matches prod; TEST has no SMTP (email off). On TEST every active staff member also has an admin-set *temporary* password (value user-known, never recorded) for teacher-view testing; `/sync-test-data` wipes it.
 
 > Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test*`, `/sync-test-data`, `/deploy-prod*` (incl. `/deploy-prod-public-site`), `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`, `/deep-analysis`. Android APK build: `bash scripts/build-android.sh {prod|test}` (local, needs keystore).
@@ -243,7 +243,7 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 
 21. **"Every class" is stored as a single literal sentinel row `class_name="All"`, so every consumer must expand it.** `staff_classes` holds one row with the string `"All"` rather than 15 rows (the staff bulk-import writes it; the frontend collapses a full selection back to `["All"]`). That literal leaked into the JWT `allowed_classes` claim and out through `GET /api/auth/me`, so the Android app and the web class pickers rendered a bogus "All" option, and `assert_class_allowed` rejected every *real* class name for those users. Fix: [backend/app/constants.py](../backend/app/constants.py) owns the canonical `CLASSES` list (mirrors `CLASSES` in [frontend/src/lib/utils.ts](../frontend/src/lib/utils.ts) and the Android list — **keep all three in sync**) plus `expand_classes` / `is_all_sentinel`. Expansion happens in **two** places on purpose: at login before the token is minted, and again in `deps._parse` on decode — the second one is what repairs tokens issued before the fix, which stay valid for up to 8h. `assert_class_allowed` also short-circuits on the sentinel as a belt-and-braces guard. **If you add a third client that reads `allowed_classes`, it gets concrete names — never special-case the string `"All"` again.**
 
-    **Refinement (Session 19):** admins and the super-admin carry an EMPTY `allowed_classes`, so clients must use the all-classes rule (`AuthRepository.visibleClasses` on Android, `isAdmin ? CLASSES : allowed_classes` on the web), never the raw list — Take attendance / Past attendance / Students showed "No classes assigned" for admins. Server side, list endpoints use `deps.classes_in_scope(user)`: the old `if user.role == "staff" and user.allowed_classes:` filter let a teacher with NO classes see every class's attendance totals and every student.
+    **Refinement (Session 19):** admins and the super-admin carry an EMPTY `allowed_classes`, so clients must use the all-classes rule (`AuthRepository.visibleClasses` on Android, `isAdmin ? CLASSES : allowed_classes` on the web), never the raw list — Take attendance / Past attendance / Students showed "No classes assigned" for admins. Server side, list endpoints use `deps.classes_in_scope(user)`: the old `if user.role == "staff" and user.allowed_classes:` filter let a teacher with NO classes see every class's attendance totals and every student. **And a menu grant can widen scope:** staff holding the `fees` menu (the accounts clerk, staff #4 on prod) must see every class's fees (`has_menu(user, "fees")` in `routers/fees.py`). The first fix made unscoped `GET /fees` admin-only and broke that Fees page — caught in the owner's TEST run on 2026-10-20, fixed in `339c013`. Before tightening an endpoint, check which menus open it (`frontend/src/lib/menus.ts`).
 
 22. **No AI attribution on commits or PRs — enforced in three layers, because settings alone cannot do it.** `attribution: {commit:"", pr:"", sessionUrl:false}` in `~/.claude/settings.json` *and* [.claude/settings.json](./settings.json) stops Claude Code's **automatic** trailer — but it does not stop an agent that types `Co-Authored-By:` into a commit message itself when some prompt tells it to (exactly what happened in Session 18). So:
     - **[.githooks/no-ai-attribution.sh](../.githooks/no-ai-attribution.sh)** — the single place the rule lives. Reads text on stdin, exit 1 if it finds an AI co-author/assisted-by trailer, a "generated with <AI>" line, a bot address like `noreply@anthropic.com`, or a `Claude-Session:` trailer. Extend the `AI_NAMES` alternation to cover a new model. `strict` mode anchors to line start (commit messages); `loose` also matches mid-line (one-line `git commit -m`) and **fails closed** — a commit message that merely quotes a trailer is rejected too, on purpose.
@@ -260,6 +260,7 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 
 ---
     - **Deploying the working copy** (deploy → test → commit) without touching the repo: `SRC_ROOT=$(mktemp -d) && rsync -a --exclude node_modules --exclude dist --exclude .venv --exclude __pycache__ --exclude '*.tsbuildinfo' --exclude 'public/downloads' backend frontend packages "$SRC_ROOT/" && SRC_ROOT=$SRC_ROOT bash scripts/deploy/test/deploy-all.sh`. Every deploy re-publishes the repo's `frontend/public/downloads/<env APK>` + manifest, so build a new APK *after* deploying. TEST-only `.env` knob: `AUTH_COOKIE_PATH=/kisschool/api/auth` (Gotcha #25).
+    - **Reading TEST traffic:** TEST requests are logged in nginx's shared `/var/log/nginx/access.log` (the enamfoss vhost), not `/opt/school-management-test/logs/access.log` — `/check-logs` shows that section empty; grep `/kisschool/api/` there (status = field 9, user agent tells app `okhttp/…` from browsers). `/check-logs`' "last 3 tracebacks" is NOT time-filtered (prod still shows the May `notify_student_edit_request` NameError) — compare timestamps before raising an alarm.
 
 24. **WeasyPrint (63.x) ignores flex `gap`, and a `width/height: 100%` image inside a flex box collapses to nothing.** The report card's student photo never printed and the tiles, logo and grading scale touched their neighbours. Fix (Session 19, template revision 4): space flex children with margins (`.row > * + * { margin-left: … }`) and give images explicit pixel sizes (`display:block; width:74px; height:92px; object-fit:cover`). Check a rendered PDF with `pdfimages -list` (the photo must be listed). Locally WeasyPrint only finds Homebrew's Pango with `DYLD_FALLBACK_LIBRARY_PATH=/opt/homebrew/lib` — skill `sample-report-cards` renders made-up sample cards with the real code.
 
@@ -274,10 +275,10 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 | TEST http://69.62.72.137/kisschool/admin/ | ✅ dev `339c013`, schema **0021**, staging app **v1.3.3 build 24**; prod-clone data (synced 2026-10-19) |
 | Class-templated PDFs + cache, soft-delete workflow, staff auth (email/phone, temp + forgot password), class-subjects master, marks draft/lock workflow | ✅ Sessions 8–16 |
 | Term-scoped results engine + "All" class sentinel | ✅ on prod (0013) (Gotchas #20, #21) |
-| **Results module v2** — sessions, letter grades, rank/attendance, report card v2 (layouts, overrides, photo), background renders + ZIP, revision guard, cross-check fixes | ✅ on TEST (0014–0019) |
-| **Optional subjects** (11th/12th Mathematics) | ✅ on TEST (0020); real takers not ticked yet |
-| **Role dashboards + brand look** (web pie + class-wise chart; Android drawer, module colours, theme option, Notices) | ✅ on TEST |
-| **Stay signed in** (device sessions, web Remember me, Android fingerprint/face + saved accounts) | ✅ on TEST (0021) — phone check of the biometric flow pending |
+| **Results module v2** — sessions, letter grades, rank/attendance, report card v2 (layouts, overrides, photo), background renders + ZIP, revision guard, cross-check fixes | ✅ live (prod + TEST, 0014–0019) |
+| **Optional subjects** (11th/12th Mathematics) | ✅ live (0020); 11th/12th Mathematics optional on prod + TEST, takers not ticked yet |
+| **Role dashboards + brand look** (web pie + class-wise chart; Android drawer, module colours, theme option, Notices) | ✅ live (prod + TEST) |
+| **Stay signed in** (device sessions, web Remember me, Android fingerprint/face + saved accounts) | ✅ live (0021, prod app 1.3.4); owner\'s phone test passed on TEST |
 | Android teacher app `in.kisschool` (flavors, force-update gate, attendance incl. half day/holiday, approvals, marks entry, results/report cards) | ✅ (Gotchas #2, #7, #16, #18) |
 | iOS scaffold | 🟡 builds in Xcode only; far behind Android; needs the Apple Developer Program |
 | Bilingual portal (Sprint 4) | 🟡 new pages bilingual; older page labels and every Android string English-only |
@@ -296,7 +297,7 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 | `/check-logs` | `scripts/deploy/test/check-logs.sh` (also `prod/`) | Read-only log analysis: 6 sections (service status / journalctl / error.log tail / recent tracebacks / access.log tail / 4xx-5xx). Accepts `30m`, `2h`, `1d`. Nothing written, nothing downloaded — single SSH session straight to terminal |
 | `/save-session` | [commands/save-session.md](./commands/save-session.md) | Snapshot session context to `.claude/CLAUDE.md` + `SESSION_HISTORY_*`/`GOTCHAS_*` archives + `.claude/memory/`. Prompt-library v2026-08-31; the `## Project-Specific Notes` block (P1–P6) in that file is this project's local override set — preserved across prompt-library updates |
 | `/deep-analysis` | [commands/deep-analysis.md](./commands/deep-analysis.md) | Generate a multi-document onboarding knowledge base at `.claude/doc/deep-analysis/` (README + 00–10). Prompt-library v2026-08-31; `## Project-Specific Notes` (P1–P3) pre-fills the KIS domain context and the "verify CLAUDE.md against code" rule |
-| `test-verification` *(skill)* | [skills/test-verification/SKILL.md](./skills/test-verification/SKILL.md) | Verify a TEST deploy: on-box smoke (26 checks), API checks (results, dashboards, stay-signed-in) and headless-Chrome browser checks — logins from env vars only |
+| `test-verification` *(skill)* | [skills/test-verification/SKILL.md](./skills/test-verification/SKILL.md) | Verify a deploy: on-box smoke (26 checks, TEST or prod), API + headless-Chrome checks, and a review of the owner's own TEST run (nginx log + sessions) before go-live — logins from env vars only |
 | `sample-report-cards` *(skill)* | [skills/sample-report-cards/SKILL.md](./skills/sample-report-cards/SKILL.md) | Render sample report-card PNGs from a made-up class with the real code (local WeasyPrint) for design reviews |
 | `kis-design-system` *(skill)* | [skills/kis-design-system/SKILL.md](./skills/kis-design-system/SKILL.md) | Brand tokens, i18n and Punjabi rules for any UI/copy edit (portal, public site, PDFs, Android) |
 
@@ -351,31 +352,32 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 > Session 16 (PROD launch at kisschool.in + `in.kisschool` rebrand + temp/forgot password; historical promote-to-prod steps) → [SESSION_HISTORY_16.md](./SESSION_HISTORY_16.md)
 > Session 18 (term-scoped results engine + "All" sentinel) → [SESSION_HISTORY_18.md](./SESSION_HISTORY_18.md) · Session 19 full detail → [SESSION_HISTORY_19.md](./SESSION_HISTORY_19.md)
 
-### Sessions 18–19 — 2026-10-18 → 2026-10-19 · Results module v2, end to end (on TEST)
+### Sessions 18–19 — 2026-10-18 → 2026-10-20 · Results module v2, end to end (live on prod)
 
-**Branch:** `dev` · prod untouched (`54db9cd`, schema 0013) · TEST = dev `a71d7b7`.
+**Branch:** `dev` · **live on prod since 2026-10-20 11:33** (`339c013`, schema 0021, app 1.3.4 build 25; TEST same code).
 - **Session 18:** one pure engine (`services/results.py`) for the results table and the report card, component `term` (0013), marks-aware PDF cache (Gotcha #20), "All" class-sentinel expansion (Gotcha #21) — live on prod.
 - **Session 19 (plan phases 0–6):** academic sessions (0014), letter grades (0015), report card v2 with `summary`/`components` layouts and computed rank/attendance (0016), background render jobs + ZIP (0017). A 58-item cross-check added the batch **revision** guard (0018: stale screen → 409; app builds 19/20 can't remove saved marks), cleared v1 card overrides (0019), integer-only marks, grades null until complete, `includeDrafts` super-admin-only, Force re-render admin-only.
 - **Optional subjects** (0020) for 11th/12th Mathematics: `not_taken` for non-takers, never blocks promotion, rank by exact %; on TEST both are optional with no takers ticked.
 - From the principal's sample review: photos now print and flex spacing works (Gotcha #24). Results opens on Term 1 while Term 2 is empty. Policy confirmed — memory `project_results_policy`; exam-name renames still await the principal.
 - Verified on TEST: pytest ✓, smoke 26/26, optional 12/12, browser checks as super-admin/admin/teacher (skill `test-verification`).
+- **Go-live 2026-10-20** (for all three Session 19 workstreams): reviewed the TEST logs from the owner's testing (one regression — the Fees page for Fees-menu staff, fixed `339c013`), 62 MB prod backup, `/deploy-prod-all` (0014–0021 clean), 26/26 smoke on prod, 11th/12th Mathematics made optional on prod (no takers ticked), prod app 1.3.4 build 25 uploaded on the owner's "upload now" (force update). Detail → [SESSION_HISTORY_19.md](./SESSION_HISTORY_19.md) §7.
 
-### Session 19 — 2026-10-19 · Role dashboards, brand look, app theme
+### Session 19 — 2026-10-19 → 2026-10-20 · Role dashboards, brand look, app theme (live)
 
-**Branch:** `dev` · on TEST · commits `8fb38a7` (server) · `3ef6c60` (web) · `63e10d8`/`134d271`/`af44687`/`1ffe380` (app) · `4ad7e96` (roadmap).
-- Server: `GET /attendance/class-summary` and `GET /marks/batches/summary`; scope holes closed (Gotcha #21: teachers with no classes, unscoped `GET /fees`); attendance CSV onto a holiday clears the flag.
+**Branch:** `dev` · live on prod 2026-10-20 · commits `8fb38a7` (server) · `3ef6c60` (web) · `63e10d8`/`134d271`/`af44687`/`1ffe380` (app) · `4ad7e96` (roadmap).
+- Server: `GET /attendance/class-summary` and `GET /marks/batches/summary`; scope holes closed (Gotcha #21: teachers with no classes; unscoped `GET /fees` limited to admins + Fees-menu staff — `339c013`); attendance CSV onto a holiday clears the flag.
 - Web dashboard: admin marked/pending/holiday classes pie → class lists; class-wise attendance chart for every role (Today/Week/Month, ≥ 90 / 75–89 / < 75 bands, 75 % PSEB line).
 - Android: admins see every class; ☰ drawer; admin and teacher dashboards (classes pie → `classes-today/{kind}` lists, donut, class-wise bars, approvals/session, marks progress, fees, notices…); module colours (`KisModule`), gradient headers, Playfair Display Bold, `KisIcons`, Notices; theme Light (default) / Dark / Same as phone with a readable dark palette.
 - [docs/ROADMAP.md](../docs/ROADMAP.md): ~25 future features, the first five, deferred items.
 
-### Session 19 — 2026-10-19 · Stay signed in (device sessions, web Remember me, fingerprint/face app sign-in)
+### Session 19 — 2026-10-19 → 2026-10-20 · Stay signed in (device sessions, web Remember me, fingerprint/face app sign-in) (live)
 
-**Branch:** `dev` · on TEST (0021) · commits `b211a3e` (server) · `c686312` (web) · `6916304` + `a71d7b7` (app 1.3.3 build 24).
+**Branch:** `dev` · live on prod 2026-10-20 (0021, app 1.3.4) · commits `b211a3e` (server) · `c686312` (web) · `6916304` + `a71d7b7` (app 1.3.3 build 24).
 - Cause: 1-hour JWTs and no server session state → the password every hour, app and web.
 - Server: `device_sessions`, rotating refresh tokens (replay → family revoked; 60-s lost-response grace), `/auth/refresh`, `/auth/logout`, `/auth/sessions`, admin lost-phone revoke, revocation on password change/reset, temp-password clear and staff deletion, 429 after 10 failed logins; 32 tests. Rules: Gotcha #25.
 - Web: Remember me → HttpOnly cookie; bootstrap + single-flight refresh; SSE reconnects with the new token; Logout ends the server session.
 - Android: "Sign in faster next time?" → App lock (fingerprint, face or phone PIN) on open and after 15 min away; several saved accounts, Switch account, Settings (theme, App lock, signed-in devices); new deps biometric/fragment-ktx/lifecycle-process.
-- Verified on TEST: 11 API + 5 browser checks. **Biometric flow not yet run on a phone (owner).**
+- Verified on TEST: 11 API + 5 browser checks; the owner's phone test (2026-10-20) showed saved sign-ins renewing and Switch account working without a password — the one forced password was a sign-in made on the pre-1.3.3 app.
 
 ## Active MCP Servers
 None configured (no `.mcp.json`).

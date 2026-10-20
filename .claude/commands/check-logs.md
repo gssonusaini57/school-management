@@ -39,3 +39,7 @@ For a full archive of logs, use [scripts/deploy/test/download-logs.sh](../../scr
 
 - **IP:** `69.62.72.137` · **SSH key:** `~/.ssh/enamfoss_prod`
 - **Remote paths read:** `/opt/school-management-test/logs/{error,access}.log`, `journalctl -u school-management-test`
+
+## Notes (2026-10-20)
+- **TEST's request log is nginx's shared `/var/log/nginx/access.log`** (TEST lives inside the enamfoss vhost), so section 5/6 of the TEST report is empty. To see TEST traffic: `ssh … 'zcat -f /var/log/nginx/access.log /var/log/nginx/access.log.1 | grep "/kisschool/api/" | awk "\$9>=400"'` (field 9 = status; user agent `okhttp/…` = the Android app).
+- **Section 4 ("last 3 tracebacks") is not time-filtered** — it prints the newest tracebacks in the whole file, however old (prod still shows the 2026-05-30 `notify_student_edit_request` NameError). Check the timestamp line before each `Traceback` before treating one as new.

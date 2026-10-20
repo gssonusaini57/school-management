@@ -1,6 +1,6 @@
 ---
 name: test-verification
-description: Verify a TEST deploy of the KIS portal end to end — on-box server smoke (26 checks), API checks (dashboards, stay-signed-in) and headless-Chrome browser checks as super-admin, admin and a teacher, with logins passed only as environment variables. Use after every /deploy-test* and before committing.
+description: Verify a deploy of the KIS portal — on-box server smoke (26 checks, TEST or prod), API and headless-Chrome checks as super-admin, admin and a teacher, and a review of the owner's own TEST run (nginx log + sign-in sessions) before go-live; logins only as environment variables. Use after every deploy and before committing or going live.
 ---
 
 # TEST verification
@@ -13,6 +13,8 @@ description: Verify a TEST deploy of the KIS portal end to end — on-box server
 - `smoke` — server smoke only (no logins needed; tokens are minted on the box with TEST's own secret and never printed).
 - `api` — smoke + API checks (needs `KIS_U1` super-admin identifier + `KIS_PW`).
 - `full` (default) — smoke + API + browser checks.
+- `review` — before a go-live, review the owner's own TEST run instead of re-testing: errors, refused requests and sign-in sessions since their testing started (step 5).
+- `prod-smoke` — after a prod deploy, the same smoke on prod (step 1 with prod's user, paths and port).
 - Logins: `KIS_U1` (super-admin email), `KIS_U2` (admin email), `KIS_PW` (password). **Pass them inline as env vars only — never write them to a file, the repo or memory.** Teacher checks pick an active teacher through the API and use the TEST temporary password (every active TEST staff member has one; value user-known).
 
 ## Steps
@@ -31,6 +33,8 @@ description: Verify a TEST deploy of the KIS portal end to end — on-box server
    - `ui_dashboard.mjs` — dashboard pie → Pending list → Back, class-wise chart, teacher sees no pie.
    - `ui_remember.mjs` — Remember me: new tab stays signed in, silent renewal, Log out ends it, no Remember me = old behaviour.
 4. Read 1–2 key screenshots before reporting; report pass/fail per step and any browser errors.
+5. **Review the owner's TEST run (`review`):** `bash scripts/deploy/test/check-logs.sh 1d` (crashes, restarts — tracebacks section is not time-filtered), then the real request log `zcat -f /var/log/nginx/access.log /var/log/nginx/access.log.1 | grep "/kisschool/api/"` filtered to status ≥ 400 in their time window, with path + user agent (`okhttp` = app). Map refusals to accounts via `device_sessions` (`SELECT id, platform, account_type, account_ref, created_at, last_used_at, rotated_at IS NOT NULL, revoked_reason FROM device_sessions ORDER BY created_at` — UTC times) and `staff.allowed_menus`; print IDs, never names. A 403 for a menu the account holds is a regression (2026-10-20: Fees-menu staff refused `GET /fees`).
+6. **Prod smoke (`prod-smoke`):** copy `smoke_results.py` to the box and run `sudo -u school bash -c 'set -a; . /opt/school-management/.env; set +a; cd /opt/school-management/app && PYTHONPATH=/opt/school-management/app .venv/bin/python /tmp/smoke_results.py http://127.0.0.1:8000/api'` — expect 26/26 (writes one cached 8th-class card and a 2-card render job; every save it attempts is refused by design).
 
 ## Gotchas / FP patterns
 - **Never wait for `networkidle`** on pages with live updates (Dashboard, Marks Entry): the SSE stream keeps a request open → timeout. Use `domcontentloaded` + a fixed wait.

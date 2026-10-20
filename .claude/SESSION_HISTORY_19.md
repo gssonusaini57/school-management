@@ -33,7 +33,7 @@ Request: Mathematics is an additional subject taken by ~3 students in 11th and 1
 
 - **Theme:** the app followed the phone's dark mode with hard-coded light-mode colours (dark-grey login card, dark-blue title). Now Light is the default for every install, Settings offers Light / Dark / Same as phone, the dark palette is readable (`KisColors`), status-bar icons are white over navy top bars on every screen. Commits `63e10d8`, `134d271` (TEST app 1.3.1 build 22).
 - **Classes bug:** admins carry an empty `allowed_classes`, so Take attendance / Past attendance / Students / the coverage card showed "No classes assigned" → `AuthRepository.visibleClasses` everywhere (Gotcha #21).
-- **Server:** `GET /attendance/class-summary`, `GET /marks/batches/summary`; scope holes closed (a teacher with no classes saw every class's attendance total and every student; `GET /fees` without a class is admin-only); attendance CSV import onto a holiday clears the holiday flag.
+- **Server:** `GET /attendance/class-summary`, `GET /marks/batches/summary`; scope holes closed (a teacher with no classes saw every class's attendance total and every student; `GET /fees` without a class limited to admins and Fees-menu staff (first shipped admin-only; corrected 2026-10-20, `339c013`)); attendance CSV import onto a holiday clears the holiday flag.
 - **Web dashboard:** admin "Class attendance today" pie (Marked / Pending / Holiday → class lists, `?attendance=` in the URL so Back returns) + "Class-wise attendance" bar chart for every role (Today / This week / This month; bands ≥ 90 / 75–89 / < 75 with the 75 % PSEB line; teachers see only their classes).
 - **Android:** ☰ drawer; admin dashboard (classes pie → `classes-today/{kind}` list screens, students donut, class-wise bars, approvals or session & term, marks progress, fees, students & staff, notices) and teacher dashboard (my classes today, class-wise, marks to finish, results readiness, session, notices); module colour accents (`KisModule`), gradient headers with the crest, Playfair Display Bold (OFL, bundled), `KisIcons`, a Notices screen. TEST app 1.3.2 build 23. Commits `8fb38a7`, `3ef6c60`, `af44687`, `1ffe380`; roadmap `4ad7e96` ([docs/ROADMAP.md](../docs/ROADMAP.md)).
 - **Data insight:** in October 2026 only 6 of 15 classes (U.K.G, 2nd, 7th, 8th, 11th, 12th) marked any attendance in the system (prod clone).
@@ -60,6 +60,17 @@ Root cause: 1-hour access JWTs (`JWT_EXPIRY_HOURS=1` on both instances) and no s
 - Workflow resume re-runs every agent call after the first edited/new one — including finished parallel siblings. It re-ran the finished website step once (harmless; it found three real bugs).
 - An internet drop and a usage limit each killed an agent mid-run; resuming with "a previous agent was cut off — check what's on disk and finish" worked both times.
 - A background "wait for the journal" loop never fired because the journal is compact JSON (`"type":"result"`, no spaces) — match without spaces.
+
+## 7. Go-live — 2026-10-20
+
+The owner tested on TEST (web on Windows Chrome, app 1.3.3 on a Xiaomi) and said "make it live, before that check test server logs … if anything need to fix".
+- **Log review** (`/check-logs test 1d` + nginx's shared access log + the `device_sessions` table): no crashes or restarts. One regression — 10 `GET/POST /fees` 403s from staff #4, who holds the Fees menu on TEST *and prod*: last night's scope fix had made unscoped `GET /fees` admin-only. Fixed to "admins + Fees-menu staff see every class; other teachers only their classes" (recording/deleting payments stay admin-only, as on prod); test rewritten; verified with the real accounts on TEST; `339c013`.
+- **App sign-in** at 09:32 forced a password because the phone still held a sign-in from the pre-1.3.3 app (no saved sign-in); from 09:40 the saved sign-in renewed (rotations at 09:41 and 10:23) and switching staff #4 ↔ #22 worked without a password. Not a bug.
+- **Prod pre-flight:** schema 0013, healthy; `CORS_ORIGINS=https://kisschool.in` already set; no 11th/12th Mathematics marks; no fee payments recorded yet.
+- **Deploy 11:33:** `backup-db.sh` → `~/Downloads/db-backups/school_prod_20261020_113300.sql.gz` (62 MB); `git archive` of `339c013` + `echo "DEPLOY PROD" | deploy-all.sh`; snapshot `20261020_113317`; migrations 0014→0021 clean; healthy. Smoke on prod (as user `school`, `http://127.0.0.1:8000/api`): 26/26. The three tracebacks `/check-logs prod` listed were from 2026-05-30 (fixed `notify_student_edit_request` NameError) — the section isn't time-filtered.
+- **Data:** 11th and 12th Mathematics set optional on prod via the API (no takers ticked → nobody can enter Mathematics marks there until the super-admin ticks them).
+- **Prod app:** built 1.3.4 build 25 (61 DTO classes intact), owner chose "Upload now" at 11:35 on a school day → uploaded and verified (4,387,781 bytes); every teacher is force-updated on next open.
+- Docs: CLAUDE.md + memory marked live (`3042946`); [docs/ROADMAP.md](../docs/ROADMAP.md) refreshed with a "Waiting on the school" table and the go-live follow-ups (`2e8fc0d`).
 
 ---
 
