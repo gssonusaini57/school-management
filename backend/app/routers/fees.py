@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 from time import time
-from ..deps import db_dep, current_user, require_admin, CurrentUser, assert_class_allowed
+from ..deps import db_dep, current_user, require_admin, CurrentUser, assert_class_allowed, has_menu
 from ..schemas.fee import FeeCreate, FeeOut
 from ..models.fee import FeePayment
 from ..models.student import Student
@@ -19,12 +19,18 @@ def list_fees(
     db: Session = Depends(db_dep),
 ):
     stmt = select(FeePayment)
+    # Admins and staff granted the Fees menu (e.g. the accounts clerk) see every
+    # class; any other teacher may list only the classes they teach.
+    sees_every_class = has_menu(user, "fees")
     if class_name:
-        assert_class_allowed(user, class_name)
+        if not sees_every_class:
+            assert_class_allowed(user, class_name)
         stmt = stmt.where(FeePayment.class_name == class_name)
-    else:
-        # Every class's payments: admins only. A teacher asks for one of their classes.
-        require_admin(user)
+    elif not sees_every_class:
+        raise HTTPException(
+            status_code=403,
+            detail="Only admins and staff with the Fees menu can see every class's fees.",
+        )
     if month:
         stmt = stmt.where(FeePayment.month == month)
     rows = db.execute(stmt.order_by(FeePayment.created_at.desc())).scalars().all()

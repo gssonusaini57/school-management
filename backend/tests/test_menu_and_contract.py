@@ -77,19 +77,24 @@ def test_roster_reports_computed_values_beside_overrides(client, eighth):
     assert row["computed_attendance_pct"] == 75.0
 
 
-def test_fees_of_every_class_are_for_admins_only(client, db):
+def test_fees_of_every_class_need_admin_or_the_fees_menu(client, db):
     for cls, receipt in (("8th", "RC1"), ("9th", "RC2")):
         s = student(db, class_name=cls)
         db.add(FeePayment(student_id=s.id, student_name=s.name, class_name=cls, month="October", year="2026",
                           amount=500, date=date(2026, 10, 1), receipt_no=receipt, saved_by="t"))
     db.commit()
-    teacher = auth("staff", ["8th"], menus=["dashboard", "fees"])
+    receipts = lambda r: sorted(f["receipt_no"] for f in r.json())  # noqa: E731
+    # A teacher without the Fees menu: only the classes they teach.
+    teacher = auth("staff", ["8th"], menus=["dashboard", "attendance"])
     r = client.get("/api/fees", headers=teacher)
-    assert r.status_code == 403 and r.json()["detail"] == "Admin only"
-    for role in ("admin", "super_admin"):
-        r = client.get("/api/fees", headers=auth(role))
-        assert r.status_code == 200 and sorted(f["receipt_no"] for f in r.json()) == ["RC1", "RC2"]
-    # A teacher can still list one of their own classes, and only theirs.
+    assert r.status_code == 403 and "Fees menu" in r.json()["detail"]
     mine = client.get("/api/fees", params={"class": "8th"}, headers=teacher)
-    assert mine.status_code == 200 and [f["receipt_no"] for f in mine.json()] == ["RC1"]
+    assert mine.status_code == 200 and receipts(mine) == ["RC1"]
     assert client.get("/api/fees", params={"class": "9th"}, headers=teacher).status_code == 403
+    # Staff granted the Fees menu (the accounts clerk) see every class, as admins do.
+    clerk = auth("staff", ["8th"], menus=["dashboard", "fees"])
+    for headers in (clerk, auth("admin"), auth("super_admin")):
+        r = client.get("/api/fees", headers=headers)
+        assert r.status_code == 200 and receipts(r) == ["RC1", "RC2"]
+    other = client.get("/api/fees", params={"class": "9th"}, headers=clerk)
+    assert other.status_code == 200 and receipts(other) == ["RC2"]
