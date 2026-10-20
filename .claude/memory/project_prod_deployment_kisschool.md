@@ -21,3 +21,5 @@ Deployed 2026-05-29. KIS School Management now has a **production** environment 
 - Prod schema head: **`0013_component_term`** (verified 2026-10-19; last deploy snapshot 2026-06-07). dev HEAD carries 0014–0017, already rehearsed on the TEST prod-clone.
 
 Provisioning: `provision.sh` now reads `scripts/deploy/$ENV/env.sh` (default test), prompts via /dev/tty, and honours `ASSUME_YES=1`; step 06 is a no-op for prod (`NGINX_SNIPPET` empty — prod uses the standalone vhost).
+
+**Go-live 2026-10-20 11:33:** prod moved from `54db9cd`/0013 to `339c013`/0021 (Results v2, optional subjects, dashboards, stay-signed-in); backup `~/Downloads/db-backups/school_prod_20261020_113300.sql.gz`, code snapshot `20261020_113317`; 26/26 smoke on prod; prod app 1.3.4 build 25 uploaded the same day (force update). Prod `.env` already had `CORS_ORIGINS=https://kisschool.in`; `AUTH_COOKIE_PATH` stays the default `/api/auth`. 11th/12th Mathematics set optional (no takers ticked).

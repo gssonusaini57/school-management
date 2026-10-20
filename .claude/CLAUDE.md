@@ -1,5 +1,5 @@
 # Project Memory
-**Last Updated:** 2026-10-19 | **Sessions:** 19 (1–16 archived or in memory; 18–19 detail in archives) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in (still `54db9cd`, schema **0013**, Android **v1.2.6 build 19**) **and** TEST at http://69.62.72.137/kisschool/admin/ (second instance on the prod box, Gotcha #23) running dev `a71d7b7`, schema **0021** — Results v2, optional subjects, role dashboards, stay-signed-in — with staging app **v1.3.3 build 24**. **Promoting 0014–0021 + app 1.3.x to prod awaits the owner's go-ahead.**
+**Last Updated:** 2026-10-19 | **Sessions:** 19 (1–16 archived or in memory; 18–19 detail in archives) | **Branch:** dev | **Stage:** ✅ **LIVE ON PROD** at https://kisschool.in since 2026-10-20 11:33 — dev `339c013`, schema **0021** (Results v2, optional subjects, role dashboards, stay-signed-in), Android prod **v1.3.4 build 25** — **and** TEST at http://69.62.72.137/kisschool/admin/ (second instance on the prod box, Gotcha #23) on the same code with staging app **v1.3.3 build 24**.
 > **Admin logins (both instances):** admin `gssonusaini57@gmail.com` · super-admin `khalsainternationalschool@gmail.com` (hardcoded `ADMIN_EMAIL`/`SUPER_ADMIN_EMAIL` in auth.py since a20133c). Passwords are user-known only — `admin123` is rejected on prod (verified 2026-10-19). Staff log in by email-or-phone + password. TEST's DB is a prod clone, so every hash matches prod; TEST has no SMTP (email off). On TEST every active staff member also has an admin-set *temporary* password (value user-known, never recorded) for teacher-view testing; `/sync-test-data` wipes it.
 
 > Slash commands: see [.claude/commands/](./commands/) — `/provision-test`, `/deploy-test*`, `/sync-test-data`, `/deploy-prod*` (incl. `/deploy-prod-public-site`), `/clean-logs`, `/check-logs`, `/release-android`, `/save-session`, `/deep-analysis`. Android APK build: `bash scripts/build-android.sh {prod|test}` (local, needs keystore).
@@ -152,7 +152,7 @@ school-management/
 | class_subjects.is_optional + **subject_enrollments (0020)** | id | (class_subject_id, student_id) UNIQUE, FK CASCADE both — who takes an optional subject |
 | **device_sessions (0021)** | id | account_type + account_ref (= JWT sub), token_hash UNIQUE (sha256), family_id, platform, via, expires_at (30 d sliding), absolute_expires_at (180 d), rotated_at/replaced_by_id, revoked_at/revoked_reason (Gotcha #25) |
 
-All migrations live under `backend/alembic/versions/` (`0001_initial` … `0021_device_sessions`: 0008–0009 Session 13, 0010–0011 Session 16, 0012 Session 17, 0013 Session 18, 0014–0021 Session 19). **Prod is at 0013, TEST at 0021.** **Never** call `metadata.create_all()` outside tests; always `alembic upgrade head`.
+All migrations live under `backend/alembic/versions/` (`0001_initial` … `0021_device_sessions`: 0008–0009 Session 13, 0010–0011 Session 16, 0012 Session 17, 0013 Session 18, 0014–0021 Session 19). **Prod and TEST are both at 0021** (prod since 2026-10-20). **Never** call `metadata.create_all()` outside tests; always `alembic upgrade head`.
 
 ---
 
@@ -270,8 +270,8 @@ Sidebar sections: Main · Academic (incl. **Class Subjects** super-admin master,
 |---|---|
 | Core platform: FastAPI routers, SQLAlchemy 2 + Alembic, JWT + bcrypt, SSE broker, React SPA (top-bar/sidebar nav, DatePicker, NumberField, bulk CSV import, validation, auto cache-bust) | ✅ Sessions 3–13 (Gotchas #13, #15) |
 | Deploy framework (snapshot + auto-rollback, slash commands, idempotent provisioning; two instances on one box) | ✅ (Gotcha #23) |
-| PROD https://kisschool.in | ✅ live on `54db9cd`, schema **0013**, Android prod **v1.2.6 build 19** — 0014–0021 + app 1.3.x await the owner's go-ahead |
-| TEST http://69.62.72.137/kisschool/admin/ | ✅ dev `a71d7b7`, schema **0021**, staging app **v1.3.3 build 24**; prod-clone data (synced 2026-10-19) |
+| PROD https://kisschool.in | ✅ live on `339c013`, schema **0021** (deployed 2026-10-20 11:33 after a 62 MB backup), Android prod **v1.3.4 build 25** (force-update armed); 11th/12th Mathematics optional, no takers ticked |
+| TEST http://69.62.72.137/kisschool/admin/ | ✅ dev `339c013`, schema **0021**, staging app **v1.3.3 build 24**; prod-clone data (synced 2026-10-19) |
 | Class-templated PDFs + cache, soft-delete workflow, staff auth (email/phone, temp + forgot password), class-subjects master, marks draft/lock workflow | ✅ Sessions 8–16 |
 | Term-scoped results engine + "All" class sentinel | ✅ on prod (0013) (Gotchas #20, #21) |
 | **Results module v2** — sessions, letter grades, rank/attendance, report card v2 (layouts, overrides, photo), background renders + ZIP, revision guard, cross-check fixes | ✅ on TEST (0014–0019) |
@@ -320,10 +320,10 @@ Other manual scripts: `scripts/deploy/test/download-logs.sh` · `backup-db.sh` �
 ```
 
 ## Next Steps (TODOs)
-0. **Promote to prod — only with the owner's explicit go-ahead.** Prod runs `54db9cd` (schema 0013). `bash scripts/deploy/prod/backup-db.sh`, set `CORS_ORIGINS` explicitly in prod `.env` first (wildcard + credentials reflects any Origin), then `/deploy-prod-all` (runs 0014–0021, all rehearsed on the TEST prod clone; prod keeps the default `AUTH_COOKIE_PATH=/api/auth`). Smoke after: `/api/health`, `/api/sessions/current`, one `/marks/results`, one report-card render, `/check-logs`.
-1. **Prod Android release before 1 Jan 2027.** Build 19 derives the session name from the calendar year, so from January it asks for `2027-28` and the server refuses its marks. Release the 1.3.x prod flavor with `/release-android prod` (force-updates every phone — schedule outside marks-entry hours). Until then build 19 works but still logs out hourly and can't remove saved marks (409, by design).
-2. **Owner's phone checks on TEST app 1.3.3:** "Sign in faster" popup → fingerprint/face unlock after reopening, Switch account between super-admin/admin/teacher, Settings (App lock, signed-in devices), dark theme, both role dashboards (pie → Pending/Marked lists).
-3. **Optional subjects:** the super-admin ticks the real Mathematics takers in 11th and 12th (Class Subjects → Mathematics) — on TEST now, on prod after deploy.
+0. **Watch prod after the 2026-10-20 go-live:** `/check-logs` (prod) over the next days (its "last 3 tracebacks" are not time-filtered — the May `notify_student_edit_request` NameError still shows; compare timestamps); teachers will be forced onto app 1.3.4 the next time they open it. Rollback if needed: code snapshot `20261020_113317` via `scripts/deploy/prod/rollback.sh`, DB backup `~/Downloads/db-backups/school_prod_20261020_113300.sql.gz` (migrations 0014–0021 are additive; 0019 cleared 2 empty v1 card rows).
+1. **Tick the real Mathematics takers** in 11th and 12th on prod (Class Subjects → Mathematics) — until then nobody can enter Mathematics marks there ("No student takes this subject yet").
+2. **Owner's phone checks (prod app 1.3.4 / TEST 1.3.3):** "Sign in faster" popup → fingerprint/face unlock after reopening, Switch account between super-admin/admin/teacher, Settings (App lock, signed-in devices), dark theme, both role dashboards (pie → Pending/Marked lists).
+3. **Fees:** staff #4 holds the Fees menu — can list fees (fixed 2026-10-20, `339c013`) but recording/deleting payments stays admin-only, as before; decide whether Fees-menu holders should record payments too.
 4. **Awaiting the principal:** renaming mistyped exam names in 11th/12th English ("PT First" → "P.T. First", "P.T Second" → "P.T. Second") — do NOT apply, not even on TEST. Also raise: only 6 of 15 classes marked attendance in October 2026; 4 marks batches are still drafts (left off report cards until submitted).
 5. **Auth follow-ups:** nginx `limit_req` on `/api/auth/login` + `/api/auth/refresh` in both vhosts (prod vhost is hand-installed); `AUTH_COOKIE_PATH` into `deploy/.env.example` + provision step 04 (peer-owned scripts — coordinate); once every phone is on 1.3.x, shorten `JWT_EXPIRY_HOURS` to 15–30 min; a web page for signed-in devices and the admin "sign out a lost phone" action (API exists).
 6. **Verify the seeded exam pattern** for 9th–10th (some values ambiguous against the handwritten sheet) — super-admin spot-check on `/class-subjects/:id`.
